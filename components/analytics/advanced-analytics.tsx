@@ -44,7 +44,6 @@ import {
   calculateEfficiency, 
   getChartColors,
   getTimePeriods,
-  getMetrics,
   getPerformanceBadgeVariant,
   getChartConfig
 } from "@/lib/utils/dynamic-data"
@@ -55,52 +54,56 @@ import {
 interface StudySession {
   /** Unique identifier for the session */
   id: string
-  /** Date when the session occurred (ISO string or Date object) */
-  date: string | Date
+  /** Start time when the session occurred (ISO string or Date object) */
+  startTime: string | Date
   /** Duration of the session in minutes */
-  duration: number
-  /** Subject associated with the session (optional) */
-  subject?: string
+  durationMinutes: number
+  /** Subject ID associated with the session (optional) */
+  subjectId?: string | null
   /** Productivity rating from 1-5 (optional) */
-  productivity?: number
+  productivity?: number | null
   /** Additional notes about the session (optional) */
-  notes?: string
+  notes?: string | null
 }
 
 interface TestMark {
   id: string
-  date: string | Date
+  testDate: string | Date
   subjectId: string
-  subjectName: string
-  marksObtained: number
-  totalMarks: number
-  title?: string
-  percentage?: number
-  grade?: string
+  score: number
+  maxScore: number
+  testName?: string
+  testType?: string
+  notes?: string | null
 }
 
 interface Task {
   id: string
   title: string
-  description?: string
-  subject?: string
-  completed: boolean
-  dueDate?: string | Date
+  description?: string | null
+  subjectId?: string | null
+  status: string
+  completedAt?: string | Date | null
+  dueDate?: string | Date | null
   createdAt: string | Date
-  priority?: 'low' | 'medium' | 'high'
-  estimatedTime?: number
+  priority?: string
+  estimatedTime?: number | null
 }
 
 interface Subject {
   id: string
   name: string
   color: string
-  progress: number
+  description?: string | null
+  code?: string | null
+  credits?: number
+  instructor?: string | null
   totalChapters?: number
   completedChapters?: number
-  description?: string
-  materials?: string[]
-  createdAt?: string
+  totalMaterials?: number
+  completedMaterials?: number
+  createdAt: string | Date
+  updatedAt: string | Date
 }
 
 interface AnalyticsData {
@@ -119,11 +122,33 @@ const COLORS = getChartColors(6)
 
 export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
   const [timeRange, setTimeRange] = useState("30")
-  const [selectedMetric, setSelectedMetric] = useState("study-time")
 
   // Input validation and data sanitization
   const sanitizedData = useMemo(() => {
     if (!data) return { studySessions: [], testMarks: [], tasks: [], subjects: [] }
+    
+    // Debug: Log the raw data being received
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Advanced Analytics Raw Data:', {
+        hasData: !!data,
+        studySessionsCount: data.studySessions?.length || 0,
+        testMarksCount: data.testMarks?.length || 0,
+        subjectsCount: data.subjects?.length || 0,
+        tasksCount: data.tasks?.length || 0,
+        studySessionsSample: data.studySessions?.slice(0, 2).map(s => ({
+          id: s.id,
+          subjectId: s.subjectId,
+          durationMinutes: s.durationMinutes,
+          startTime: s.startTime
+        })),
+        subjectsSample: data.subjects?.slice(0, 2).map(s => ({
+          id: s.id,
+          name: s.name,
+          totalChapters: s.totalChapters,
+          completedChapters: s.completedChapters
+        }))
+      })
+    }
     
     return {
       studySessions: Array.isArray(data.studySessions) ? data.studySessions : [],
@@ -170,12 +195,12 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
          // Add more detailed test mark debugging
          testMarksDetails: sanitizedData.testMarks.map(t => ({
            id: t.id,
-           subjectName: t.subjectName,
+           subjectName: t.testName || 'Unknown',
            subjectId: t.subjectId,
-           marksObtained: t.marksObtained,
-           totalMarks: t.totalMarks,
-           percentage: t.percentage,
-           date: t.date
+           marksObtained: t.score,
+           totalMarks: t.maxScore,
+           percentage: t.score, // score is already a percentage
+           date: t.testDate
          })),
          // Show raw test mark structure for debugging
          rawTestMarkStructure: sanitizedData.testMarks.length > 0 ? Object.keys(sanitizedData.testMarks[0]) : []
@@ -186,7 +211,7 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
     const filteredSessions = sanitizedData.studySessions.filter(
       session => {
         try {
-          return parseDate(session.date) >= startDate
+          return parseDate(session.startTime) >= startDate
         } catch {
           return false
         }
@@ -196,14 +221,14 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
        test => {
          try {
            // Validate test mark data
-           if (!test.subjectId || !test.marksObtained || !test.totalMarks) {
+           if (!test.subjectId || !test.score || !test.maxScore) {
              if (process.env.NODE_ENV === 'development') {
                console.warn('Invalid test mark data:', test)
              }
              return false
            }
            
-           return parseDate(test.date) >= startDate
+           return parseDate(test.testDate) >= startDate
          } catch {
            return false
          }
@@ -216,10 +241,10 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
           totalTestMarks: sanitizedData.testMarks.length,
           filteredTestsCount: filteredTests.length,
           filteredTestsDetails: filteredTests.map(t => ({
-            subjectName: t.subjectName,
-            marksObtained: t.marksObtained,
-            totalMarks: t.totalMarks,
-            date: t.date
+            subjectName: t.testName || 'Unknown',
+            marksObtained: t.score,
+            totalMarks: t.maxScore,
+            date: t.testDate
           }))
         })
       }
@@ -242,17 +267,17 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
              const sessionsOnDay = filteredSessions.filter(s => {
          try {
            // Use centralized date parsing utility
-           const sessionDateStr = formatDateSafely(s.date)
+           const sessionDateStr = formatDateSafely(s.startTime)
            return sessionDateStr === dayStr
          } catch (error) {
            // Log error in development only
            if (process.env.NODE_ENV === 'development') {
-             console.warn('Error parsing session date:', s.date, error)
+             console.warn('Error parsing session date:', s.startTime, error)
            }
            return false
          }
        })
-      const totalTime = sessionsOnDay.reduce((sum, s) => sum + (s.duration || 0), 0)
+      const totalTime = sessionsOnDay.reduce((sum, s) => sum + (s.durationMinutes || 0), 0)
       
       return {
         date: format(day, 'MMM dd'),
@@ -280,13 +305,38 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
         })
       }
       
-             const subjectSessions = filteredSessions.filter(s => {
-         const sessionSubject = s.subject || ''
-         const subjectName = subject.name || ''
-
-         // Try exact match first (case-insensitive)
-         return sessionSubject.toLowerCase() === subjectName.toLowerCase()
-       })
+      const subjectSessions = filteredSessions.filter(s => {
+        // Use subjectId for precise matching - this is the correct way
+        if (s.subjectId && subject.id && s.subjectId === subject.id) {
+          return true
+        }
+        
+        // Fallback: If no subjectId, try to match by subject name (for backward compatibility)
+        // But this should rarely happen with proper Prisma data
+        const sessionSubjectName = s.subjectId || ''
+        const subjectName = subject.name || ''
+        
+        // Only use name matching as a last resort
+        return sessionSubjectName.toLowerCase() === subjectName.toLowerCase()
+      })
+      
+      // Debug subject-session matching
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔍 Subject-Session Matching Debug for ${subject.name}:`, {
+          subjectId: subject.id,
+          subjectName: subject.name,
+          totalFilteredSessions: filteredSessions.length,
+          sessionSamples: filteredSessions.slice(0, 3).map(s => ({
+            sessionId: s.id,
+            sessionSubjectId: s.subjectId,
+            sessionDuration: s.durationMinutes,
+            sessionStartTime: s.startTime
+          })),
+          matchedSessions: subjectSessions.length,
+          matchedSessionIds: subjectSessions.map(s => s.id),
+          totalStudyTime: subjectSessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0)
+        })
+      }
       
              const subjectTests = filteredTests.filter(t => {
           // Use subjectId for precise matching if available, otherwise fall back to name matching
@@ -295,7 +345,7 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
           }
           
           // Fallback to name-based matching for backward compatibility
-          const testSubject = t.subjectName || ''
+          const testSubject = t.testName || ''
           const subjectName = subject.name || ''
           
           // More flexible matching - handle variations in subject names
@@ -322,53 +372,57 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
            subjectName: subject.name,
            filteredTestsCount: filteredTests.length,
            subjectTestsCount: subjectTests.length,
-           testSubjects: filteredTests.map(t => t.subjectName),
+           testSubjects: filteredTests.map(t => t.testName),
            matchedTests: subjectTests.map(t => ({
-             subjectName: t.subjectName,
-             marksObtained: t.marksObtained,
-             totalMarks: t.totalMarks
+             subjectName: t.testName,
+             marksObtained: t.score,
+             totalMarks: t.maxScore
            }))
          })
        }
        
-       const totalStudyTime = subjectSessions.reduce((sum, s) => sum + (s.duration || 0), 0)
+       const totalStudyTime = subjectSessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0)
        
-       // Calculate average test score with better error handling
-       let avgTestScore = 0
-       if (subjectTests.length > 0) {
-         const totalScore = subjectTests.reduce((sum, t) => {
-           // Use percentage if available, otherwise calculate from marks
-           if (t.percentage !== undefined && t.percentage !== null) {
-             return sum + t.percentage
-           } else {
-             const marksObtained = Number(t.marksObtained) || 0
-             const totalMarks = Number(t.totalMarks) || 100
-             if (totalMarks > 0) {
-               return sum + (marksObtained / totalMarks * 100)
-             }
-           }
-           return sum
-         }, 0)
-         
-         avgTestScore = Math.round(totalScore / subjectTests.length)
-         
-         // Debug logging in development
-         if (process.env.NODE_ENV === 'development') {
-           console.log(`Subject: ${subject.name}`, {
-             testCount: subjectTests.length,
-             testScores: subjectTests.map(t => ({ marksObtained: t.marksObtained, totalMarks: t.totalMarks, subjectName: t.subjectName })),
-             avgTestScore,
-             totalStudyTime,
-             totalStudyTimeAllSubjects: sanitizedData.studySessions.reduce((sum, s) => sum + (s.duration || 0), 0)
-           })
-         }
-       }
+               // Calculate average test score - properly calculate percentage from marks
+        let avgTestScore = 0
+        if (subjectTests.length > 0) {
+          const totalScore = subjectTests.reduce((sum, t) => {
+            // Calculate percentage from marks obtained vs total marks
+            const marksObtained = Number(t.score) || 0
+            const totalMarks = Number(t.maxScore) || 100
+            
+            if (totalMarks > 0) {
+              const percentage = (marksObtained / totalMarks) * 100
+              console.log(`📊 Test Score Calculation: ${marksObtained}/${totalMarks} = ${percentage}%`)
+              return sum + percentage
+            }
+            return sum
+          }, 0)
+          
+          avgTestScore = Math.round(totalScore / subjectTests.length)
+          
+          // Debug logging in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Subject: ${subject.name}`, {
+              testCount: subjectTests.length,
+              testScores: subjectTests.map(t => ({ 
+                marksObtained: t.score, 
+                totalMarks: t.maxScore, 
+                percentage: (Number(t.score) / Number(t.maxScore)) * 100,
+                subjectName: t.testName 
+              })),
+              avgTestScore,
+              totalStudyTime,
+              totalStudyTimeAllSubjects: sanitizedData.studySessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0)
+            })
+          }
+        }
 
                            // Calculate progress using dynamic utility
               const progress = calculateProgress(subject.completedChapters || 0, subject.totalChapters || 0)
               
                             // Calculate efficiency using dynamic utility with better handling
-               const totalStudyTimeAllSubjects = sanitizedData.studySessions.reduce((sum, s) => sum + (s.duration || 0), 0)
+               const totalStudyTimeAllSubjects = sanitizedData.studySessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0)
                
                // Enhanced efficiency calculation
                let efficiency = 0
@@ -411,13 +465,13 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
       const sessionsAtHour = filteredSessions.filter(s => {
         try {
           // Use centralized date parsing utility
-          const sessionDate = parseDate(s.date)
+          const sessionDate = parseDate(s.startTime)
           const sessionHour = sessionDate.getHours()
           return sessionHour === hour
         } catch (error) {
           // Log error in development only
           if (process.env.NODE_ENV === 'development') {
-            console.warn('Error parsing session date for hourly productivity:', s.date, error)
+            console.warn('Error parsing session date for hourly productivity:', s.startTime, error)
           }
           return false
         }
@@ -432,19 +486,45 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
       }
     }).filter(h => h.sessions > 0)
 
-    // Task completion analysis
+    // Task completion analysis - properly calculate from database fields
     const taskAnalysis = {
-      completed: filteredTasks.filter(t => t.completed).length,
-      pending: filteredTasks.filter(t => !t.completed).length,
-      overdue: filteredTasks.filter(t => 
-        !t.completed && t.dueDate && isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))
-      ).length
+      completed: filteredTasks.filter(t => {
+        // Task is completed if completedAt is set OR status is "completed"
+        return t.completedAt || t.status === "completed"
+      }).length,
+      pending: filteredTasks.filter(t => {
+        // Task is pending if not completed
+        return !t.completedAt && t.status !== "completed"
+      }).length,
+      overdue: filteredTasks.filter(t => {
+        // Task is overdue if not completed, has due date, and due date is in the past
+        const isCompleted = t.completedAt || t.status === "completed"
+        const hasDueDate = t.dueDate
+        const isOverdue = hasDueDate && t.dueDate && isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))
+        return !isCompleted && isOverdue
+      }).length
+    }
+
+    // Debug logging for task completion calculation
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Task Completion Debug:', {
+        totalTasks: filteredTasks.length,
+        taskAnalysis,
+        sampleTasks: filteredTasks.slice(0, 3).map(t => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+          completedAt: t.completedAt,
+          dueDate: t.dueDate,
+          isCompleted: t.completedAt || t.status === "completed"
+        }))
+      })
     }
 
     // Weekly comparison
     const thisWeek = filteredSessions.filter(s => {
       try {
-        const sessionDate = parseDate(s.date)
+        const sessionDate = parseDate(s.startTime)
         const weekStart = startOfWeek(new Date())
         const weekEnd = endOfWeek(new Date())
         return sessionDate >= weekStart && sessionDate <= weekEnd
@@ -455,7 +535,7 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
 
     const lastWeek = sanitizedData.studySessions.filter(s => {
       try {
-        const sessionDate = parseDate(s.date)
+        const sessionDate = parseDate(s.startTime)
         const lastWeekStart = startOfWeek(subDays(new Date(), 7))
         const lastWeekEnd = endOfWeek(subDays(new Date(), 7))
         return sessionDate >= lastWeekStart && sessionDate <= lastWeekEnd
@@ -465,8 +545,8 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
     })
 
     const weekComparison = {
-      thisWeek: thisWeek.reduce((sum, s) => sum + (s.duration || 0), 0) / 60,
-      lastWeek: lastWeek.reduce((sum, s) => sum + (s.duration || 0), 0) / 60,
+      thisWeek: thisWeek.reduce((sum, s) => sum + (s.durationMinutes || 0), 0) / 60,
+      lastWeek: lastWeek.reduce((sum, s) => sum + (s.durationMinutes || 0), 0) / 60,
       change: 0
     }
     
@@ -489,8 +569,8 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
       hourlyProductivity,
       taskAnalysis,
       weekComparison,
-      totalStudyTime: Math.round(filteredSessions.reduce((sum, s) => sum + (s.duration || 0), 0) / 60 * 10) / 10,
-      totalStudyTimeMinutes: filteredSessions.reduce((sum, s) => sum + (s.duration || 0), 0),
+      totalStudyTime: Math.round(filteredSessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0) / 60 * 10) / 10,
+      totalStudyTimeMinutes: filteredSessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0),
       averageProductivity: filteredSessions.length > 0
         ? Math.round(filteredSessions.reduce((sum, s) => sum + (s.productivity || 3), 0) / filteredSessions.length * 10) / 10
         : 0
@@ -511,32 +591,20 @@ export function AdvancedAnalytics({ data }: AdvancedAnalyticsProps) {
           <h2 className="text-2xl font-bold">Advanced Analytics</h2>
           <p className="text-muted-foreground">Deep insights into your study patterns and performance</p>
         </div>
-                 <div className="flex gap-2">
-           <Select value={timeRange} onValueChange={setTimeRange}>
-             <SelectTrigger className="w-32">
-               <SelectValue />
-             </SelectTrigger>
-             <SelectContent>
-               {getTimePeriods().map(period => (
-                 <SelectItem key={period.value} value={period.value}>
-                   {period.label}
-                 </SelectItem>
-               ))}
-             </SelectContent>
-           </Select>
-           <Select value={selectedMetric} onValueChange={setSelectedMetric}>
-             <SelectTrigger className="w-40">
-               <SelectValue />
-             </SelectTrigger>
-             <SelectContent>
-               {getMetrics().map(metric => (
-                 <SelectItem key={metric.value} value={metric.value}>
-                   {metric.label}
-                 </SelectItem>
-               ))}
-             </SelectContent>
-           </Select>
-         </div>
+                                   <div className="flex gap-2">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {getTimePeriods().map(period => (
+                  <SelectItem key={period.value} value={period.value}>
+                    {period.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
       </div>
 
       {/* Key Metrics */}

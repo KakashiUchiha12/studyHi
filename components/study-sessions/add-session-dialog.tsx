@@ -17,14 +17,15 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { TimePicker } from "@/components/ui/time-picker"
 import { X, Plus } from "lucide-react"
 
 interface StudySession {
   subjectId: string
   subjectName: string
   date: string
-  startTime: string
-  endTime: string
+  startTime: string // ISO string
+  endTime: string // ISO string
   duration: number
   topicsCovered: string[]
   materialsUsed: string[]
@@ -80,12 +81,16 @@ export function AddSessionDialog({ open, onOpenChange, subjects, onAddSession }:
     const duration = calculateDuration(formData.startTime, formData.endTime)
     if (duration <= 0) return
 
+    // Create proper date objects
+    const startDateTime = new Date(`${formData.date}T${formData.startTime}:00`)
+    const endDateTime = new Date(`${formData.date}T${formData.endTime}:00`)
+
     const session: StudySession = {
       subjectId: formData.subjectId,
       subjectName: selectedSubject.name,
       date: formData.date,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
+      startTime: startDateTime.toISOString(), // Send as ISO string
+      endTime: endDateTime.toISOString(), // Send as ISO string
       duration,
       topicsCovered,
       materialsUsed,
@@ -201,22 +206,18 @@ export function AddSessionDialog({ open, onOpenChange, subjects, onAddSession }:
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label htmlFor="startTime">Start Time</Label>
-              <Input
-                id="startTime"
-                type="time"
+              <TimePicker
                 value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                required
+                onChange={(time) => setFormData({ ...formData, startTime: time })}
+                placeholder="Select start time"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="endTime">End Time</Label>
-              <Input
-                id="endTime"
-                type="time"
+              <TimePicker
                 value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                required
+                onChange={(time) => setFormData({ ...formData, endTime: time })}
+                placeholder="Select end time"
               />
             </div>
             <div className="space-y-2">
@@ -234,7 +235,6 @@ export function AddSessionDialog({ open, onOpenChange, subjects, onAddSession }:
                 placeholder="Add topic (e.g., Derivatives, Newton's Laws)"
                 value={newTopic}
                 onChange={(e) => setNewTopic(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTopic())}
                 className="flex-1"
               />
               <Button type="button" variant="outline" onClick={addTopic} className="sm:w-auto">
@@ -262,7 +262,6 @@ export function AddSessionDialog({ open, onOpenChange, subjects, onAddSession }:
                 placeholder="Add material (e.g., Textbook, Khan Academy)"
                 value={newMaterial}
                 onChange={(e) => setNewMaterial(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addMaterial())}
                 className="flex-1"
               />
               <Button type="button" variant="outline" onClick={addMaterial} className="sm:w-auto">

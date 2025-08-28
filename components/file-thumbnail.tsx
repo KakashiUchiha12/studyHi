@@ -7,10 +7,10 @@ import { FileText, Image as ImageIcon, FileSpreadsheet, FileText as WordIcon } f
 let pdfjsLib: any = null
 
 if (typeof window !== 'undefined') {
-  import('pdfjs-dist').then((lib) => {
+  import('pdfjs-dist/legacy/build/pdf.js').then((lib) => {
     pdfjsLib = lib
     // Set the worker source for PDF.js
-    lib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.54/pdf.worker.min.js`
+    lib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`
   })
 }
 

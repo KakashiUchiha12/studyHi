@@ -1,24 +1,18 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
-import { TaskItem } from "./task-item"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect, useMemo } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Plus, Edit, Trash2, Search, Calendar, Clock, CheckCircle, Circle, AlertCircle, Filter, SortAsc, Flag } from 'lucide-react'
+import { useTasks } from '@/hooks/useTasks'
 import { isPast, isToday } from "date-fns"
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  SortAsc, 
-  CheckCircle2, 
-  Circle, 
-  Calendar,
-  Clock,
-  Flag
-} from "lucide-react"
+import { TaskItem } from "./task-item"
 
 interface Task {
   id: string
@@ -50,7 +44,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // Filter and sort tasks
-  const filteredAndSortedTasks = useCallback(() => {
+  const filteredAndSortedTasks = useMemo(() => {
     let filtered = tasks
 
     // Apply search filter
@@ -100,39 +94,42 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
     return filtered
   }, [tasks, searchQuery, filterStatus, sortBy])
 
-  const handleToggleTask = useCallback((taskId: string) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    )
-    onTasksChange(updatedTasks)
+  const handleToggleTask = useMemo(() => {
+    return (taskId: string) => {
+      const updatedTasks = tasks.map(task =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+      onTasksChange(updatedTasks)
+    }
   }, [tasks, onTasksChange])
 
-  const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, ...updates } : task
-    )
-    onTasksChange(updatedTasks)
+  const handleUpdateTask = useMemo(() => {
+    return (taskId: string, updates: Partial<Task>) => {
+      const updatedTasks = tasks.map(task =>
+        task.id === taskId ? { ...task, ...updates } : task
+      )
+      onTasksChange(updatedTasks)
+    }
   }, [tasks, onTasksChange])
 
-  const handleDeleteTask = useCallback((taskId: string) => {
-    const updatedTasks = tasks.filter(task => task.id !== taskId)
-    onTasksChange(updatedTasks)
+  const handleDeleteTask = useMemo(() => {
+    return (taskId: string) => {
+      const updatedTasks = tasks.filter(task => task.id !== taskId)
+      onTasksChange(updatedTasks)
+    }
   }, [tasks, onTasksChange])
 
   // Drag and drop handlers - works on original tasks array only
   const handleDragStart = (e: React.DragEvent, index: number) => {
-    // Only allow drag and drop when no filters are applied
-    if (searchQuery || filterStatus !== "all" || sortBy !== "dueDate") {
-      e.preventDefault()
-      return
-    }
-    
+    // Allow drag and drop in all cases
+    console.log('🔍 Drag started for task at index:', index, 'Task:', tasks[index]?.title)
     setDraggedIndex(index)
     e.dataTransfer.effectAllowed = "move"
     e.dataTransfer.setData("text/plain", index.toString())
   }
 
   const handleDragEnd = () => {
+    console.log('🔍 Drag ended, draggedIndex was:', draggedIndex)
     setDraggedIndex(null)
     setDragOverIndex(null)
   }
@@ -145,13 +142,26 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
     
-    if (draggedIndex === null || draggedIndex === dropIndex) return
+    console.log('🔍 Drop event at index:', dropIndex, 'draggedIndex:', draggedIndex)
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      console.log('🔍 Drop ignored - invalid indices')
+      return
+    }
 
     // Use a standard array reordering algorithm
     const result = Array.from(tasks)
     const [removed] = result.splice(draggedIndex, 1)
     result.splice(dropIndex, 0, removed)
     
+    console.log('🔍 Tasks reordered:', {
+      originalOrder: tasks.map(t => ({ id: t.id, title: t.title })),
+      newOrder: result.map(t => ({ id: t.id, title: t.title })),
+      draggedTask: removed.title,
+      dropIndex: dropIndex
+    })
+    
+    console.log('🔍 Calling onTasksChange with reordered tasks')
     onTasksChange(result)
     setDraggedIndex(null)
     setDragOverIndex(null)
@@ -169,7 +179,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
     setSortBy("dueDate")
   }
 
-  const displayedTasks = filteredAndSortedTasks()
+  const displayedTasks = filteredAndSortedTasks
 
   // Task statistics
   const taskStats = {
@@ -191,7 +201,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
               <span>{taskStats.pending} pending</span>
             </span>
             <span className="flex items-center space-x-1">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-green-600" />
               <span>{taskStats.completed} completed</span>
             </span>
             {taskStats.overdue > 0 && (
@@ -282,16 +292,21 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
              {/* Task List - Mobile Optimized */}
        <div className="space-y-2 sm:space-y-3 min-h-0">
          {displayedTasks.length > 0 && (
-           <div className="text-center p-2 sm:p-3 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
-             <p className="text-xs text-muted-foreground">
-               {(searchQuery || filterStatus !== "all" || sortBy !== "dueDate") ? (
-                 "🔒 Clear filters to enable drag and drop reordering"
-               ) : (
-                 "💡 Drag and drop tasks to reorder them"
-               )}
-             </p>
-           </div>
-         )}
+          <div className="text-center p-2 sm:p-3 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
+            <p className="text-xs text-muted-foreground">
+              {(searchQuery || filterStatus !== "all" || sortBy !== "dueDate") ? (
+                "🔒 Clear filters to enable drag and drop reordering"
+              ) : (
+                "💡 Drag and drop tasks to reorder them (drag the grip handle)"
+              )}
+            </p>
+            {draggedIndex !== null && (
+              <p className="text-xs text-primary font-medium mt-1">
+                🎯 Dragging: {tasks[draggedIndex]?.title}
+              </p>
+            )}
+          </div>
+        )}
         {displayedTasks.length === 0 ? (
           <Card>
             <CardContent className="p-6 sm:p-8 text-center">

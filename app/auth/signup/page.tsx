@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -52,17 +53,24 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-      // Simulate account creation
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          email: formData.email,
-          name: formData.name,
-        }),
-      )
-      router.push("/dashboard")
+      // For now, we'll automatically sign in the user after "creating" an account
+      // In a real app, you'd create the account in a database first
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        setError("Account creation failed. Please try again.")
+        toast.error("Signup failed")
+      } else {
+        toast.success("Account created successfully!")
+        router.push("/dashboard")
+      }
     } catch (err) {
       setError("An error occurred. Please try again.")
+      toast.error("An error occurred")
     } finally {
       setIsLoading(false)
     }

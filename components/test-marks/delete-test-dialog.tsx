@@ -31,6 +31,11 @@ interface DeleteTestDialogProps {
 }
 
 export function DeleteTestDialog({ open, onOpenChange, test, onDeleteTest }: DeleteTestDialogProps) {
+  // Don't render if no test is selected
+  if (!test) {
+    return null
+  }
+
   const handleDelete = () => {
     onDeleteTest(test.id)
   }

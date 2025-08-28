@@ -33,11 +33,16 @@ jest.mock('next-auth/react', () => ({
 // Mock date-fns
 jest.mock('date-fns', () => ({
   format: jest.fn((date, formatStr) => {
+    if (formatStr === 'MMM dd') return 'Dec 31'
     if (formatStr === 'MMM d') return 'Dec 31'
     if (formatStr === 'HH:mm') return '12:00'
     return date.toISOString()
   }),
-  isPast: jest.fn((date) => new Date('2024-12-31') < date),
+  isPast: jest.fn((date) => {
+    // For testing overdue tasks, make dates before 2024-12-31 appear as past
+    const testDate = new Date('2024-12-31')
+    return date < testDate
+  }),
   isToday: jest.fn((date) => false),
   startOfDay: jest.fn((date) => date),
   startOfWeek: jest.fn((date) => date),

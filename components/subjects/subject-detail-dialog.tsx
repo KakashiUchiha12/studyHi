@@ -26,6 +26,11 @@ import {
   Search,
   BookMarked,
 } from "lucide-react"
+import { FileUploadSimple } from '@/components/subjects/file-upload-simple'
+import { useChapters } from '@/hooks/useChapters'
+import { useMaterials } from '@/hooks/useMaterials'
+import { PDFThumbnail } from '@/components/pdf-thumbnail'
+import { Chapter, Material } from '@/lib/database'
 
 interface Subject {
   id: string
@@ -38,15 +43,6 @@ interface Subject {
   completedChapters: number
   createdAt: string
   chapters?: Chapter[] // Added chapters property
-}
-
-interface Material {
-  id: string
-  name: string
-  type: "book" | "notes" | "video" | "website" | "other"
-  files: UploadedFile[]
-  links: MaterialLink[] // Added links array to materials
-  createdAt: string
 }
 
 interface UploadedFile {
@@ -66,22 +62,88 @@ interface MaterialLink {
   createdAt: string
 }
 
-interface Chapter {
-  id: string
-  name: string
-  completed: boolean
-  createdAt: string
-}
-
 interface SubjectDetailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   subject: Subject
 }
 
-export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDetailDialogProps) {
-  const [materials, setMaterials] = useState<Material[]>([])
-  const [chapters, setChapters] = useState<Chapter[]>([])
+export function SubjectDetailDialog({ 
+  open, 
+  onOpenChange, 
+  subject 
+}: SubjectDetailDialogProps) {
+  // Utility function to safely parse material content
+  const parseMaterialContent = (content: string) => {
+    if (!content) return { files: [], links: [] }
+    
+    try {
+      // Try to parse as new structured format
+      const parsed = JSON.parse(content)
+      if (parsed.files && Array.isArray(parsed.files)) {
+        return { files: parsed.files, links: parsed.links || [] }
+      }
+    } catch (e) {
+      // If JSON parsing fails, try old format
+      if (content.startsWith('FILES:')) {
+        try {
+          const filesPart = content.substring(6)
+          // Find the end of the JSON by looking for the first non-JSON character
+          let jsonEnd = filesPart.length
+          for (let i = 0; i < filesPart.length; i++) {
+            if (filesPart[i] === '\n' || filesPart[i] === '\r') {
+              jsonEnd = i
+              break
+            }
+          }
+          const cleanJson = filesPart.substring(0, jsonEnd)
+          const files = JSON.parse(cleanJson)
+          return { files, links: [] }
+        } catch (e2) {
+          console.error('Error parsing old format content:', e2, 'Content:', content)
+          return { files: [], links: [] }
+        }
+      }
+    }
+    
+    return { files: [], links: [] }
+  }
+
+  // State variables
+  const { 
+    chapters, 
+    loading: chaptersLoading, 
+    error: chaptersError,
+    createChapter, 
+    updateChapter, 
+    deleteChapter, 
+    toggleChapterCompletion,
+    reorderChapters 
+  } = useChapters(subject.id)
+  
+  const { 
+    materials: materialsFromHook, 
+    loading: materialsLoading, 
+    error: materialsError,
+    createMaterial, 
+    updateMaterial, 
+    deleteMaterial, 
+    toggleMaterialCompletion,
+    reorderMaterials,
+    refreshMaterials 
+  } = useMaterials(undefined, subject.id)
+  
+  // Local materials state for immediate UI updates
+  const [localMaterials, setLocalMaterials] = useState<Material[]>([])
+  
+  // Sync local state with hook state
+  useEffect(() => {
+    setLocalMaterials(materialsFromHook)
+  }, [materialsFromHook])
+  
+  // Use local materials for rendering
+  const materials = localMaterials
+
   const [newChapterName, setNewChapterName] = useState("")
   const [editingChapter, setEditingChapter] = useState<string | null>(null)
   const [editingChapterName, setEditingChapterName] = useState("")
@@ -89,7 +151,7 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
   const [dragOverChapterIndex, setDragOverChapterIndex] = useState<number | null>(null)
   const [newMaterialName, setNewMaterialName] = useState("")
   const [editingMaterial, setEditingMaterial] = useState<string | null>(null)
-  const [editingName, setEditingName] = useState("")
+  const [editingMaterialName, setEditingMaterialName] = useState("")
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null)
   const [draggedMaterial, setDraggedMaterial] = useState<string | null>(null)
   const [dragOverMaterialIndex, setDragOverMaterialIndex] = useState<number | null>(null)
@@ -97,140 +159,107 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
   const [newLinkUrl, setNewLinkUrl] = useState("")
   const [newLinkDescription, setNewLinkDescription] = useState("")
   const [addingLinkToMaterial, setAddingLinkToMaterial] = useState<string | null>(null)
-
-  // Helper function to sync chapter data with main subjects list
-  const syncChapterData = (updatedChapters: Chapter[]) => {
-    const subjects = JSON.parse(localStorage.getItem("subjects") || "[]")
-    const updatedSubjects = subjects.map((s: any) => {
-      if (s.id === subject.id) {
-        return {
-          ...s,
-          totalChapters: updatedChapters.length,
-          completedChapters: updatedChapters.filter(ch => ch.completed).length,
-          progress: updatedChapters.length > 0 
-            ? Math.round((updatedChapters.filter(ch => ch.completed).length / updatedChapters.length) * 100)
-            : 0
-        }
-      }
-      return s
-    })
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects))
-    
-    // Dispatch event to notify other components
-    window.dispatchEvent(new CustomEvent('subject-updated'))
-  }
+  const [uploadingFile, setUploadingFile] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [draggedFile, setDraggedFile] = useState<{ materialId: string; fileId: string } | null>(null)
+  const [dragOverFileIndex, setDragOverFileIndex] = useState<{ materialId: string; index: number } | null>(null)
+  const [editingFileName, setEditingFileName] = useState<{ materialId: string; fileId: string } | null>(null)
+  const [editingFileNameText, setEditingFileNameText] = useState("")
 
   const createdDate = subject.createdAt ? new Date(subject.createdAt).toLocaleDateString() : 'Date not set'
 
-  const completedChaptersCount = chapters.filter((chapter) => chapter.completed).length
+  const completedChaptersCount = chapters.filter((chapter) => chapter.isCompleted).length
   const progressPercentage = chapters.length > 0 ? Math.round((completedChaptersCount / chapters.length) * 100) : 0
 
   const filteredMaterials = materials.filter((material) => {
     if (!searchQuery.trim()) return true
     const query = searchQuery.toLowerCase()
     return (
-      material.name.toLowerCase().includes(query) ||
-      material.files.some(
-        (file) => file.name.toLowerCase().includes(query) || (file.note && file.note.toLowerCase().includes(query)),
-      ) ||
-      material.links.some(
-        (link) => link.description.toLowerCase().includes(query) || link.url.toLowerCase().includes(query),
-      )
+      material.title.toLowerCase().includes(query) ||
+      (material.content && material.content.toLowerCase().includes(query)) ||
+      (material.fileUrl && material.fileUrl.toLowerCase().includes(query))
     )
   })
 
-  useEffect(() => {
-    if (subject.id) {
-      const storedChapters = JSON.parse(localStorage.getItem(`subject_chapters_${subject.id}`) || "[]")
-      setChapters(storedChapters)
+  // Add loading and error states
+  if (chaptersLoading || materialsLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Loading Subject</DialogTitle>
+            <DialogDescription>Please wait while we load the subject details...</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading subject details...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
-      const storedMaterials = JSON.parse(localStorage.getItem(`subject_materials_${subject.id}`) || "[]")
-      if (storedMaterials.length > 0) {
-        const migratedMaterials = storedMaterials.map((material: any) => ({
-          ...material,
-          files: material.file ? [material.file] : material.files || [],
-          links: material.links || [], // Added links migration
-        }))
-        setMaterials(migratedMaterials)
-      } else if (subject.materials && Array.isArray(subject.materials) && subject.materials.length > 0) {
-        const convertedMaterials = subject.materials.map((material, index) => {
-          if (typeof material === 'string') {
-            return {
-              id: `material_${Date.now()}_${index}`,
-              name: material,
-              type: "other" as const,
-              files: [],
-              links: [],
-              createdAt: new Date().toISOString(),
-            }
-          } else {
-            // Already a Material object
-            return material
-          }
-        })
-        setMaterials(convertedMaterials)
-        if (convertedMaterials.length > 0) {
-          localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(convertedMaterials))
-        }
-      } else {
-        // No materials to convert, set empty array
-        setMaterials([])
-      }
-    }
-  }, [subject.id, subject.materials, open])
+  if (chaptersError || materialsError) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Error Loading Subject</DialogTitle>
+            <DialogDescription>There was an error loading the subject details. Please try again.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <p className="text-red-600 mb-2">Error loading subject details</p>
+              {chaptersError && <p className="text-sm text-gray-600">{chaptersError}</p>}
+              {materialsError && <p className="text-sm text-gray-600">{materialsError}</p>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
-  const addChapter = () => {
+  const addChapter = async () => {
     if (newChapterName.trim()) {
-      const newChapter: Chapter = {
-        id: `chapter_${Date.now()}`,
-        name: newChapterName.trim(),
-        completed: false,
-        createdAt: new Date().toISOString(),
-      }
-      const updatedChapters = [...chapters, newChapter]
-      setChapters(updatedChapters)
-      
-      // Save chapters to localStorage
-      localStorage.setItem(`subject_chapters_${subject.id}`, JSON.stringify(updatedChapters))
-      
-      // Sync with main subjects list
-      syncChapterData(updatedChapters)
-      
+      try {
+        await createChapter({
+          subjectId: subject.id,
+          title: newChapterName.trim(),
+          order: chapters.length,
+          description: ''
+        })
       setNewChapterName("")
+      } catch (error) {
+        console.error('Failed to create chapter:', error)
+      }
     }
   }
 
-  const toggleChapterCompletion = (chapterId: string) => {
-    const updatedChapters = chapters.map((chapter) =>
-      chapter.id === chapterId ? { ...chapter, completed: !chapter.completed } : chapter,
-    )
-    setChapters(updatedChapters)
-    localStorage.setItem(`subject_chapters_${subject.id}`, JSON.stringify(updatedChapters))
-    
-    // Sync with main subjects list
-    syncChapterData(updatedChapters)
+  const handleToggleChapterCompletion = async (chapterId: string) => {
+    try {
+      await toggleChapterCompletion(chapterId)
+    } catch (error) {
+      console.error('Failed to toggle chapter completion:', error)
+    }
   }
 
-  const updateChapterName = (chapterId: string, newName: string) => {
-    const updatedChapters = chapters.map((chapter) =>
-      chapter.id === chapterId ? { ...chapter, name: newName } : chapter,
-    )
-    setChapters(updatedChapters)
-    localStorage.setItem(`subject_chapters_${subject.id}`, JSON.stringify(updatedChapters))
-    
-    // Sync with main subjects list
-    syncChapterData(updatedChapters)
-    
+  const updateChapterName = async (chapterId: string, newName: string) => {
+    try {
+      await updateChapter(chapterId, { title: newName })
     setEditingChapter(null)
+    } catch (error) {
+      console.error('Failed to update chapter name:', error)
+    }
   }
 
-  const deleteChapter = (chapterId: string) => {
-    const updatedChapters = chapters.filter((chapter) => chapter.id !== chapterId)
-    setChapters(updatedChapters)
-    localStorage.setItem(`subject_chapters_${subject.id}`, JSON.stringify(updatedChapters))
-    
-    // Sync with main subjects list
-    syncChapterData(updatedChapters)
+  const handleDeleteChapter = async (chapterId: string) => {
+    try {
+      await deleteChapter(chapterId)
+    } catch (error) {
+      console.error('Failed to delete chapter:', error)
+    }
   }
 
   const handleChapterDragStart = (e: React.DragEvent, chapterId: string) => {
@@ -248,7 +277,7 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
     setDragOverChapterIndex(null)
   }
 
-  const handleChapterDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleChapterDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
     if (!draggedChapter) return
 
@@ -259,15 +288,24 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
       return
     }
 
-    const newChapters = [...chapters]
-    const [draggedItem] = newChapters.splice(draggedIndex, 1)
-    newChapters.splice(dropIndex, 0, draggedItem)
-
-    setChapters(newChapters)
-    localStorage.setItem(`subject_chapters_${subject.id}`, JSON.stringify(newChapters))
-    
-    // Sync with main subjects list
-    syncChapterData(newChapters)
+    try {
+      // Create the new order array
+      const newOrder = chapters.map((chapter, index) => {
+        if (index === draggedIndex) {
+          return { id: chapter.id, order: dropIndex }
+        } else if (index >= dropIndex && index < draggedIndex) {
+          return { id: chapter.id, order: index + 1 }
+        } else if (index <= dropIndex && index > draggedIndex) {
+          return { id: chapter.id, order: index - 1 }
+        } else {
+          return { id: chapter.id, order: index }
+        }
+      })
+      
+      await reorderChapters(newOrder)
+    } catch (error) {
+      console.error('Failed to reorder chapters:', error)
+    }
     
     setDraggedChapter(null)
     setDragOverChapterIndex(null)
@@ -278,39 +316,55 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
     setDragOverChapterIndex(null)
   }
 
-  const addMaterial = () => {
+  const addMaterial = async () => {
     if (newMaterialName.trim()) {
-      const newMaterial: Material = {
-        id: `material_${Date.now()}`,
-        name: newMaterialName.trim(),
-        type: "other",
-        files: [],
-        links: [], // Initialize with empty links array
-        createdAt: new Date().toISOString(),
-      }
-      const updatedMaterials = [...materials, newMaterial]
-      setMaterials(updatedMaterials)
-      localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(updatedMaterials))
+      try {
+              const newMaterial = await createMaterial({
+        chapterId: chapters[0]?.id || '', // Default to first chapter or empty string
+        title: newMaterialName.trim(),
+        type: 'OTHER',
+        content: '',
+        order: materials.length
+      })
+      
+      if (newMaterial) {
+        // Immediately add to local state for instant UI feedback
+        setLocalMaterials(prev => [...prev, newMaterial])
       setNewMaterialName("")
+      }
+      } catch (error) {
+        console.error('Failed to create material:', error)
+      }
     }
   }
 
-  const updateMaterialName = (materialId: string, newName: string) => {
-    const updatedMaterials = materials.map((material) =>
-      material.id === materialId ? { ...material, name: newName } : material,
-    )
-    setMaterials(updatedMaterials)
-    localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(updatedMaterials))
+  const updateMaterialName = async (materialId: string, newName: string) => {
+    try {
+      const updatedMaterial = await updateMaterial(materialId, { title: newName })
+      if (updatedMaterial) {
+        // Immediately update local state for instant UI feedback
+        setLocalMaterials(prev => prev.map(m => 
+          m.id === materialId ? updatedMaterial : m
+        ))
+      }
     setEditingMaterial(null)
+    } catch (error) {
+      console.error('Failed to update material name:', error)
+    }
   }
 
-  const deleteMaterial = (materialId: string) => {
-    const updatedMaterials = materials.filter((material) => material.id !== materialId)
-    setMaterials(updatedMaterials)
-    localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(updatedMaterials))
+  const handleDeleteMaterial = async (materialId: string) => {
+    try {
+      await deleteMaterial(materialId)
+      // Immediately remove from local state for instant UI feedback
+      setLocalMaterials(prev => prev.filter(m => m.id !== materialId))
+    } catch (error) {
+      console.error('Failed to delete material:', error)
+    }
   }
 
   const handleMaterialDragStart = (e: React.DragEvent, materialId: string) => {
+    console.log('Material drag start:', { materialId })
     setDraggedMaterial(materialId)
     e.dataTransfer.effectAllowed = "move"
   }
@@ -318,6 +372,7 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
   const handleMaterialDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
+    console.log('Material drag over:', { index })
     setDragOverMaterialIndex(index)
   }
 
@@ -325,23 +380,46 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
     setDragOverMaterialIndex(null)
   }
 
-  const handleMaterialDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleMaterialDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
-    if (!draggedMaterial) return
+    console.log('Material drop:', { dropIndex, draggedMaterial })
+    
+    if (!draggedMaterial) {
+      console.log('No dragged material')
+      return
+    }
 
     const draggedIndex = materials.findIndex((material) => material.id === draggedMaterial)
+    console.log('Dragged index:', draggedIndex)
+    
     if (draggedIndex === -1 || draggedIndex === dropIndex) {
+      console.log('Invalid drop: same index or material not found')
       setDraggedMaterial(null)
       setDragOverMaterialIndex(null)
       return
     }
 
-    const newMaterials = [...materials]
-    const [draggedItem] = newMaterials.splice(draggedIndex, 1)
-    newMaterials.splice(dropIndex, 0, draggedItem)
-
-    setMaterials(newMaterials)
-    localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(newMaterials))
+    try {
+      // Create the new order array
+      const newOrder = materials.map((material, index) => {
+        if (index === draggedIndex) {
+          return { id: material.id, order: dropIndex }
+        } else if (index >= dropIndex && index < draggedIndex) {
+          return { id: material.id, order: index + 1 }
+        } else if (index <= dropIndex && index > draggedIndex) {
+          return { id: material.id, order: index - 1 }
+        } else {
+          return { id: material.id, order: index }
+        }
+      })
+      
+      console.log('New order:', newOrder)
+      await reorderMaterials(newOrder)
+      console.log('Materials reordered successfully')
+    } catch (error) {
+      console.error('Failed to reorder materials:', error)
+    }
+    
     setDraggedMaterial(null)
     setDragOverMaterialIndex(null)
   }
@@ -351,32 +429,376 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
     setDragOverMaterialIndex(null)
   }
 
-  const handleFileUpload = (materialId: string, file: File) => {
-    const fileUrl = URL.createObjectURL(file)
-    const uploadedFile: UploadedFile = {
-      id: `file_${Date.now()}`,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      url: fileUrl,
-      uploadedAt: new Date().toISOString(),
-    }
-
-    const updatedMaterials = materials.map((material) =>
-      material.id === materialId ? { ...material, files: [...material.files, uploadedFile] } : material,
-    )
-    setMaterials(updatedMaterials)
-    localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(updatedMaterials))
+  // File drag and drop functions
+  const handleFileDragStart = (e: React.DragEvent, materialId: string, fileId: string) => {
+    console.log('File drag start:', { materialId, fileId })
+    setDraggedFile({ materialId, fileId })
+    e.dataTransfer.effectAllowed = "move"
   }
 
-  const removeFileFromMaterial = (materialId: string, fileId: string) => {
-    const updatedMaterials = materials.map((material) =>
-      material.id === materialId
-        ? { ...material, files: material.files.filter((file) => file.id !== fileId) }
-        : material,
-    )
-    setMaterials(updatedMaterials)
-    localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(updatedMaterials))
+  const handleFileDragOver = (e: React.DragEvent, materialId: string, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    console.log('File drag over:', { materialId, index })
+    setDragOverFileIndex({ materialId, index })
+  }
+
+  const handleFileDragLeave = () => {
+    setDragOverFileIndex(null)
+  }
+
+  const handleFileDrop = async (e: React.DragEvent, dropMaterialId: string, dropIndex: number) => {
+    e.preventDefault()
+    console.log('File drop:', { dropMaterialId, dropIndex, draggedFile })
+    
+    if (!draggedFile || draggedFile.materialId !== dropMaterialId) {
+      console.log('Invalid drop: draggedFile or materialId mismatch')
+      return
+    }
+
+    const currentMaterial = materials.find(m => m.id === dropMaterialId)
+    if (!currentMaterial?.content) {
+      console.log('Invalid drop: material has no content')
+      return
+    }
+
+    try {
+      let files: any[] = []
+      let existingLinks: any[] = []
+      
+      // Try to parse as new structured format
+      try {
+        const parsed = JSON.parse(currentMaterial.content)
+        if (parsed.files && Array.isArray(parsed.files)) {
+          files = parsed.files
+          existingLinks = parsed.links || []
+        } else if (currentMaterial.content.startsWith('FILES:')) {
+          // Handle old format
+          files = JSON.parse(currentMaterial.content.substring(6))
+          existingLinks = []
+        } else {
+          console.log('Invalid drop: material content format not supported')
+          return
+        }
+      } catch (e) {
+        // If JSON parsing fails, try old format
+        if (currentMaterial.content.startsWith('FILES:')) {
+          files = JSON.parse(currentMaterial.content.substring(6))
+          existingLinks = []
+        } else {
+          console.log('Invalid drop: material content format not supported')
+          return
+        }
+      }
+      
+      const draggedFileIndex = files.findIndex((file: any) => file.id === draggedFile.fileId)
+      
+      if (draggedFileIndex === -1 || draggedFileIndex === dropIndex) {
+        setDraggedFile(null)
+        setDragOverFileIndex(null)
+        return
+      }
+
+      // Reorder files
+      const [draggedFileItem] = files.splice(draggedFileIndex, 1)
+      files.splice(dropIndex, 0, draggedFileItem)
+
+      // Update material with reordered files
+      let updatedMaterial
+      if (currentMaterial.content.startsWith('FILES:')) {
+        // Convert old format to new structured format
+        updatedMaterial = await updateMaterial(dropMaterialId, {
+          content: JSON.stringify({
+            files: files,
+            links: []
+          })
+        })
+      } else {
+        // Update with new structured format
+        updatedMaterial = await updateMaterial(dropMaterialId, {
+          content: JSON.stringify({
+            files: files,
+            links: existingLinks
+          })
+        })
+      }
+
+      console.log('Files reordered successfully')
+      
+      // Immediately update local state for instant UI feedback
+      if (updatedMaterial) {
+        setLocalMaterials(prev => prev.map(m => 
+          m.id === dropMaterialId ? updatedMaterial : m
+        ))
+      }
+    } catch (error) {
+      console.error('Failed to reorder files:', error)
+    } finally {
+      setDraggedFile(null)
+      setDragOverFileIndex(null)
+    }
+  }
+
+  const handleFileDragEnd = () => {
+    setDraggedFile(null)
+    setDragOverFileIndex(null)
+  }
+
+  const updateFileName = async (materialId: string, fileId: string, newName: string) => {
+    try {
+      const currentMaterial = materials.find(m => m.id === materialId)
+      if (!currentMaterial?.content) return
+
+      try {
+        // Try to parse as new structured format
+        const parsed = JSON.parse(currentMaterial.content)
+        if (parsed.files && Array.isArray(parsed.files)) {
+          // New structured format
+          const files = parsed.files
+          const fileIndex = files.findIndex((file: any) => file.id === fileId)
+          
+          if (fileIndex !== -1) {
+            files[fileIndex].name = newName
+            
+            const updatedMaterial = await updateMaterial(materialId, {
+              content: JSON.stringify({
+                files: files,
+                links: parsed.links || []
+              })
+            })
+            
+            console.log('File name updated successfully')
+            
+            // Immediately update local state for instant UI feedback
+            if (updatedMaterial) {
+              setLocalMaterials(prev => prev.map(m => 
+                m.id === materialId ? updatedMaterial : m
+              ))
+            }
+          }
+        } else if (currentMaterial.content.startsWith('FILES:')) {
+          // Handle old format - convert to new structured format
+          const files = JSON.parse(currentMaterial.content.substring(6))
+          const fileIndex = files.findIndex((file: any) => file.id === fileId)
+          
+          if (fileIndex !== -1) {
+            files[fileIndex].name = newName
+            
+            const updatedMaterial = await updateMaterial(materialId, {
+              content: JSON.stringify({
+                files: files,
+                links: []
+              })
+            })
+            
+            console.log('File name updated successfully')
+            
+            // Immediately update local state for instant UI feedback
+            if (updatedMaterial) {
+              setLocalMaterials(prev => prev.map(m => 
+                m.id === materialId ? updatedMaterial : m
+              ))
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing content:', e)
+      }
+    } catch (error) {
+      console.error('Failed to update file name:', error)
+    }
+  }
+
+  const handleFileUpload = async (materialId: string, file: File) => {
+    try {
+      setUploadingFile(materialId)
+      setUploadError(null)
+      
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('subjectId', subject.id)
+      formData.append('category', 'MATERIAL')
+      formData.append('description', `Uploaded for material: ${materials.find(m => m.id === materialId)?.title || 'Unknown'}`)
+      
+      const response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to upload file')
+      }
+      
+      const result = await response.json()
+      
+      // Get current material to check existing files
+      const currentMaterial = materials.find(m => m.id === materialId)
+      let existingFiles = []
+      let existingLinks = []
+      
+      console.log('Current material:', currentMaterial)
+      console.log('Current material content:', currentMaterial?.content)
+      
+      // Parse existing content if available
+      if (currentMaterial?.content) {
+        try {
+          // Try to parse as new structured format
+          const parsed = JSON.parse(currentMaterial.content)
+          if (parsed.files && Array.isArray(parsed.files)) {
+            existingFiles = parsed.files
+            existingLinks = parsed.links || []
+          } else if (currentMaterial.content.startsWith('FILES:')) {
+            // Handle old format
+            existingFiles = JSON.parse(currentMaterial.content.substring(6))
+            existingLinks = []
+          }
+        } catch (e) {
+          // If JSON parsing fails, try old format
+          if (currentMaterial.content.startsWith('FILES:')) {
+            try {
+              existingFiles = JSON.parse(currentMaterial.content.substring(6))
+              existingLinks = []
+            } catch (e2) {
+              console.error('Error parsing existing files:', e2)
+              existingFiles = []
+              existingLinks = []
+            }
+          }
+        }
+      } else if (currentMaterial?.fileUrl) {
+        // Handle backward compatibility - convert old single file to new format
+        existingFiles = [{
+          id: currentMaterial.id, // Use material ID as file ID for backward compatibility
+          name: currentMaterial.fileUrl.split('/').pop() || 'Unknown file',
+          url: currentMaterial.fileUrl,
+          size: currentMaterial.fileSize || 0,
+          type: 'application/octet-stream', // Default type
+          uploadedAt: currentMaterial.createdAt || new Date().toISOString()
+        }]
+        existingLinks = []
+        console.log('Converted old file format:', existingFiles)
+      }
+      
+      // Add new file to the list
+      const newFile = {
+        id: result.file.id,
+      name: file.name,
+        url: `/api/files/${result.file.id}`,
+      size: file.size,
+      type: file.type,
+        uploadedAt: new Date().toISOString()
+      }
+      
+      existingFiles.push(newFile)
+      console.log('Updated files list:', existingFiles)
+      
+      // Update the material with the new structured content
+      const updatedMaterial = await updateMaterial(materialId, {
+        content: JSON.stringify({
+          files: existingFiles,
+          links: existingLinks
+        })
+      })
+      
+      console.log('Material updated successfully:', updatedMaterial)
+      console.log('File uploaded successfully:', result)
+      
+      // Immediately update local state for instant UI feedback
+      setLocalMaterials(prev => prev.map(m => 
+        m.id === materialId ? updatedMaterial : m
+      ))
+    } catch (error) {
+      console.error('Failed to upload file:', error)
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload file')
+    } finally {
+      setUploadingFile(null)
+    }
+  }
+
+
+
+  const removeFileFromMaterial = async (materialId: string, fileId?: string) => {
+    try {
+      const currentMaterial = materials.find(m => m.id === materialId)
+      
+      if (fileId && currentMaterial?.content) {
+        try {
+          // Try to parse as new structured format
+          const parsed = JSON.parse(currentMaterial.content)
+          if (parsed.files && Array.isArray(parsed.files)) {
+            // New structured format
+            const updatedFiles = parsed.files.filter((file: any) => file.id !== fileId)
+            const existingLinks = parsed.links || []
+            
+            let updatedMaterial
+            if (updatedFiles.length === 0 && existingLinks.length === 0) {
+              // No content left, clear the content
+              updatedMaterial = await updateMaterial(materialId, { content: '' })
+            } else {
+              // Update with remaining files and links
+              updatedMaterial = await updateMaterial(materialId, {
+                content: JSON.stringify({
+                  files: updatedFiles,
+                  links: existingLinks
+                })
+              })
+            }
+            
+            // Immediately update local state for instant UI feedback
+            if (updatedMaterial) {
+              setLocalMaterials(prev => prev.map(m => 
+                m.id === materialId ? updatedMaterial : m
+              ))
+            }
+          } else if (currentMaterial.content.startsWith('FILES:')) {
+            // Handle old format - convert to new structured format
+            const files = JSON.parse(currentMaterial.content.substring(6))
+            const updatedFiles = files.filter((file: any) => file.id !== fileId)
+            
+            let updatedMaterial
+            if (updatedFiles.length === 0) {
+              // No files left, clear the content
+              updatedMaterial = await updateMaterial(materialId, { content: '' })
+            } else {
+              // Update with remaining files in new structured format
+              updatedMaterial = await updateMaterial(materialId, {
+                content: JSON.stringify({
+                  files: updatedFiles,
+                  links: []
+                })
+              })
+            }
+            
+            // Immediately update local state for instant UI feedback
+            if (updatedMaterial) {
+              setLocalMaterials(prev => prev.map(m => 
+                m.id === materialId ? updatedMaterial : m
+              ))
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing content:', e)
+        }
+      } else {
+        // Remove single file (backward compatibility)
+        const updatedMaterial = await updateMaterial(materialId, {
+          fileUrl: '',
+          fileSize: 0
+        })
+        
+        // Immediately update local state for instant UI feedback
+        if (updatedMaterial) {
+          setLocalMaterials(prev => prev.map(m => 
+            m.id === materialId ? updatedMaterial : m
+          ))
+        }
+      }
+      
+      console.log('File removed successfully from material:', materialId)
+    } catch (error) {
+      console.error('Failed to remove file from material:', error)
+    }
   }
 
   const downloadFile = (file: UploadedFile) => {
@@ -402,34 +824,194 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  const addLinkToMaterial = (materialId: string) => {
+  const addLinkToMaterial = async (materialId: string) => {
     if (newLinkUrl.trim() && newLinkDescription.trim()) {
-      const newLink: MaterialLink = {
-        id: `link_${Date.now()}`,
-        url: newLinkUrl.trim(),
-        description: newLinkDescription.trim(),
-        createdAt: new Date().toISOString(),
-      }
-
-      const updatedMaterials = materials.map((material) =>
-        material.id === materialId ? { ...material, links: [...material.links, newLink] } : material,
-      )
-      setMaterials(updatedMaterials)
-      localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(updatedMaterials))
+      try {
+        // Get current material to preserve existing files
+        const currentMaterial = materials.find(m => m.id === materialId)
+        let newContent = ''
+        
+        if (currentMaterial?.content) {
+          try {
+            // Try to parse as new structured format
+            const parsed = JSON.parse(currentMaterial.content)
+            if (parsed.files && Array.isArray(parsed.files)) {
+              // New structured format - preserve existing files and add link
+              newContent = JSON.stringify({
+                files: parsed.files,
+                links: [...(parsed.links || []), {
+                  description: newLinkDescription,
+                  url: newLinkUrl
+                }]
+              })
+            } else if (currentMaterial.content.startsWith('FILES:')) {
+              // Handle old format - extract files and add link
+              try {
+                const filesPart = currentMaterial.content.substring(6)
+                // Find the end of the JSON by looking for the first non-JSON character
+                let jsonEnd = filesPart.length
+                for (let i = 0; i < filesPart.length; i++) {
+                  if (filesPart[i] === '\n' || filesPart[i] === '\r') {
+                    jsonEnd = i
+                    break
+                  }
+                }
+                const cleanJson = filesPart.substring(0, jsonEnd)
+                const existingFiles = JSON.parse(cleanJson)
+                
+                newContent = JSON.stringify({
+                  files: existingFiles,
+                  links: [{
+                    description: newLinkDescription,
+                    url: newLinkUrl
+                  }]
+                })
+              } catch (e2) {
+                console.error('Error parsing old format files:', e2)
+                // Fallback: just add the link
+                newContent = JSON.stringify({
+                  files: [],
+                  links: [{
+                    description: newLinkDescription,
+                    url: newLinkUrl
+                  }]
+                })
+              }
+            } else {
+              // Unknown format - just add the link
+              newContent = JSON.stringify({
+                files: [],
+                links: [{
+                  description: newLinkDescription,
+                  url: newLinkUrl
+                }]
+              })
+            }
+          } catch (e) {
+            console.error('Error parsing existing content:', e)
+            // Fallback: just add the link
+            newContent = JSON.stringify({
+              files: [],
+              links: [{
+                description: newLinkDescription,
+                url: newLinkUrl
+              }]
+            })
+          }
+        } else if (currentMaterial?.fileUrl) {
+          // Convert old format to new structured format
+          const files = [{
+            id: currentMaterial.id,
+            name: currentMaterial.fileUrl.split('/').pop() || 'Unknown file',
+            url: currentMaterial.fileUrl,
+            size: currentMaterial.fileSize || 0,
+            type: currentMaterial.type || 'application/octet-stream',
+            uploadedAt: currentMaterial.createdAt || new Date().toISOString()
+          }]
+          newContent = JSON.stringify({
+            files: files,
+            links: [{
+              description: newLinkDescription,
+              url: newLinkUrl
+            }]
+          })
+        } else {
+          // No existing content, just add link
+          newContent = JSON.stringify({
+            files: [],
+            links: [{
+              description: newLinkDescription,
+              url: newLinkUrl
+            }]
+          })
+        }
+        
+        console.log('Adding link to material. New content:', newContent)
+        console.log('Current material before update:', currentMaterial)
+        console.log('Files to preserve:', currentMaterial?.content ? 'Will be extracted' : 'None')
+        
+        // Update the material with the new content
+        const updatedMaterial = await updateMaterial(materialId, {
+          content: newContent
+        })
+        
+        console.log('Updated material after adding link:', updatedMaterial)
+        
       setNewLinkUrl("")
       setNewLinkDescription("")
       setAddingLinkToMaterial(null)
+        
+        console.log('Link added successfully to material:', materialId)
+        
+        // Immediately update local state for instant UI feedback
+        if (updatedMaterial) {
+          setLocalMaterials(prev => prev.map(m => 
+            m.id === materialId ? updatedMaterial : m
+          ))
+        }
+      } catch (error) {
+        console.error('Failed to add link to material:', error)
+      }
     }
   }
 
-  const removeLinkFromMaterial = (materialId: string, linkId: string) => {
-    const updatedMaterials = materials.map((material) =>
-      material.id === materialId
-        ? { ...material, links: material.links.filter((link) => link.id !== linkId) }
-        : material,
-    )
-    setMaterials(updatedMaterials)
-    localStorage.setItem(`subject_materials_${subject.id}`, JSON.stringify(updatedMaterials))
+  const removeLinkFromMaterial = async (materialId: string) => {
+    try {
+      // Get current material to preserve existing files
+      const currentMaterial = materials.find(m => m.id === materialId)
+      let newContent = ''
+      
+      if (currentMaterial?.content) {
+        try {
+          // Try to parse as new structured format
+          const parsed = JSON.parse(currentMaterial.content)
+          if (parsed.files && parsed.links) {
+            // Remove all links, keep only files
+            newContent = JSON.stringify({
+              files: parsed.files,
+              links: []
+            })
+          } else {
+            // Old format, preserve as is
+            newContent = currentMaterial.content
+          }
+        } catch (e) {
+          // Not valid JSON, treat as old format
+          if (currentMaterial.content.startsWith('FILES:')) {
+            // Extract only the files part
+            const filesPart = currentMaterial.content.split('\n\nLINK:')[0]
+            newContent = filesPart
+          } else if (currentMaterial.content.startsWith('LINK:')) {
+            // Only link content, remove everything
+            newContent = ''
+          } else {
+            // Mixed content, try to preserve files
+            const parts = currentMaterial.content.split('\n\nLINK:')
+            if (parts[0].startsWith('FILES:')) {
+              newContent = parts[0]
+            } else {
+              newContent = ''
+            }
+          }
+        }
+      }
+      
+      // Update the material with the new content
+      const updatedMaterial = await updateMaterial(materialId, {
+        content: newContent
+      })
+      
+      console.log('Link removed successfully from material:', materialId)
+      
+      // Immediately update local state for instant UI feedback
+      if (updatedMaterial) {
+        setLocalMaterials(prev => prev.map(m => 
+          m.id === materialId ? updatedMaterial : m
+        ))
+      }
+    } catch (error) {
+      console.error('Failed to remove link from material:', error)
+    }
   }
 
   const openLink = (url: string) => {
@@ -516,9 +1098,9 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-chart-3">
-                    {materials.reduce((total, material) => total + material.files.length + material.links.length, 0)}
+                    {materials.filter(m => m.fileUrl).length}
                   </div>
-                  <div className="text-xs text-muted-foreground">Files & Links</div>
+                  <div className="text-xs text-muted-foreground">Files</div>
                 </div>
               </div>
             </div>
@@ -566,7 +1148,7 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                       className={`border rounded-lg p-3 transition-all ${
                         draggedChapter === chapter.id ? "opacity-50 scale-95" : ""
                       } ${dragOverChapterIndex === index ? "ring-2 ring-primary ring-offset-2" : ""} ${
-                        chapter.completed ? "bg-muted/30" : ""
+                        chapter.isCompleted ? "bg-muted/30" : ""
                       }`}
                       draggable
                       onDragStart={(e) => handleChapterDragStart(e, chapter.id)}
@@ -581,8 +1163,8 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                             <GripVertical className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <Checkbox
-                            checked={chapter.completed}
-                            onCheckedChange={() => toggleChapterCompletion(chapter.id)}
+                            checked={chapter.isCompleted}
+                            onCheckedChange={() => handleToggleChapterCompletion(chapter.id)}
                             className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white border-2 border-gray-400 dark:border-gray-600 w-5 h-5"
                           />
                           {editingChapter === chapter.id ? (
@@ -599,9 +1181,9 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                             />
                           ) : (
                             <span
-                              className={`font-medium ${chapter.completed ? "line-through text-muted-foreground" : ""}`}
+                              className={`font-medium ${chapter.isCompleted ? "line-through text-muted-foreground" : ""}`}
                             >
-                              {chapter.name}
+                              {chapter.title}
                             </span>
                           )}
                         </div>
@@ -611,12 +1193,12 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                             size="sm"
                             onClick={() => {
                               setEditingChapter(chapter.id)
-                              setEditingChapterName(chapter.name)
+                              setEditingChapterName(chapter.title)
                             }}
                           >
                             <Edit2 className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => deleteChapter(chapter.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteChapter(chapter.id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -665,6 +1247,8 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                 </Button>
               </div>
 
+
+
               {filteredMaterials.length > 0 ? (
                 <div className="space-y-3">
                   {filteredMaterials.map((material, index) => (
@@ -688,18 +1272,18 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                           <BookOpen className="h-4 w-4 text-muted-foreground" />
                           {editingMaterial === material.id ? (
                             <Input
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
+                              value={editingMaterialName}
+                              onChange={(e) => setEditingMaterialName(e.target.value)}
                               onKeyPress={(e) => {
-                                if (e.key === "Enter") updateMaterialName(material.id, editingName)
+                                if (e.key === "Enter") updateMaterialName(material.id, editingMaterialName)
                                 if (e.key === "Escape") setEditingMaterial(null)
                               }}
-                              onBlur={() => updateMaterialName(material.id, editingName)}
+                              onBlur={() => updateMaterialName(material.id, editingMaterialName)}
                               className="h-6 text-sm"
                               autoFocus
                             />
                           ) : (
-                            <span className="font-medium">{material.name}</span>
+                            <span className="font-medium">{material.title}</span>
                           )}
                         </div>
                         <div className="flex items-center space-x-1">
@@ -708,43 +1292,194 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                             size="sm"
                             onClick={() => {
                               setEditingMaterial(material.id)
-                              setEditingName(material.name)
+                              setEditingMaterialName(material.title)
                             }}
                           >
                             <Edit2 className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => deleteMaterial(material.id)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteMaterial(material.id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
 
-                      {material.files.length > 0 ? (
+                      {/* Display files */}
+                      {(() => {
+                        // Get files using the utility function
+                        const { files, links } = parseMaterialContent(material.content || '')
+                        
+                        // Handle backward compatibility for old fileUrl format
+                        if (files.length === 0 && material.fileUrl) {
+                          const convertedFiles = [{
+                            id: material.id,
+                            name: material.fileUrl.split('/').pop() || 'Unknown file',
+                            url: material.fileUrl,
+                            size: material.fileSize || 0,
+                            type: material.type || 'application/octet-stream',
+                            uploadedAt: material.createdAt || new Date().toISOString()
+                          }]
+                          console.log('Converted old fileUrl format to files:', convertedFiles.length)
+                          return (
                         <div className="space-y-2">
-                          {material.files.map((file) => (
-                            <div key={file.id} className="bg-muted/50 rounded-md p-3">
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Files: {convertedFiles.length} file(s)
+                              </p>
+                              {convertedFiles.map((file: any, index: number) => (
+                                <div 
+                                  key={file.id} 
+                                  className="bg-muted/50 rounded-md p-3 transition-all"
+                                >
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                  {getFileIcon(file.type)}
+                                    <div className="flex items-center space-x-3">
+                                      {/* Show thumbnail if available */}
+                                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
+                                        {/* For images, show the actual image as thumbnail */}
+                                        {file.type.startsWith('image/') ? (
+                                          <img
+                                            src={file.url}
+                                            alt="File thumbnail"
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : file.type === 'application/pdf' ? (
+                                          <PDFThumbnail
+                                            documentId={file.id}
+                                            fileUrl={file.url}
+                                            className="w-full h-full"
+                                          />
+                                        ) : (
+                                          getFileIcon(file.type)
+                                        )}
+                                      </div>
                                   <div>
                                     <p className="text-sm font-medium">{file.name}</p>
                                     <p className="text-xs text-muted-foreground">
-                                      {formatFileSize(file.size)} • {new Date(file.uploadedAt).toLocaleDateString()}
+                                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {new Date(file.uploadedAt).toLocaleDateString()}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-1">
-                                  <Button variant="ghost" size="sm" onClick={() => setPreviewFile(file)}>
+                                      <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
                                     <Eye className="h-3 w-3" />
                                   </Button>
-                                  <Button variant="ghost" size="sm" onClick={() => downloadFile(file)}>
+                                      <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
                                     <Download className="h-3 w-3" />
                                   </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        }
+                        
+                        if (files.length === 0) return null
+                        
+                        return (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Files: {files.length} file(s)
+                            </p>
+                            {files.map((file: any, index: number) => (
+                              <div 
+                                key={file.id} 
+                                className={`bg-muted/50 rounded-md p-3 transition-all ${
+                                  draggedFile?.fileId === file.id ? "opacity-50 scale-95" : ""
+                                } ${dragOverFileIndex?.materialId === material.id && dragOverFileIndex?.index === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                draggable
+                                onDragStart={(e) => handleFileDragStart(e, material.id, file.id)}
+                                onDragOver={(e) => handleFileDragOver(e, material.id, index)}
+                                onDragLeave={handleFileDragLeave}
+                                onDrop={(e) => handleFileDrop(e, material.id, index)}
+                                onDragEnd={handleFileDragEnd}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    {/* Drag handle */}
+                                    <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
+                                      <GripVertical className="h-3 w-3 text-muted-foreground transition-opacity" />
+                                    </div>
+                                    
+                                    {/* Show thumbnail if available */}
+                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
+                                      {/* For images, show the actual image as thumbnail */}
+                                      {file.type.startsWith('image/') ? (
+                                        <img
+                                          src={file.url}
+                                          alt="File thumbnail"
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : file.type === 'application/pdf' ? (
+                                        <PDFThumbnail
+                                          documentId={file.id}
+                                          fileUrl={file.url}
+                                          className="w-full h-full"
+                                        />
+                                      ) : (
+                                        getFileIcon(file.type)
+                                      )}
+                                    </div>
+                                    <div>
+                                      {editingFileName?.materialId === material.id && editingFileName?.fileId === file.id ? (
+                                        <Input
+                                          value={editingFileNameText}
+                                          onChange={(e) => setEditingFileNameText(e.target.value)}
+                                          onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                              updateFileName(material.id, file.id, editingFileNameText)
+                                              setEditingFileName(null)
+                                            }
+                                            if (e.key === "Escape") setEditingFileName(null)
+                                          }}
+                                          onBlur={() => {
+                                            updateFileName(material.id, file.id, editingFileNameText)
+                                            setEditingFileName(null)
+                                          }}
+                                          className="h-6 text-sm"
+                                          autoFocus
+                                        />
+                                      ) : (
+                                        <div className="flex items-center space-x-2">
+                                          <p 
+                                            className="text-sm font-medium cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded"
+                                            onClick={() => {
+                                              setEditingFileName({ materialId: material.id, fileId: file.id })
+                                              setEditingFileNameText(file.name)
+                                            }}
+                                          >
+                                            {file.name}
+                                          </p>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => removeFileFromMaterial(material.id, file.id)}
-                                  >
+                                            className="h-4 w-4 p-0 hover:bg-muted/50"
+                                            onClick={() => {
+                                              setEditingFileName({ materialId: material.id, fileId: file.id })
+                                              setEditingFileNameText(file.name)
+                                            }}
+                                          >
+                                            <Edit2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                      <p className="text-xs text-muted-foreground">
+                                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {new Date(file.uploadedAt).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
+                                      <Download className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => removeFileFromMaterial(material.id, file.id)}>
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -752,83 +1487,124 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                             </div>
                           ))}
                         </div>
-                      ) : null}
-
-                      {material.links.length > 0 && (
-                        <div className="space-y-2">
-                          {material.links.map((link) => (
-                            <div key={link.id} className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-3">
+                        )
+                      })()}
+                      
+                      {/* Display links if available */}
+                      {(() => {
+                        // Get links using the utility function
+                        const { files, links } = parseMaterialContent(material.content || '')
+                        
+                        if (links.length === 0) return null
+                        
+                        return (
+                          <div className="space-y-2 mt-3">
+                            <p className="text-sm font-medium text-muted-foreground">Links:</p>
+                            {links.map((link: any, index: number) => (
+                              <div key={index} className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-3">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
                                   <div>
                                     <p className="text-sm font-medium">{link.description}</p>
-                                    <p className="text-xs text-blue-600 dark:text-blue-400 truncate max-w-[200px]">
+                                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                                        <button
+                                          onClick={() => openLink(link.url)}
+                                          className="hover:underline cursor-pointer"
+                                        >
                                       {link.url}
+                                        </button>
                                     </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center space-x-1">
-                                  <Button variant="ghost" size="sm" onClick={() => openLink(link.url)}>
-                                    <Eye className="h-3 w-3" />
-                                  </Button>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => removeLinkFromMaterial(material.id, link.id)}
+                                    onClick={() => removeLinkFromMaterial(material.id)}
+                                    className="h-6 w-6 p-0"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
-                                </div>
                               </div>
                             </div>
                           ))}
                         </div>
-                      )}
+                        )
+                      })()}
+
+
 
                       <div className="space-y-3">
                         <div className="border-2 border-dashed border-muted-foreground/25 rounded-md p-4">
                           <div className="text-center">
                             <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                             <p className="text-sm text-muted-foreground mb-2">
-                              {material.files.length > 0
-                                ? "Add another file"
-                                : "Upload a file for this material (optional)"}
+                              Upload files or add content
                             </p>
+                            <div className="flex space-x-2 justify-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                                onClick={() => document.getElementById(`file-upload-${material.id}`)?.click()}
+                                disabled={uploadingFile === material.id}
+                              >
+                                {uploadingFile === material.id ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></div>
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  'Choose File'
+                                )}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setAddingLinkToMaterial(material.id)}
+                                disabled={uploadingFile === material.id}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Link
+                            </Button>
+                          </div>
+                            {uploadError && uploadingFile === material.id && (
+                              <p className="text-xs text-red-600 mt-2">{uploadError}</p>
+                            )}
+                            {uploadingFile === material.id && (
+                              <div className="mt-2">
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                        </div>
+                                <p className="text-xs text-gray-600 mt-1">Uploading file...</p>
+                              </div>
+                            )}
                             <input
+                              id={`file-upload-${material.id}`}
                               type="file"
+                              className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0]
                                 if (file) handleFileUpload(material.id, file)
                               }}
-                              className="hidden"
-                              id={`file-${material.id}`}
-                              multiple
+                              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.mp4,.mp3"
                             />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => document.getElementById(`file-${material.id}`)?.click()}
-                            >
-                              Choose File
-                            </Button>
-                          </div>
-                        </div>
-
-                        {addingLinkToMaterial === material.id ? (
-                          <div className="border rounded-md p-4 space-y-3">
+                            
+                            {/* Link input dialog */}
+                            {addingLinkToMaterial === material.id && (
+                              <div className="mt-3 p-3 bg-muted/50 rounded-md">
                             <div className="space-y-2">
                               <Input
-                                placeholder="Enter URL (e.g., https://example.com)"
-                                value={newLinkUrl}
-                                onChange={(e) => setNewLinkUrl(e.target.value)}
-                              />
-                              <Input
-                                placeholder="Enter description (e.g., Course website, Tutorial video)"
+                                    placeholder="Link description (e.g., 'Course Notes')"
                                 value={newLinkDescription}
                                 onChange={(e) => setNewLinkDescription(e.target.value)}
-                              />
-                            </div>
+                                    className="h-8 text-sm"
+                                  />
+                                  <Input
+                                    placeholder="URL (e.g., https://example.com)"
+                                    value={newLinkUrl}
+                                    onChange={(e) => setNewLinkUrl(e.target.value)}
+                                    className="h-8 text-sm"
+                                  />
                             <div className="flex space-x-2">
                               <Button
                                 size="sm"
@@ -850,17 +1626,10 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
                               </Button>
                             </div>
                           </div>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setAddingLinkToMaterial(material.id)}
-                            className="w-full"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Link
-                          </Button>
-                        )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -883,6 +1652,8 @@ export function SubjectDetailDialog({ open, onOpenChange, subject }: SubjectDeta
               )}
             </div>
           </TabsContent>
+
+
         </Tabs>
 
         {previewFile && (

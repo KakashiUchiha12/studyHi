@@ -1,7 +1,6 @@
 "use client"
 
 import { toast } from "react-hot-toast"
-import { isPast, isToday } from "date-fns"
 
 export interface StudyNotification {
   id: string
@@ -14,29 +13,107 @@ export interface StudyNotification {
 }
 
 class NotificationManager {
-  private notifications: StudyNotification[] = []
   private subscribers: ((notifications: StudyNotification[]) => void)[] = []
+  private notifications: StudyNotification[] = []
+  private initialized = false
 
   constructor() {
     if (typeof window !== "undefined") {
-      this.loadNotifications()
       this.requestPermission()
     }
   }
 
-  private loadNotifications() {
-    const saved = localStorage.getItem("studyNotifications")
-    if (saved) {
-      this.notifications = JSON.parse(saved).map((n: any) => ({
-        ...n,
-        timestamp: new Date(n.timestamp)
-      }))
+  private async requestPermission() {
+    if ("Notification" in window && Notification.permission === "default") {
+      await Notification.requestPermission()
     }
   }
 
-  private saveNotifications() {
-    localStorage.setItem("studyNotifications", JSON.stringify(this.notifications))
-    this.notifySubscribers()
+  // Initialize notifications from database (call this once on app startup)
+  async initialize() {
+    if (this.initialized) return
+    
+    try {
+      const response = await fetch('/api/notifications')
+      if (response.ok) {
+        const data = await response.json()
+        this.notifications = data.map((n: any) => ({
+          ...n,
+          timestamp: new Date(n.timestamp)
+        }))
+        this.notifySubscribers()
+      }
+    } catch (error) {
+      console.error('Failed to load notifications:', error)
+    }
+    
+    this.initialized = true
+  }
+
+  private async saveNotification(notification: Omit<StudyNotification, "id" | "timestamp" | "read">) {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notification),
+      })
+      
+      if (response.ok) {
+        const savedNotification = await response.json()
+        this.notifications.unshift({
+          ...savedNotification,
+          timestamp: new Date(savedNotification.timestamp)
+        })
+        this.notifySubscribers()
+        return savedNotification
+      }
+    } catch (error) {
+      console.error('Failed to save notification:', error)
+    }
+    return null
+  }
+
+  private async updateNotification(id: string, updates: Partial<StudyNotification>) {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      })
+      
+      if (response.ok) {
+        const updatedNotification = await response.json()
+        this.notifications = this.notifications.map(n => 
+          n.id === id ? { ...n, ...updatedNotification, timestamp: new Date(updatedNotification.timestamp) } : n
+        )
+        this.notifySubscribers()
+        return updatedNotification
+      }
+    } catch (error) {
+      console.error('Failed to update notification:', error)
+    }
+    return null
+  }
+
+  private async deleteNotification(id: string) {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        this.notifications = this.notifications.filter(n => n.id !== id)
+        this.notifySubscribers()
+        return true
+      }
+    } catch (error) {
+      console.error('Failed to delete notification:', error)
+    }
+    return false
   }
 
   private notifySubscribers() {
@@ -45,6 +122,13 @@ class NotificationManager {
 
   subscribe(callback: (notifications: StudyNotification[]) => void) {
     this.subscribers.push(callback)
+    
+    // Initialize if not already done
+    if (!this.initialized) {
+      this.initialize()
+    }
+    
+    // Return current notifications immediately
     callback([...this.notifications])
     
     return () => {
@@ -52,54 +136,62 @@ class NotificationManager {
     }
   }
 
-  async requestPermission() {
-    if ("Notification" in window && Notification.permission === "default") {
-      await Notification.requestPermission()
+  async addNotification(notification: Omit<StudyNotification, "id" | "timestamp" | "read">) {
+    // Check if this notification already exists to prevent duplicates
+    const existingNotification = this.notifications.find(n => 
+      n.type === notification.type && 
+      n.title === notification.title && 
+      n.message === notification.message &&
+      !n.read
+    )
+    
+    if (existingNotification) {
+      console.log('Notification already exists, skipping duplicate:', notification.title)
+      return existingNotification
     }
-  }
 
-  addNotification(notification: Omit<StudyNotification, "id" | "timestamp" | "read">) {
-    const newNotification: StudyNotification = {
-      ...notification,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      read: false
-    }
-
-    this.notifications.unshift(newNotification)
-    this.saveNotifications()
-
-    // Show toast notification
-    toast(notification.message, {
-      duration: 5000,
-      icon: this.getNotificationIcon(notification.type)
-    })
-
-    // Show browser notification if permission granted
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(notification.title, {
-        body: notification.message,
-        icon: "/placeholder-logo.png"
+    const savedNotification = await this.saveNotification(notification)
+    
+    if (savedNotification) {
+      // Show toast notification
+      toast(notification.message, {
+        duration: 5000,
+        icon: this.getNotificationIcon(notification.type)
       })
+
+      // Show browser notification if permission granted
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(notification.title, {
+          body: notification.message,
+          icon: "/placeholder-logo.png"
+        })
+      }
+    }
+    
+    return savedNotification
+  }
+
+  async markAsRead(id: string) {
+    await this.updateNotification(id, { read: true })
+  }
+
+  async markAllAsRead() {
+    try {
+      const response = await fetch('/api/notifications/mark-all-read', {
+        method: 'PUT',
+      })
+      
+      if (response.ok) {
+        this.notifications.forEach(n => n.read = true)
+        this.notifySubscribers()
+      }
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error)
     }
   }
 
-  markAsRead(id: string) {
-    const notification = this.notifications.find(n => n.id === id)
-    if (notification) {
-      notification.read = true
-      this.saveNotifications()
-    }
-  }
-
-  markAllAsRead() {
-    this.notifications.forEach(n => n.read = true)
-    this.saveNotifications()
-  }
-
-  removeNotification(id: string) {
-    this.notifications = this.notifications.filter(n => n.id !== id)
-    this.saveNotifications()
+  async removeNotification(id: string) {
+    await this.deleteNotification(id)
   }
 
   getUnreadCount(): number {
@@ -116,14 +208,14 @@ class NotificationManager {
     }
   }
 
-  // Study-specific notification methods
-  scheduleStudyReminder(subject: string, time: Date) {
+  // Study-specific notification methods (now properly managed)
+  async scheduleStudyReminder(subject: string, time: Date) {
     const now = new Date()
     const timeUntilReminder = time.getTime() - now.getTime()
 
     if (timeUntilReminder > 0) {
-      setTimeout(() => {
-        this.addNotification({
+      setTimeout(async () => {
+        await this.addNotification({
           type: "reminder",
           title: "Study Reminder",
           message: `Time to study ${subject}!`,
@@ -133,13 +225,13 @@ class NotificationManager {
     }
   }
 
-  notifyTaskDeadline(taskTitle: string, dueDate: Date) {
+  async notifyTaskDeadline(taskTitle: string, dueDate: Date) {
     const now = new Date()
     const timeUntilDeadline = dueDate.getTime() - now.getTime()
     const hoursUntilDeadline = timeUntilDeadline / (1000 * 60 * 60)
 
     if (hoursUntilDeadline <= 24 && hoursUntilDeadline > 0) {
-      this.addNotification({
+      await this.addNotification({
         type: "deadline",
         title: "Task Deadline Approaching",
         message: `"${taskTitle}" is due in ${Math.round(hoursUntilDeadline)} hours!`,
@@ -148,8 +240,8 @@ class NotificationManager {
     }
   }
 
-  notifyStudyGoalAchieved(goalType: string, target: number) {
-    this.addNotification({
+  async notifyStudyGoalAchieved(goalType: string, target: number) {
+    await this.addNotification({
       type: "achievement",
       title: "Goal Achieved! 🎉",
       message: `Congratulations! You've reached your ${goalType} study goal of ${target} minutes!`,
@@ -157,8 +249,8 @@ class NotificationManager {
     })
   }
 
-  notifyStudyStreak(days: number) {
-    this.addNotification({
+  async notifyStudyStreak(days: number) {
+    await this.addNotification({
       type: "achievement",
       title: "Study Streak! 🔥",
       message: `Amazing! You've maintained a ${days}-day study streak!`,
@@ -166,8 +258,8 @@ class NotificationManager {
     })
   }
 
-  notifyTestScoreImprovement(subject: string, improvement: number) {
-    this.addNotification({
+  async notifyTestScoreImprovement(subject: string, improvement: number) {
+    await this.addNotification({
       type: "achievement",
       title: "Score Improvement!",
       message: `Your ${subject} test score improved by ${improvement}%!`,
@@ -175,32 +267,8 @@ class NotificationManager {
     })
   }
 
-  // Check for pending notifications (call this on app startup)
-  checkPendingNotifications() {
-    // Check for overdue tasks
-    const tasks = JSON.parse(localStorage.getItem("tasks") || "[]")
-    tasks.forEach((task: any) => {
-      if (!task.completed && task.dueDate) {
-        const dueDate = new Date(task.dueDate)
-        if (isPast(dueDate) && !isToday(dueDate)) {
-          this.addNotification({
-            type: "deadline",
-            title: "Overdue Task",
-            message: `Task "${task.title}" is overdue!`,
-            actionUrl: "/dashboard"
-          })
-        }
-      }
-    })
-
-    // Check study goals
-    const studyGoals = JSON.parse(localStorage.getItem("studyGoals") || "[]")
-    studyGoals.forEach((goal: any) => {
-      if (goal.current >= goal.target) {
-        this.notifyStudyGoalAchieved(goal.type, goal.target)
-      }
-    })
-  }
+  // Remove the automatic notification creation on page load
+  // This was causing duplicate notifications
 }
 
 export const notificationManager = new NotificationManager()

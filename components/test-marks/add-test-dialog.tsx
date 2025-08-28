@@ -1,24 +1,13 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, AlertTriangle } from "lucide-react"
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Plus, X } from 'lucide-react'
 
 interface Mistake {
   id: string
@@ -152,9 +141,9 @@ export function AddTestDialog({ open, onOpenChange, subjects, onAddTest }: AddTe
             <Label htmlFor="testName">Test Name</Label>
             <Input
               id="testName"
-              placeholder="e.g., Calculus Quiz 1, Midterm Exam"
               value={formData.testName}
               onChange={(e) => setFormData({ ...formData, testName: e.target.value })}
+              placeholder="e.g., Calculus Quiz 1, Midterm Exam"
               required
             />
           </div>
@@ -241,9 +230,9 @@ export function AddTestDialog({ open, onOpenChange, subjects, onAddTest }: AddTe
             <Label htmlFor="comments">Comments (Optional)</Label>
             <Textarea
               id="comments"
-              placeholder="Add notes about your performance, areas to improve, etc."
               value={formData.comments}
               onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+              placeholder="Add notes about your performance, areas to improve, etc."
               rows={3}
             />
           </div>
@@ -252,20 +241,20 @@ export function AddTestDialog({ open, onOpenChange, subjects, onAddTest }: AddTe
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-base font-medium">Mistakes to Remember</Label>
-              <Badge variant="secondary" className="text-xs">
+              <span className="text-xs text-red-600 font-medium">
                 {mistakes.length} mistake{mistakes.length !== 1 ? 's' : ''} added
-              </Badge>
+              </span>
             </div>
 
             {/* Add New Mistake */}
-            <Card className="border-dashed border-2">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center">
-                  <AlertTriangle className="h-4 w-4 mr-2 text-orange-500" />
+            <div className="border-dashed border-2 border-red-200 dark:border-red-800 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-red-800 dark:text-red-200 flex items-center">
+                  <X className="h-4 w-4 mr-2 text-red-500" />
                   Add a Mistake
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+                </h3>
+              </div>
+              <div className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="mistake-question">Question/Problem</Label>
                   <Textarea
@@ -303,9 +292,9 @@ export function AddTestDialog({ open, onOpenChange, subjects, onAddTest }: AddTe
                     <Label htmlFor="topic">Topic (Optional)</Label>
                     <Input
                       id="topic"
-                      placeholder="e.g., Derivatives, Algebra"
                       value={newMistake.topic}
                       onChange={(e) => setNewMistake({ ...newMistake, topic: e.target.value })}
+                      placeholder="e.g., Derivatives, Algebra"
                     />
                   </div>
                   <div className="space-y-2">
@@ -330,9 +319,9 @@ export function AddTestDialog({ open, onOpenChange, subjects, onAddTest }: AddTe
                   <Label htmlFor="explanation">Explanation (Optional)</Label>
                   <Textarea
                     id="explanation"
-                    placeholder="Why was this the correct answer? What concept did you miss?"
                     value={newMistake.explanation}
                     onChange={(e) => setNewMistake({ ...newMistake, explanation: e.target.value })}
+                    placeholder="Why was this the correct answer? What concept did you miss?"
                     rows={2}
                   />
                 </div>
@@ -348,43 +337,41 @@ export function AddTestDialog({ open, onOpenChange, subjects, onAddTest }: AddTe
                   <Plus className="h-4 w-4 mr-2" />
                   Add This Mistake
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Display Added Mistakes */}
             {mistakes.length > 0 && (
               <div className="space-y-2 max-h-32 overflow-y-auto">
                 {mistakes.map((mistake, index) => (
-                  <Card key={mistake.id} className="bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-800">
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-red-800 dark:text-red-200 truncate">
-                            {mistake.question}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {mistake.topic && (
-                              <Badge variant="outline" className="text-xs">
-                                {mistake.topic}
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              {mistake.difficulty}
-                            </Badge>
-                          </div>
+                  <div key={mistake.id} className="bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-800 rounded-lg p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-red-800 dark:text-red-200 truncate">
+                          {mistake.question}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {mistake.topic && (
+                            <span className="text-xs text-red-600 font-medium bg-red-100 dark:bg-red-900/20 rounded-full px-2 py-0.5">
+                              {mistake.topic}
+                            </span>
+                          )}
+                          <span className="text-xs text-red-600 font-medium bg-red-100 dark:bg-red-900/20 rounded-full px-2 py-0.5">
+                            {mistake.difficulty}
+                          </span>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeMistake(mistake.id)}
-                          className="p-1 h-auto text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeMistake(mistake.id)}
+                        className="p-1 h-auto text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

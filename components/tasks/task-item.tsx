@@ -106,7 +106,7 @@ export function TaskItem({
     const newErrors: Record<string, string> = {}
     
     if (!editData.title.trim()) {
-      newErrors.title = "Task title is required"
+      newErrors.title = "Title is required"
     }
     
     if (editData.estimatedTime < 0) {
@@ -156,7 +156,7 @@ export function TaskItem({
       <Card 
         className={`
           transition-all duration-200 cursor-grab active:cursor-grabbing
-          ${isDragging ? 'opacity-60 scale-98 shadow-lg' : 'hover:shadow-md'}
+          ${isDragging ? 'opacity-60 scale-98 shadow-lg border-2 border-primary' : 'hover:shadow-md'}
           ${dragOverIndex === index ? 'border-primary border-2 bg-primary/5' : ''}
           ${task.completed ? 'bg-muted/50' : 'bg-card'}
           ${isOverdue ? 'border-l-4 border-l-red-500' : ''}
@@ -209,7 +209,7 @@ export function TaskItem({
                       className={`font-medium ${editErrors.title ? 'border-red-500' : ''}`}
                     />
                     {editErrors.title && (
-                      <p className="text-sm text-red-500 mt-1">{editErrors.title}</p>
+                      <p className="text-sm text-red-500 mt-1">Title is required</p>
                     )}
                   </div>
                   
@@ -228,7 +228,7 @@ export function TaskItem({
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder={editData.priority} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="low">🟢 Low</SelectItem>

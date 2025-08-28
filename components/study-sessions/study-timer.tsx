@@ -17,9 +17,20 @@ interface StudyTimerProps {
   onSessionComplete: (session: any) => void
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
+  defaultDuration?: number // in minutes
+  breakDuration?: number // in minutes
+  showBreakReminders?: boolean
 }
 
-export function StudyTimer({ subjects, onSessionComplete, isOpen: externalIsOpen, onOpenChange }: StudyTimerProps) {
+export function StudyTimer({ 
+  subjects, 
+  onSessionComplete, 
+  isOpen: externalIsOpen, 
+  onOpenChange,
+  defaultDuration = 240, // Default to 4 hours
+  breakDuration = 15, // Default to 15 minutes
+  showBreakReminders = true
+}: StudyTimerProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false)
   
   // Use external state if provided, otherwise use internal state
@@ -36,12 +47,27 @@ export function StudyTimer({ subjects, onSessionComplete, isOpen: externalIsOpen
   const [selectedSubject, setSelectedSubject] = useState("")
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [notes, setNotes] = useState("")
+  const [showBreakAlert, setShowBreakAlert] = useState(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = setInterval(() => {
-        setSeconds((prev) => prev + 1)
+        setSeconds((prev) => {
+          const newSeconds = prev + 1
+          
+          // Check for break reminders
+          if (showBreakReminders && breakDuration > 0) {
+            const minutes = Math.floor(newSeconds / 60)
+            if (minutes > 0 && minutes % breakDuration === 0) {
+              setShowBreakAlert(true)
+              // Auto-hide break alert after 10 seconds
+              setTimeout(() => setShowBreakAlert(false), 10000)
+            }
+          }
+          
+          return newSeconds
+        })
       }, 1000)
     } else {
       if (intervalRef.current) {
@@ -54,7 +80,7 @@ export function StudyTimer({ subjects, onSessionComplete, isOpen: externalIsOpen
         clearInterval(intervalRef.current)
       }
     }
-  }, [isRunning])
+  }, [isRunning, showBreakReminders, breakDuration])
 
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600)
@@ -142,6 +168,17 @@ export function StudyTimer({ subjects, onSessionComplete, isOpen: externalIsOpen
           </DialogHeader>
 
           <div className="space-y-6">
+            {/* Break Alert */}
+            {showBreakAlert && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+                <div className="text-yellow-800 font-medium">⏰ Break Time!</div>
+                <div className="text-yellow-600 text-sm">
+                  You've been studying for {Math.floor(seconds / 60)} minutes. 
+                  Consider taking a {breakDuration}-minute break!
+                </div>
+              </div>
+            )}
+
             <div className="text-center">
               <div className="text-4xl font-mono font-bold text-primary mb-2">{formatTime(seconds)}</div>
               <div className="text-lg font-mono text-muted-foreground mb-2">{formatTimeCompact(seconds)}</div>

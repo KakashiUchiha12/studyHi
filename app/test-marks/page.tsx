@@ -1,19 +1,36 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, Search, Plus, ArrowLeft, TrendingUp, TrendingDown, Minus, Edit, Trash2, AlertTriangle, BookOpen, Eye, EyeOff } from "lucide-react"
-import { AddTestDialog } from "@/components/test-marks/add-test-dialog"
-import { EditTestDialog } from "@/components/test-marks/edit-test-dialog"
-import { DeleteTestDialog } from "@/components/test-marks/delete-test-dialog"
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { CalendarIcon, Plus, Edit, Trash2, TrendingUp, TrendingDown, Minus, MoreHorizontal, BookOpen, Target, Clock, Award, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
+import { format } from 'date-fns'
+import { useTestMarks, useSubjects, useMigration } from '@/hooks'
+import { AddTestDialog } from '@/components/test-marks/add-test-dialog'
+import { EditTestDialog } from '@/components/test-marks/edit-test-dialog'
+import { DeleteTestDialog } from '@/components/test-marks/delete-test-dialog'
 import { TestPerformanceChart } from "@/components/test-marks/test-performance-chart"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FileText, Search, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+import { TestMark as PrismaTestMark, Subject as PrismaSubject } from "@prisma/client"
+
+// Extend the Prisma TestMark type to include the mistakes field
+type ExtendedTestMark = Omit<PrismaTestMark, 'testDate'> & {
+  testDate: Date | string
+  mistakes?: string | null
+}
 
 interface Mistake {
   id: string
@@ -48,13 +65,13 @@ interface Subject {
 }
 
 export default function TestMarksPage() {
-  const [testMarks, setTestMarks] = useState<TestMark[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
+  const { data: session, status } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSubject, setSelectedSubject] = useState<string>("all")
   const [selectedTestType, setSelectedTestType] = useState<string>("all")
   const [selectedTest, setSelectedTest] = useState<TestMark | null>(null)
   const [expandedMistakes, setExpandedMistakes] = useState<Set<string>>(new Set())
+  const [showAllMistakes, setShowAllMistakes] = useState(false)
   const [dialogState, setDialogState] = useState<{
     add: boolean
     edit: boolean
@@ -66,238 +83,301 @@ export default function TestMarksPage() {
   })
   const router = useRouter()
 
+  // Use database hooks
+  const {
+    testMarks,
+    loading: testMarksLoading,
+    error: testMarksError,
+    createTestMark,
+    updateTestMark,
+    deleteTestMark,
+    refreshTestMarks
+  } = useTestMarks()
+
+  const {
+    subjects,
+    loading: subjectsLoading,
+    error: subjectsError
+  } = useSubjects()
+
+  const { autoMigrateIfNeeded } = useMigration()
+
+  // Calculate grade based on percentage
+  const calculateGrade = (percentage: number): string => {
+    if (percentage >= 90) return 'A+'
+    if (percentage >= 85) return 'A'
+    if (percentage >= 80) return 'A-'
+    if (percentage >= 75) return 'B+'
+    if (percentage >= 70) return 'B'
+    if (percentage >= 65) return 'B-'
+    if (percentage >= 60) return 'C+'
+    if (percentage >= 55) return 'C'
+    if (percentage >= 50) return 'C-'
+    if (percentage >= 45) return 'D+'
+    if (percentage >= 40) return 'D'
+    return 'F'
+  }
+
+  // Convert Prisma TestMark to local TestMark interface
+  const convertPrismaTestMark = (prismaMark: ExtendedTestMark): TestMark => {
+    // Calculate percentage and grade on the frontend
+    const percentage = Math.round((prismaMark.score / prismaMark.maxScore) * 100)
+    const grade = calculateGrade(percentage)
+    
+    // Handle testDate which could be a Date object or string
+    let testDate: string
+    if (prismaMark.testDate instanceof Date) {
+      testDate = prismaMark.testDate.toISOString().split('T')[0]
+    } else if (typeof prismaMark.testDate === 'string') {
+      // Handle timestamp strings (like "1756857600000")
+      if (/^\d{13}$/.test(prismaMark.testDate)) {
+        // It's a timestamp in milliseconds
+        testDate = new Date(parseInt(prismaMark.testDate)).toISOString().split('T')[0]
+      } else {
+        // It's a regular date string
+        testDate = prismaMark.testDate.split('T')[0]
+      }
+    } else {
+      testDate = new Date(prismaMark.testDate as any).toISOString().split('T')[0]
+    }
+    
+    return {
+      id: prismaMark.id,
+      testName: prismaMark.testName,
+      subjectId: prismaMark.subjectId,
+      subjectName: subjects.find(s => s.id === prismaMark.subjectId)?.name || 'Unknown Subject',
+      date: testDate,
+      marksObtained: prismaMark.score,
+      totalMarks: prismaMark.maxScore,
+      percentage,
+      grade,
+      comments: prismaMark.notes || undefined,
+      testType: prismaMark.testType as "Quiz" | "Midterm" | "Final" | "Assignment" | "Project",
+      mistakes: prismaMark.mistakes ? JSON.parse(prismaMark.mistakes) : [],
+      createdAt: prismaMark.createdAt instanceof Date 
+        ? prismaMark.createdAt.toISOString()
+        : typeof prismaMark.createdAt === 'string'
+          ? /^\d{13}$/.test(prismaMark.createdAt)
+            ? new Date(parseInt(prismaMark.createdAt)).toISOString()
+            : prismaMark.createdAt
+          : new Date(prismaMark.createdAt as any).toISOString()
+    }
+  }
+
+  // Convert Prisma Subject to local Subject interface
+  const convertPrismaSubject = (prismaSubject: PrismaSubject): Subject => {
+    return {
+      id: prismaSubject.id,
+      name: prismaSubject.name,
+      color: prismaSubject.color
+    }
+  }
+
+  // Convert subjects to the format expected by the component
+  const localSubjects = subjects.map(convertPrismaSubject)
+  
+  // Convert test marks to the format expected by the component
+  const localTestMarks = testMarks.map(convertPrismaTestMark)
+
+  // Search functionality (no predictive typing)
+
   useEffect(() => {
-    // Check authentication
-    const userData = localStorage.getItem("user")
-    if (!userData) {
+    // Check authentication using NextAuth
+    if (status === "loading") return // Wait for session to load
+    
+    if (status === "unauthenticated") {
       router.push("/auth/login")
       return
     }
 
-    // Load subjects
-    const savedSubjects = localStorage.getItem("subjects")
-    if (savedSubjects) {
-      try {
-        setSubjects(JSON.parse(savedSubjects))
-      } catch (error) {
-        console.error('Failed to parse saved subjects:', error)
-        // Clear corrupted data and start fresh
-        localStorage.removeItem("subjects")
-        setSubjects([])
-      }
+    // Auto-migrate data if needed
+    if (status === "authenticated") {
+      autoMigrateIfNeeded()
     }
+  }, [router, status, autoMigrateIfNeeded])
 
-    // Load test marks from localStorage or initialize with sample data
-    const savedTestMarks = localStorage.getItem("testMarks")
-    if (savedTestMarks) {
-      try {
-        setTestMarks(JSON.parse(savedTestMarks))
-      } catch (error) {
-        console.error('Failed to parse saved test marks:', error)
-        // Clear corrupted data and initialize with sample data
-        localStorage.removeItem("testMarks")
-        initializeSampleTestMarks()
-      }
-    } else {
-      initializeSampleTestMarks()
+  // Show loading state while checking authentication or loading data
+  if (status === "loading" || testMarksLoading || subjectsLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading test marks...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if there's an authentication error
+  if (status === "unauthenticated") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-4">Please sign in to view your test marks.</p>
+          <Button onClick={() => router.push("/auth/login")}>
+            Sign In
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Convert local TestMark to Prisma TestMark data
+  const convertToPrismaData = (testMark: Omit<TestMark, "id">) => {
+    return {
+      subjectId: testMark.subjectId,
+      testName: testMark.testName,
+      testType: testMark.testType,
+      testDate: testMark.date, // Keep as string since that's what the hook expects
+      score: testMark.marksObtained,
+      maxScore: testMark.totalMarks,
+      notes: testMark.comments || undefined
     }
-  }, [router])
+  }
+
+  // Get grade color based on percentage
+  const getGradeColor = (percentage: number): string => {
+    if (percentage >= 90) return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+    if (percentage >= 80) return 'bg-blue-100 text-blue-800 border-blue-200'
+    if (percentage >= 70) return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    if (percentage >= 60) return 'bg-orange-100 text-orange-800 border-orange-200'
+    return 'bg-red-100 text-red-800 border-red-200'
+  }
+
+  // Get percentage color based on score
+  const getPercentageColor = (percentage: number): string => {
+    if (percentage >= 90) return 'text-emerald-600'
+    if (percentage >= 80) return 'text-blue-600'
+    if (percentage >= 70) return 'text-yellow-600'
+    if (percentage >= 60) return 'text-orange-600'
+    return 'text-red-600'
+  }
+
+  // Get subject color based on subject name
+  const getSubjectColor = (subjectName: string): string => {
+    const colors = [
+      'bg-blue-100 text-blue-800 border-blue-200',
+      'bg-purple-100 text-purple-800 border-purple-200',
+      'bg-green-100 text-green-800 border-green-200',
+      'bg-pink-100 text-pink-800 border-pink-200',
+      'bg-indigo-100 text-indigo-800 border-indigo-200',
+      'bg-teal-100 text-teal-800 border-teal-200',
+      'bg-orange-100 text-orange-800 border-orange-200',
+      'bg-red-100 text-red-800 border-red-200'
+    ]
+    const index = subjectName.charCodeAt(0) % colors.length
+    return colors[index]
+  }
+
+  // Get test type color
+  const getTestTypeColor = (testType: string): string => {
+    const typeColors: { [key: string]: string } = {
+      "Quiz": "bg-blue-100 text-blue-800 border-blue-200",
+      "Midterm": "bg-yellow-100 text-yellow-800 border-yellow-200",
+      "Final": "bg-red-100 text-red-800 border-red-200",
+      "Assignment": "bg-green-100 text-green-800 border-green-200",
+      "Project": "bg-purple-100 text-purple-800 border-purple-200",
+    }
+    return typeColors[testType] || "bg-gray-100 text-gray-800 border-gray-200"
+  }
 
   const initializeSampleTestMarks = () => {
-    // Initialize with sample test marks
-    const sampleTestMarks: TestMark[] = [
-      {
-        id: "1",
-        testName: "Calculus Quiz 1",
-        subjectId: "1",
-        subjectName: "Mathematics",
-        date: "2024-01-15",
-        marksObtained: 85,
-        totalMarks: 100,
-        percentage: 85,
-        grade: "A",
-        comments: "Good understanding of derivatives",
-        testType: "Quiz",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "2",
-        testName: "Midterm Exam",
-        subjectId: "1",
-        subjectName: "Mathematics",
-        date: "2024-01-28",
-        marksObtained: 92,
-        totalMarks: 100,
-        percentage: 92,
-        grade: "A+",
-        comments: "Excellent performance on integration problems",
-        testType: "Midterm",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "3",
-        testName: "Mechanics Test",
-        subjectId: "2",
-        subjectName: "Physics",
-        date: "2024-01-20",
-        marksObtained: 78,
-        totalMarks: 100,
-        percentage: 78,
-        grade: "B+",
-        comments: "Need to work on problem-solving speed",
-        testType: "Quiz",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "4",
-        testName: "Organic Chemistry Lab",
-        subjectId: "3",
-        subjectName: "Chemistry",
-        date: "2024-02-01",
-        marksObtained: 95,
-        totalMarks: 100,
-        percentage: 95,
-        grade: "A+",
-        comments: "Perfect lab technique and analysis",
-        testType: "Assignment",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "5",
-        testName: "Physics Final",
-        subjectId: "2",
-        subjectName: "Physics",
-        date: "2024-02-10",
-        marksObtained: 88,
-        totalMarks: 100,
-        percentage: 88,
-        grade: "A",
-        testType: "Final",
-        createdAt: new Date().toISOString(),
-      },
-    ]
-    setTestMarks(sampleTestMarks)
-    localStorage.setItem("testMarks", JSON.stringify(sampleTestMarks))
+    // This function is no longer needed as data comes from database
+    // Sample data is created automatically by the database service
+    console.log('Sample data initialization handled by database service')
   }
 
-  const getGrade = (percentage: number): string => {
-    if (percentage >= 97) return "A+"
-    if (percentage >= 93) return "A"
-    if (percentage >= 90) return "A-"
-    if (percentage >= 87) return "B+"
-    if (percentage >= 83) return "B"
-    if (percentage >= 80) return "B-"
-    if (percentage >= 77) return "C+"
-    if (percentage >= 73) return "C"
-    if (percentage >= 70) return "C-"
-    if (percentage >= 67) return "D+"
-    if (percentage >= 65) return "D"
-    return "F"
-  }
-
-  const filteredTestMarks = testMarks.filter((test) => {
-    const matchesSearch =
-      test.testName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      test.subjectName.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesSubject = selectedSubject === "all" || test.subjectId === selectedSubject
-    const matchesTestType = selectedTestType === "all" || test.testType === selectedTestType
-    return matchesSearch && matchesSubject && matchesTestType
-  })
-
-  const handleAddTest = (newTest: Omit<TestMark, "id" | "createdAt" | "percentage" | "grade">) => {
-    const percentage = Math.round((newTest.marksObtained / newTest.totalMarks) * 100)
-    const grade = getGrade(percentage)
-
-    const testMark: TestMark = {
-      ...newTest,
-      id: Date.now().toString(),
-      percentage,
-      grade,
-      createdAt: new Date().toISOString(),
+  const handleAddTestMark = async (newTestMark: Omit<TestMark, "id" | "percentage" | "grade" | "createdAt">) => {
+    try {
+      console.log('🔍 handleAddTestMark called with:', newTestMark)
+      
+      // Extract only the fields needed for creation and map to API format
+      const testData = {
+        subjectId: newTestMark.subjectId,
+        testName: newTestMark.testName,
+        testType: newTestMark.testType,
+        testDate: newTestMark.date,
+        score: newTestMark.marksObtained,
+        maxScore: newTestMark.totalMarks,
+        notes: newTestMark.comments,
+        mistakes: newTestMark.mistakes
+      }
+      
+      console.log('🔍 Sending test data to API:', testData)
+      
+      await createTestMark(testData)
+      setDialogState({ ...dialogState, add: false })
+    } catch (error) {
+      console.error('Failed to create test mark:', error)
+      // Error handling is managed by the hook
     }
-
-    const updatedTestMarks = [...testMarks, testMark]
-    setTestMarks(updatedTestMarks)
-    localStorage.setItem("testMarks", JSON.stringify(updatedTestMarks))
-    setDialogState({ ...dialogState, add: false })
   }
 
-  const handleEditTest = (updatedTest: TestMark) => {
-    const percentage = Math.round((updatedTest.marksObtained / updatedTest.totalMarks) * 100)
-    const grade = getGrade(percentage)
-
-    const finalTest = {
-      ...updatedTest,
-      percentage,
-      grade,
-    }
-
-    const updatedTestMarks = testMarks.map((test) => (test.id === finalTest.id ? finalTest : test))
-    setTestMarks(updatedTestMarks)
-    localStorage.setItem("testMarks", JSON.stringify(updatedTestMarks))
+  const handleEditTestMark = async (updatedTestMark: TestMark) => {
+    try {
+      await updateTestMark(updatedTestMark.id, convertToPrismaData(updatedTestMark))
     setDialogState({ ...dialogState, edit: false })
     setSelectedTest(null)
+    } catch (error) {
+      console.error('Failed to update test mark:', error)
+      // Error handling is managed by the hook
+    }
   }
 
-  const handleDeleteTest = (testId: string) => {
-    const updatedTestMarks = testMarks.filter((test) => test.id !== testId)
-    setTestMarks(updatedTestMarks)
-    localStorage.setItem("testMarks", JSON.stringify(updatedTestMarks))
+  const handleDeleteTestMark = async (testMarkId: string) => {
+    try {
+      await deleteTestMark(testMarkId)
     setDialogState({ ...dialogState, delete: false })
     setSelectedTest(null)
+    } catch (error) {
+      console.error('Failed to delete test mark:', error)
+      // Error handling is managed by the hook
+    }
   }
 
-  // Calculate statistics
-  const stats = {
-    totalTests: filteredTestMarks.length,
-    averageScore:
-      filteredTestMarks.length > 0
-        ? Math.round(filteredTestMarks.reduce((sum, test) => sum + test.percentage, 0) / filteredTestMarks.length)
-        : 0,
-    highestScore: filteredTestMarks.length > 0 ? Math.max(...filteredTestMarks.map((test) => test.percentage)) : 0,
-    lowestScore: filteredTestMarks.length > 0 ? Math.min(...filteredTestMarks.map((test) => test.percentage)) : 0,
-  }
+  const filteredTestMarks = localTestMarks.filter((testMark) => {
+    const matchesSearch =
+      testMark.testName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      testMark.subjectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      testMark.comments?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSubject = selectedSubject === "all" || testMark.subjectId === selectedSubject
+    const matchesTestType = selectedTestType === "all" || testMark.testType === selectedTestType
+    return matchesSearch && matchesSubject && matchesTestType
+  }).sort((a, b) => {
+    // Sort by creation date: newest first
+    // Fallback to test date if createdAt is not available
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime()
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime()
+    
+    return dateB - dateA
+  })
 
-  const getGradeColor = (grade: string) => {
-    if (grade.startsWith("A")) return "text-accent"
-    if (grade.startsWith("B")) return "text-primary"
-    if (grade.startsWith("C")) return "text-chart-1"
-    if (grade.startsWith("D")) return "text-chart-2"
-    return "text-destructive"
-  }
-
-  const getPerformanceTrend = () => {
-    if (filteredTestMarks.length < 2) return null
-    const recent = filteredTestMarks.slice(-2)
-    const trend = recent[1].percentage - recent[0].percentage
-    if (trend > 0) return { icon: TrendingUp, color: "text-accent", text: `+${trend}%` }
-    if (trend < 0) return { icon: TrendingDown, color: "text-destructive", text: `${trend}%` }
-    return { icon: Minus, color: "text-muted-foreground", text: "No change" }
-  }
-
-  const trend = getPerformanceTrend()
-
-  const toggleMistakes = (testId: string) => {
-    const newExpanded = new Set(expandedMistakes)
-    if (newExpanded.has(testId)) {
-      newExpanded.delete(testId)
+  const toggleMistakesExpansion = (testId: string) => {
+    setExpandedMistakes(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(testId)) {
+        newSet.delete(testId)
     } else {
-      newExpanded.add(testId)
-    }
-    setExpandedMistakes(newExpanded)
-  }
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "Easy": return "text-green-600 bg-green-50 dark:bg-green-950/20"
-      case "Medium": return "text-yellow-600 bg-yellow-50 dark:bg-yellow-950/20"
-      case "Hard": return "text-red-600 bg-red-50 dark:bg-red-950/20"
-      default: return "text-gray-600 bg-gray-50 dark:bg-gray-950/20"
-    }
+        newSet.add(testId)
+      }
+      return newSet
+    })
   }
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Error Display */}
+      {(testMarksError || subjectsError) && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+            <p className="text-sm text-destructive">
+              {testMarksError || subjectsError}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -306,110 +386,46 @@ export default function TestMarksPage() {
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Dashboard
+                  Back to Dashboard
                 </Button>
               </Link>
-              <div className="flex items-center space-x-2">
-                <FileText className="h-6 w-6 text-primary" />
-                <span className="text-xl font-bold text-foreground">Test Marks</span>
+              <div>
+                <h1 className="text-2xl font-bold">Test Marks</h1>
+                <p className="text-sm text-muted-foreground">
+                  Track your academic performance and test results
+                </p>
               </div>
             </div>
-
             <div className="flex items-center space-x-2">
               <ThemeToggle />
-              <Button onClick={() => setDialogState({ ...dialogState, add: true })}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Test Result
-              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Test Performance</h1>
-          <p className="mt-2 text-muted-foreground">Track your test scores and monitor academic progress</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Tests</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalTests}</div>
-              <p className="text-xs text-muted-foreground">Recorded tests</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.averageScore}%</div>
-              {trend && (
-                <div className={`flex items-center text-xs ${trend.color}`}>
-                  <trend.icon className="h-3 w-3 mr-1" />
-                  {trend.text}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Highest Score</CardTitle>
-              <TrendingUp className="h-4 w-4 text-accent" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">{stats.highestScore}%</div>
-              <p className="text-xs text-muted-foreground">Best performance</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Lowest Score</CardTitle>
-              <TrendingDown className="h-4 w-4 text-chart-1" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-chart-1">{stats.lowestScore}%</div>
-              <p className="text-xs text-muted-foreground">Needs improvement</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Performance Chart */}
-        {filteredTestMarks.length > 0 && (
-          <div className="mb-8">
-            <TestPerformanceChart testMarks={filteredTestMarks} />
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="mb-6 flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      {/* Main Content */}
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search and Filters */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search tests or subjects..."
+                  placeholder="Search test marks, subjects, or comments..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
+              </div>
           </div>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by subject" />
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="All Subjects" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
-              {subjects.map((subject) => (
+                {localSubjects.map((subject) => (
                 <SelectItem key={subject.id} value={subject.id}>
                   {subject.name}
                 </SelectItem>
@@ -417,11 +433,11 @@ export default function TestMarksPage() {
             </SelectContent>
           </Select>
           <Select value={selectedTestType} onValueChange={setSelectedTestType}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by type" />
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="All Test Types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">All Test Types</SelectItem>
               <SelectItem value="Quiz">Quiz</SelectItem>
               <SelectItem value="Midterm">Midterm</SelectItem>
               <SelectItem value="Final">Final</SelectItem>
@@ -429,154 +445,333 @@ export default function TestMarksPage() {
               <SelectItem value="Project">Project</SelectItem>
             </SelectContent>
           </Select>
+            <Button onClick={() => setDialogState({ ...dialogState, add: true })}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Test
+            </Button>
+          </div>
         </div>
 
-        {/* Test Results */}
-        {filteredTestMarks.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                {searchQuery || selectedSubject !== "all" || selectedTestType !== "all"
-                  ? "No tests found"
-                  : "No test results yet"}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery || selectedSubject !== "all" || selectedTestType !== "all"
-                  ? "Try adjusting your filters"
-                  : "Start tracking your academic performance by adding your first test result"}
-              </p>
-              {!searchQuery && selectedSubject === "all" && selectedTestType === "all" && (
-                <Button onClick={() => setDialogState({ ...dialogState, add: true })}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Test
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {filteredTestMarks
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-              .map((test) => (
-                <Card key={test.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold">{test.testName}</h3>
-                          <Badge variant="outline">{test.testType}</Badge>
-                          <Badge variant="secondary">{test.subjectName}</Badge>
-                        </div>
-                        <div className="flex items-center space-x-6 text-sm text-muted-foreground">
-                          <span>Date: {new Date(test.date).toLocaleDateString()}</span>
-                          <span>
-                            Score: {test.marksObtained}/{test.totalMarks}
-                          </span>
-                          <span className={`font-medium ${getGradeColor(test.grade)}`}>
-                            {test.percentage}% ({test.grade})
-                          </span>
-                        </div>
-                        {test.comments && (
-                          <p className="mt-2 text-sm text-muted-foreground italic">"{test.comments}"</p>
-                        )}
-                        {test.mistakes && test.mistakes.length > 0 && (
-                          <div className="mt-3">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleMistakes(test.id)}
-                              className="text-orange-600 hover:text-orange-700 p-0 h-auto"
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                              {test.mistakes.length} mistake{test.mistakes.length !== 1 ? 's' : ''} recorded
-                              {expandedMistakes.has(test.id) ? (
-                                <EyeOff className="h-4 w-4 ml-2" />
-                              ) : (
-                                <Eye className="h-4 w-4 ml-2" />
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="text-right mr-4">
-                          <div className={`text-2xl font-bold ${getGradeColor(test.grade)}`}>{test.grade}</div>
-                          <div className="text-sm text-muted-foreground">{test.percentage}%</div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedTest(test)
-                            setDialogState({ ...dialogState, edit: true })
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedTest(test)
-                            setDialogState({ ...dialogState, delete: true })
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
+        {/* Performance Summary */}
+        {filteredTestMarks.length > 0 && (
+          <div className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Tests */}
+              <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredTestMarks.length}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Total Tests</div>
+                  <div className="text-xs text-gray-500 mt-1">Attempted</div>
+                </div>
+              </Card>
+
+              {/* Average Percentage */}
+              <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {Math.round(filteredTestMarks.reduce((sum, test) => sum + test.percentage, 0) / filteredTestMarks.length)}%
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Average</div>
+                  <div className="text-xs text-gray-500 mt-1">Performance</div>
+                </div>
+              </Card>
+
+              {/* Total Mistakes */}
+              <Card 
+                className="p-4 hover:shadow-md transition-shadow cursor-pointer bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
+                onClick={() => setShowAllMistakes(true)}
+              >
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {filteredTestMarks.reduce((sum, test) => sum + (test.mistakes?.length || 0), 0)}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Total</div>
+                  <div className="text-xs text-gray-500 mt-1">Mistakes</div>
+                </div>
+              </Card>
+
+              {/* Best Performance */}
+              <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {Math.max(...filteredTestMarks.map(t => t.percentage))}%
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Best</div>
+                  <div className="text-xs text-gray-500 mt-1">Score</div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Additional Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              {/* Subject Breakdown */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-indigo-600">
+                    {new Set(filteredTestMarks.map(t => t.subjectName)).size}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Subjects</div>
+                  <div className="text-xs text-gray-500 mt-1">Tested</div>
+                </div>
+              </Card>
+
+              {/* Recent Activity */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-green-600">
+                    {filteredTestMarks.filter(t => {
+                      const testDate = new Date(t.date)
+                      const thirtyDaysAgo = new Date()
+                      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+                      return testDate >= thirtyDaysAgo
+                    }).length}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Tests</div>
+                  <div className="text-xs text-gray-500 mt-1">Last 30 Days</div>
+                </div>
+              </Card>
+
+              {/* Improvement Trend */}
+              <Card className="p-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-cyan-600">
+                    {(() => {
+                      const recentTests = filteredTestMarks.slice(0, 5)
+                      const olderTests = filteredTestMarks.slice(-5)
+                      if (recentTests.length < 2 || olderTests.length < 2) return 'N/A'
+                      
+                      const recentAvg = recentTests.reduce((sum, t) => sum + t.percentage, 0) / recentTests.length
+                      const olderAvg = olderTests.reduce((sum, t) => sum + t.percentage, 0) / olderTests.length
+                      const improvement = recentAvg - olderAvg
+                      
+                      return improvement > 0 ? `+${Math.round(improvement)}%` : `${Math.round(improvement)}%`
+                    })()}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Trend</div>
+                  <div className="text-xs text-gray-500 mt-1">Recent vs Older</div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Test Marks Grid */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Test Marks</h2>
+            <p className="text-sm text-muted-foreground">Sorted by newest first</p>
+          </div>
+          <div className="grid gap-6 grid-cols-1">
+          {filteredTestMarks.map((testMark) => (
+            <Card key={testMark.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-transparent hover:border-l-4 hover:border-l-blue-500">
+              <CardContent className="p-6">
+                {/* Header with subject and test info */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge className={getSubjectColor(testMark.subjectName)}>
+                        {testMark.subjectName}
+                      </Badge>
+                      <Badge className={getTestTypeColor(testMark.testType)}>
+                        {testMark.testType === 'Quiz' && '📝'}
+                        {testMark.testType === 'Midterm' && '📚'}
+                        {testMark.testType === 'Final' && '🎯'}
+                        {testMark.testType === 'Assignment' && '📋'}
+                        {testMark.testType === 'Project' && '💼'}
+                        {testMark.testType}
+                      </Badge>
                     </div>
-                    
-                    {/* Mistakes Section */}
-                    {test.mistakes && test.mistakes.length > 0 && expandedMistakes.has(test.id) && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <h4 className="text-sm font-medium text-foreground mb-3 flex items-center">
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          Mistakes to Review
-                        </h4>
-                        <div className="space-y-3">
-                          {test.mistakes.map((mistake, index) => (
-                            <div key={mistake.id} className="bg-red-50 dark:bg-red-950/10 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                              <div className="flex items-start justify-between mb-2">
-                                <span className="text-sm font-medium text-red-800 dark:text-red-200">
-                                  Question {index + 1}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  {mistake.topic && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {mistake.topic}
-                                    </Badge>
-                                  )}
-                                  <Badge className={`text-xs ${getDifficultyColor(mistake.difficulty)}`}>
-                                    {mistake.difficulty}
-                                  </Badge>
-                                </div>
-                              </div>
-                              <p className="text-sm text-foreground mb-2 font-medium">{mistake.question}</p>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                                <div className="bg-red-100 dark:bg-red-900/20 p-2 rounded">
-                                  <span className="text-xs font-medium text-red-700 dark:text-red-300">Your Answer:</span>
-                                  <p className="text-sm text-red-800 dark:text-red-200">{mistake.yourAnswer}</p>
-                                </div>
-                                <div className="bg-green-100 dark:bg-green-900/20 p-2 rounded">
-                                  <span className="text-xs font-medium text-green-700 dark:text-green-300">Correct Answer:</span>
-                                  <p className="text-sm text-green-800 dark:text-green-200">{mistake.correctAnswer}</p>
-                                </div>
-                              </div>
-                              {mistake.explanation && (
-                                <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
-                                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Explanation:</span>
-                                  <p className="text-sm text-blue-800 dark:text-blue-200">{mistake.explanation}</p>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {testMark.testName}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                      <span>📅 {testMark.date}</span>
+                      {testMark.mistakes && testMark.mistakes.length > 0 && (
+                        <span className="text-orange-500">⚠️ {testMark.mistakes.length} mistakes</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge className={`${getGradeColor(testMark.percentage)} text-lg px-3 py-1`}>
+                      {testMark.grade}
+                    </Badge>
+                    {/* Performance trend indicator */}
+                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      {testMark.percentage >= 90 ? '🌟 Excellent' :
+                       testMark.percentage >= 80 ? '👍 Good' :
+                       testMark.percentage >= 70 ? '📈 Fair' :
+                       testMark.percentage >= 60 ? '⚠️ Needs Work' : '🚨 Critical'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Score and percentage section */}
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {testMark.marksObtained}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      Score
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold ${getPercentageColor(testMark.percentage)}`}>
+                      {testMark.percentage}%
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      Percentage
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {testMark.totalMarks}
+                  </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      Total
+                    </div>
+                  </div>
                         </div>
+
+                {/* Progress bar */}
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    <span>Performance</span>
+                    <span>{testMark.percentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        testMark.percentage >= 90 ? 'bg-emerald-500' :
+                        testMark.percentage >= 80 ? 'bg-blue-500' :
+                        testMark.percentage >= 70 ? 'bg-yellow-500' :
+                        testMark.percentage >= 60 ? 'bg-orange-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${testMark.percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Comments */}
+                {testMark.comments && (
+                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      {testMark.comments}
+                    </p>
+                        </div>
+                        )}
+
+                {/* Mistakes section */}
+                {testMark.mistakes && testMark.mistakes.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertCircle className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Areas for Improvement ({testMark.mistakes.length})
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {testMark.mistakes.slice(0, 2).map((mistake, index) => (
+                        <div key={index} className="text-xs bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-start justify-between mb-1">
+                            <span className="font-medium text-gray-800 dark:text-gray-200">
+                              {mistake.question}
+                            </span>
+                            <Badge variant="outline" className="text-xs px-2 py-0">
+                                {mistake.difficulty}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                              <span className="text-red-600 font-medium">Your Answer:</span>
+                              <div className="text-gray-600 dark:text-gray-400">{mistake.yourAnswer}</div>
+                              </div>
+                              <div>
+                              <span className="text-green-600 font-medium">Correct:</span>
+                              <div className="text-gray-600 dark:text-gray-400">{mistake.correctAnswer}</div>
+                              </div>
+                            </div>
+                            {mistake.explanation && (
+                            <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800">
+                              <span className="text-orange-600 font-medium">💡 Explanation:</span>
+                              <div className="text-gray-600 dark:text-gray-400">{mistake.explanation}</div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      {testMark.mistakes.length > 2 && (
+                        <div className="text-center">
+                          <Button variant="ghost" size="sm" className="text-xs text-orange-600 hover:text-orange-700">
+                            +{testMark.mistakes.length - 2} more mistakes
+                          </Button>
                       </div>
                     )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <Button
+                      variant="outline"
+                          size="sm"
+                          onClick={() => {
+                        setSelectedTest(testMark)
+                            setDialogState({ ...dialogState, edit: true })
+                          }}
+                    className="flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                        >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                        </Button>
+                        <Button
+                      variant="outline"
+                          size="sm"
+                          onClick={() => {
+                        setSelectedTest(testMark)
+                            setDialogState({ ...dialogState, delete: true })
+                          }}
+                    className="flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
+                        >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                        </Button>
+                </div>
+
+                {/* Quick stats footer */}
+                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>📊 Performance: {testMark.percentage}%</span>
+                    <span>🎯 Goal: {testMark.percentage >= 90 ? 'A+' : testMark.percentage >= 80 ? 'A' : testMark.percentage >= 70 ? 'B' : 'C'}</span>
+                    {testMark.mistakes && testMark.mistakes.length > 0 && (
+                      <span className="text-orange-500">📝 {testMark.mistakes.length} areas to improve</span>
+                    )}
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
+        </div>
+        </div>
+
+        {/* Empty State */}
+        {filteredTestMarks.length === 0 && (
+          <div className="text-center py-12">
+            <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">No test marks found</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchQuery || selectedSubject !== "all" || selectedTestType !== "all"
+                ? "Try adjusting your search or filters"
+                : "Start by adding your first test result"}
+            </p>
+            {!searchQuery && selectedSubject === "all" && selectedTestType === "all" && (
+              <Button onClick={() => setDialogState({ ...dialogState, add: true })}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Test
+              </Button>
+            )}
           </div>
         )}
       </main>
@@ -585,28 +780,120 @@ export default function TestMarksPage() {
       <AddTestDialog
         open={dialogState.add}
         onOpenChange={(open) => setDialogState({ ...dialogState, add: open })}
-        subjects={subjects}
-        onAddTest={handleAddTest}
+        subjects={localSubjects}
+        onAddTest={handleAddTestMark}
       />
 
       {selectedTest && (
-        <>
           <EditTestDialog
             open={dialogState.edit}
             onOpenChange={(open) => setDialogState({ ...dialogState, edit: open })}
-            test={selectedTest}
-            subjects={subjects}
-            onEditTest={handleEditTest}
+          test={selectedTest}
+        subjects={localSubjects}
+          onEditTest={handleEditTestMark}
           />
+      )}
 
+      {selectedTest && (
           <DeleteTestDialog
             open={dialogState.delete}
             onOpenChange={(open) => setDialogState({ ...dialogState, delete: open })}
-            test={selectedTest}
-            onDeleteTest={handleDeleteTest}
-          />
-        </>
+          test={selectedTest}
+          onDeleteTest={handleDeleteTestMark}
+        />
       )}
+
+      {/* All Mistakes Modal */}
+      <Dialog open={showAllMistakes} onOpenChange={setShowAllMistakes}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              All Mistakes Analysis
+            </DialogTitle>
+            <DialogDescription>
+              Review all mistakes across {filteredTestMarks.length} tests to identify areas for improvement
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto max-h-[60vh] space-y-4">
+            {filteredTestMarks
+              .filter(test => test.mistakes && test.mistakes.length > 0)
+              .map(test => (
+                <Card key={test.id} className="border-l-4 border-l-orange-500">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">{test.testName}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {test.subjectName} • {test.testType} • {test.date}
+                        </p>
+                      </div>
+                      <Badge className={getGradeColor(test.percentage)}>
+                        {test.grade} ({test.percentage}%)
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {test.mistakes?.map((mistake, index) => (
+                        <div key={index} className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="font-medium text-gray-800 dark:text-gray-200">
+                              {mistake.question}
+                            </span>
+                            <div className="flex gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {mistake.difficulty}
+                              </Badge>
+                              {mistake.topic && (
+                                <Badge variant="outline" className="text-xs">
+                                  {mistake.topic}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <span className="text-red-600 font-medium">Your Answer:</span>
+                              <div className="text-gray-600 dark:text-gray-400">{mistake.yourAnswer}</div>
+                            </div>
+                            <div>
+                              <span className="text-green-600 font-medium">Correct:</span>
+                              <div className="text-gray-600 dark:text-gray-400">{mistake.correctAnswer}</div>
+                            </div>
+                          </div>
+                          {mistake.explanation && (
+                            <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800">
+                              <span className="text-orange-600 font-medium">💡 Explanation:</span>
+                              <div className="text-gray-600 dark:text-gray-400">{mistake.explanation}</div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            
+            {filteredTestMarks.filter(test => test.mistakes && test.mistakes.length > 0).length === 0 && (
+              <div className="text-center py-8">
+                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No Mistakes Found!</h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Great job! You haven't made any mistakes in your tests yet.
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setShowAllMistakes(false)}>
+              Close Analysis
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

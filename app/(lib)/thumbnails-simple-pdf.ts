@@ -9,11 +9,11 @@ export async function generatePDFThumbnail(file: File): Promise<string> {
     console.log('Starting simple PDF thumbnail generation...');
     
     // Try to use PDF.js directly
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
     console.log('PDF.js loaded via import');
     
     // Set worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     
     const arrayBuffer = await file.arrayBuffer();
     console.log('File converted to ArrayBuffer');

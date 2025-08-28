@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useUserSettings } from "@/hooks/useUserSettings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { TimePicker } from "@/components/ui/time-picker"
 import { 
   ArrowLeft, 
   Settings, 
@@ -28,7 +30,8 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 
-interface UserSettings {
+// Legacy interface for backward compatibility
+interface LegacyUserSettings {
   studyGoals: {
     dailyHours: number
     weeklyHours: number
@@ -52,11 +55,22 @@ interface UserSettings {
 export default function SettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [settings, setSettings] = useState<UserSettings>({
+  
+  // Use the new database-backed settings hook
+  const { 
+    settings: dbSettings, 
+    loading: settingsLoading, 
+    error: settingsError,
+    updateSetting, 
+    saveSettings 
+  } = useUserSettings()
+
+  // Local state for UI display
+  const [localSettings, setLocalSettings] = useState<LegacyUserSettings>({
     studyGoals: {
-      dailyHours: 2,
-      weeklyHours: 10,
-      monthlyHours: 40,
+      dailyHours: 4,
+      weeklyHours: 28,
+      monthlyHours: 120,
       autoCalculate: true
     },
     notifications: {
@@ -80,48 +94,114 @@ export default function SettingsPage() {
       router.push("/auth/login")
       return
     }
-
-    // Load settings from localStorage
-    const savedSettings = localStorage.getItem("userSettings")
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings)
-        console.log('Settings loaded from localStorage:', parsed)
-        setSettings(prev => ({ ...prev, ...parsed }))
-      } catch (error) {
-        console.error("Failed to parse saved settings:", error)
-      }
-    } else {
-      console.log('No saved settings found in localStorage')
-    }
   }, [router, status])
+
+  // Sync local settings with database settings when they load
+  useEffect(() => {
+    if (dbSettings) {
+      console.log('Database settings loaded, syncing with local format:', dbSettings)
+      
+      // Convert database settings to local format for display
+      const convertedSettings: LegacyUserSettings = {
+        studyGoals: {
+          dailyHours: Math.round((dbSettings.defaultStudyGoal || 240) / 60), // Convert minutes to hours
+          weeklyHours: Math.round(((dbSettings.defaultStudyGoal || 240) / 60) * 7),
+          monthlyHours: Math.round(((dbSettings.defaultStudyGoal || 240) / 60) * 30),
+          autoCalculate: false
+        },
+        notifications: {
+          taskReminders: dbSettings.taskReminders,
+          studySessionAlerts: dbSettings.studySessionAlerts,
+          emailNotifications: dbSettings.emailNotifications,
+          pushNotifications: dbSettings.pushNotifications,
+          reminderTime: dbSettings.reminderTime
+        },
+        dataManagement: {
+          autoBackup: dbSettings.autoBackup,
+          backupFrequency: "weekly", // Default value
+          exportFormat: "json" // Default value
+        }
+      }
+      
+      setLocalSettings(convertedSettings)
+    }
+  }, [dbSettings])
 
   // Keep weekly and monthly goals in sync when autoCalculate is enabled
   useEffect(() => {
-    if (settings.studyGoals.autoCalculate) {
-      const expectedWeekly = settings.studyGoals.dailyHours * 7
-      const expectedMonthly = settings.studyGoals.dailyHours * 30
+    if (localSettings.studyGoals.autoCalculate) {
+      const expectedWeekly = localSettings.studyGoals.dailyHours * 7
+      const expectedMonthly = localSettings.studyGoals.dailyHours * 30
       
-      if (settings.studyGoals.weeklyHours !== expectedWeekly || 
-          settings.studyGoals.monthlyHours !== expectedMonthly) {
+      if (localSettings.studyGoals.weeklyHours !== expectedWeekly || 
+          localSettings.studyGoals.monthlyHours !== expectedMonthly) {
         console.log('Auto-calculating weekly and monthly goals to match daily goal')
-        saveSettings({
+        saveSettingsToDatabase({
           studyGoals: {
-            ...settings.studyGoals,
+            ...localSettings.studyGoals,
             weeklyHours: expectedWeekly,
             monthlyHours: expectedMonthly
           }
         })
       }
     }
-  }, [settings.studyGoals.dailyHours, settings.studyGoals.autoCalculate])
+  }, [localSettings.studyGoals.dailyHours, localSettings.studyGoals.autoCalculate])
 
-  const saveSettings = (newSettings: Partial<UserSettings>) => {
-    const updatedSettings = { ...settings, ...newSettings }
-    console.log('Saving settings to localStorage:', updatedSettings)
-    setSettings(updatedSettings)
-    localStorage.setItem("userSettings", JSON.stringify(updatedSettings))
-    console.log('Settings saved successfully')
+  const saveSettingsToDatabase = async (newSettings: Partial<LegacyUserSettings>) => {
+    const updatedLocalSettings = { ...localSettings, ...newSettings }
+    console.log('Saving settings to database:', updatedLocalSettings)
+    
+    // Update local state immediately for better UX
+    setLocalSettings(updatedLocalSettings)
+    
+    // Save to database
+    if (dbSettings) {
+      try {
+        const dbUpdates: any = {}
+        
+        // Convert local format to database format
+        if (newSettings.studyGoals?.dailyHours !== undefined) {
+          dbUpdates.defaultStudyGoal = newSettings.studyGoals.dailyHours * 60 // Convert hours to minutes
+        }
+        
+        if (newSettings.notifications?.taskReminders !== undefined) {
+          dbUpdates.taskReminders = newSettings.notifications.taskReminders
+        }
+        
+        if (newSettings.notifications?.studySessionAlerts !== undefined) {
+          dbUpdates.studySessionAlerts = newSettings.notifications.studySessionAlerts
+        }
+        
+        if (newSettings.notifications?.emailNotifications !== undefined) {
+          dbUpdates.emailNotifications = newSettings.notifications.emailNotifications
+        }
+        
+        if (newSettings.notifications?.pushNotifications !== undefined) {
+          dbUpdates.pushNotifications = newSettings.notifications.pushNotifications
+        }
+        
+        if (newSettings.notifications?.reminderTime !== undefined) {
+          dbUpdates.reminderTime = newSettings.notifications.reminderTime
+        }
+        
+        if (newSettings.dataManagement?.autoBackup !== undefined) {
+          dbUpdates.autoBackup = newSettings.dataManagement.autoBackup
+        }
+        
+        if (Object.keys(dbUpdates).length > 0) {
+          console.log('Updating database with:', dbUpdates)
+          await saveSettings(dbUpdates)
+          console.log('Database updated successfully')
+        }
+      } catch (error) {
+        console.error('Failed to update database:', error)
+        // Revert local state on error
+        setLocalSettings(localSettings)
+        throw error
+      }
+    }
+    
+    console.log('Settings saved successfully to database')
   }
 
   const exportData = () => {
@@ -130,7 +210,7 @@ export default function SettingsPage() {
       tasks: JSON.parse(localStorage.getItem("tasks") || "[]"),
       subjects: JSON.parse(localStorage.getItem("subjects") || "[]"),
       testMarks: JSON.parse(localStorage.getItem("testMarks") || "[]"),
-      settings: settings
+      settings: localSettings
     }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
@@ -158,10 +238,11 @@ export default function SettingsPage() {
         if (data.tasks) localStorage.setItem("tasks", JSON.stringify(data.tasks))
         if (data.subjects) localStorage.setItem("subjects", JSON.stringify(data.subjects))
         if (data.testMarks) localStorage.setItem("testMarks", JSON.stringify(data.testMarks))
-        if (data.settings) {
-          setSettings(data.settings)
-          localStorage.setItem("userSettings", JSON.stringify(data.settings))
-        }
+                 if (data.settings) {
+           setLocalSettings(data.settings)
+           // Save imported settings to database
+           saveSettingsToDatabase(data.settings)
+         }
         
         alert("Data imported successfully!")
       } catch (error) {
@@ -171,10 +252,25 @@ export default function SettingsPage() {
     reader.readAsText(file)
   }
 
-  if (status === "loading") {
+  if (status === "loading" || settingsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (settingsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Error Loading Settings</h2>
+          <p className="text-muted-foreground mb-4">{settingsError}</p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Retry
+          </Button>
+        </div>
       </div>
     )
   }
@@ -228,25 +324,25 @@ export default function SettingsPage() {
                   type="number"
                   min="0"
                   step="0.5"
-                  value={settings.studyGoals.dailyHours}
+                                     value={localSettings.studyGoals.dailyHours}
                   onChange={(e) => {
                     const newDailyHours = parseFloat(e.target.value) || 0
                     const newSettings = {
                       studyGoals: {
-                        ...settings.studyGoals,
+                        ...localSettings.studyGoals,
                         dailyHours: newDailyHours
                       }
                     }
                     
                     // If autoCalculate is enabled, also update weekly and monthly
-                    if (settings.studyGoals.autoCalculate) {
+                    if (localSettings.studyGoals.autoCalculate) {
                       newSettings.studyGoals.weeklyHours = newDailyHours * 7
                       newSettings.studyGoals.monthlyHours = newDailyHours * 30
                     }
                     
-                    saveSettings(newSettings)
+                    saveSettingsToDatabase(newSettings)
                   }}
-                  disabled={settings.studyGoals.autoCalculate}
+                  disabled={localSettings.studyGoals.autoCalculate}
                 />
               </div>
               
@@ -257,14 +353,14 @@ export default function SettingsPage() {
                   type="number"
                   min="0"
                   step="0.5"
-                  value={settings.studyGoals.weeklyHours}
-                  onChange={(e) => saveSettings({
+                  value={localSettings.studyGoals.weeklyHours}
+                  onChange={(e) => saveSettingsToDatabase({
                     studyGoals: {
-                      ...settings.studyGoals,
+                      ...localSettings.studyGoals,
                       weeklyHours: parseFloat(e.target.value) || 0
                     }
                   })}
-                  disabled={settings.studyGoals.autoCalculate}
+                  disabled={localSettings.studyGoals.autoCalculate}
                 />
               </div>
               
@@ -275,14 +371,14 @@ export default function SettingsPage() {
                   type="number"
                   min="0"
                   step="0.5"
-                  value={settings.studyGoals.monthlyHours}
-                  onChange={(e) => saveSettings({
+                  value={localSettings.studyGoals.monthlyHours}
+                  onChange={(e) => saveSettingsToDatabase({
                     studyGoals: {
-                      ...settings.studyGoals,
+                      ...localSettings.studyGoals,
                       monthlyHours: parseFloat(e.target.value) || 0
                     }
                   })}
-                  disabled={settings.studyGoals.autoCalculate}
+                  disabled={localSettings.studyGoals.autoCalculate}
                 />
               </div>
             </div>
@@ -290,30 +386,30 @@ export default function SettingsPage() {
             <div className="flex items-center space-x-2">
               <Switch
                 id="autoCalculate"
-                checked={settings.studyGoals.autoCalculate}
+                checked={localSettings.studyGoals.autoCalculate}
                 onCheckedChange={(checked) => {
                   const newSettings = {
                     studyGoals: {
-                      ...settings.studyGoals,
+                      ...localSettings.studyGoals,
                       autoCalculate: checked
                     }
                   }
                   
                   // If enabling autoCalculate, update weekly and monthly values
                   if (checked) {
-                    newSettings.studyGoals.weeklyHours = settings.studyGoals.dailyHours * 7
-                    newSettings.studyGoals.monthlyHours = settings.studyGoals.dailyHours * 30
+                    newSettings.studyGoals.weeklyHours = localSettings.studyGoals.dailyHours * 7
+                    newSettings.studyGoals.monthlyHours = localSettings.studyGoals.dailyHours * 30
                   }
                   
-                  saveSettings(newSettings)
+                  saveSettingsToDatabase(newSettings)
                 }}
               />
               <Label htmlFor="autoCalculate">Auto-calculate from daily goal</Label>
             </div>
             
-            {settings.studyGoals.autoCalculate && (
+            {localSettings.studyGoals.autoCalculate && (
               <div className="text-sm text-muted-foreground">
-                Weekly: {settings.studyGoals.dailyHours * 7}h | Monthly: {settings.studyGoals.dailyHours * 30}h
+                Weekly: {localSettings.studyGoals.dailyHours * 7}h | Monthly: {localSettings.studyGoals.dailyHours * 30}h
               </div>
             )}
           </CardContent>
@@ -336,55 +432,54 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">Get notified about upcoming deadlines</p>
                 </div>
                 <Switch
-                  checked={settings.notifications.taskReminders}
-                  onCheckedChange={(checked) => saveSettings({
-                    notifications: {
-                      ...settings.notifications,
-                      taskReminders: checked
-                    }
-                  })}
+                                  checked={localSettings.notifications.taskReminders}
+                onCheckedChange={(checked) => saveSettingsToDatabase({
+                  notifications: {
+                    ...localSettings.notifications,
+                    taskReminders: checked
+                  }
+                })}
                 />
               </div>
               
-              {settings.notifications.taskReminders && (
+                             {localSettings.notifications.taskReminders && (
                 <div className="ml-6 space-y-3">
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={settings.notifications.emailNotifications}
-                      onCheckedChange={(checked) => saveSettings({
-                        notifications: {
-                          ...settings.notifications,
-                          emailNotifications: checked
-                        }
-                      })}
+                                             checked={localSettings.notifications.emailNotifications}
+                                              onCheckedChange={(checked) => saveSettingsToDatabase({
+                          notifications: {
+                            ...localSettings.notifications,
+                            emailNotifications: checked
+                          }
+                        })}
                     />
                     <Label>Email notifications</Label>
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={settings.notifications.pushNotifications}
-                      onCheckedChange={(checked) => saveSettings({
-                        notifications: {
-                          ...settings.notifications,
-                          pushNotifications: checked
-                        }
-                      })}
+                                             checked={localSettings.notifications.pushNotifications}
+                                              onCheckedChange={(checked) => saveSettingsToDatabase({
+                          notifications: {
+                            ...localSettings.notifications,
+                            pushNotifications: checked
+                          }
+                        })}
                     />
                     <Label>Push notifications</Label>
                   </div>
                   
                   <div className="space-y-2">
                     <Label>Reminder time</Label>
-                    <Input
-                      type="time"
-                      value={settings.notifications.reminderTime}
-                      onChange={(e) => saveSettings({
-                        notifications: {
-                          ...settings.notifications,
-                          reminderTime: e.target.value
-                        }
-                      })}
+                    <TimePicker
+                                             value={localSettings.notifications.reminderTime}
+                                              onChange={(time) => saveSettingsToDatabase({
+                          notifications: {
+                            ...localSettings.notifications,
+                            reminderTime: time
+                          }
+                        })}
                       className="w-32"
                     />
                   </div>
@@ -402,10 +497,10 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">Reminders to start study sessions</p>
                 </div>
                 <Switch
-                  checked={settings.notifications.studySessionAlerts}
-                  onCheckedChange={(checked) => saveSettings({
+                                   checked={localSettings.notifications.studySessionAlerts}
+                                    onCheckedChange={(checked) => saveSettingsToDatabase({
                     notifications: {
-                      ...settings.notifications,
+                      ...localSettings.notifications,
                       studySessionAlerts: checked
                     }
                   })}
@@ -468,28 +563,28 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">Automatically backup your data</p>
                 </div>
                 <Switch
-                  checked={settings.dataManagement.autoBackup}
-                  onCheckedChange={(checked) => saveSettings({
-                    dataManagement: {
-                      ...settings.dataManagement,
-                      autoBackup: checked
-                    }
-                  })}
+                                   checked={localSettings.dataManagement.autoBackup}
+                                    onCheckedChange={(checked) => saveSettingsToDatabase({
+                  dataManagement: {
+                    ...localSettings.dataManagement,
+                    autoBackup: checked
+                  }
+                })}
                 />
               </div>
               
-              {settings.dataManagement.autoBackup && (
+                             {localSettings.dataManagement.autoBackup && (
                 <div className="ml-6 space-y-3">
                   <div className="space-y-2">
                     <Label>Backup frequency</Label>
                     <Select
-                      value={settings.dataManagement.backupFrequency}
-                      onValueChange={(value) => saveSettings({
-                        dataManagement: {
-                          ...settings.dataManagement,
-                          backupFrequency: value
-                        }
-                      })}
+                                             value={localSettings.dataManagement.backupFrequency}
+                                              onValueChange={(value) => saveSettingsToDatabase({
+                          dataManagement: {
+                            ...localSettings.dataManagement,
+                            backupFrequency: value
+                          }
+                        })}
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue />

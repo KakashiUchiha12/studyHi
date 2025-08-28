@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { TimePicker } from "@/components/ui/time-picker"
 import { X, Plus } from "lucide-react"
 
 interface StudySession {
@@ -206,22 +207,18 @@ export function EditSessionDialog({ open, onOpenChange, session, subjects, onEdi
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startTime">Start Time</Label>
-              <Input
-                id="startTime"
-                type="time"
+              <TimePicker
                 value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                required
+                onChange={(time) => setFormData({ ...formData, startTime: time })}
+                placeholder="Select start time"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="endTime">End Time</Label>
-              <Input
-                id="endTime"
-                type="time"
+              <TimePicker
                 value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                required
+                onChange={(time) => setFormData({ ...formData, endTime: time })}
+                placeholder="Select end time"
               />
             </div>
             <div className="space-y-2">

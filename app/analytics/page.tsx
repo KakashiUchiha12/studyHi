@@ -25,50 +25,168 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { Clock, Target, BookOpen, Award, Download, ArrowLeft, HelpCircle } from "lucide-react"
-import { startOfDay, startOfWeek, endOfWeek, addWeeks, startOfMonth, endOfMonth, addMonths } from "date-fns"
+import { startOfDay, startOfWeek, endOfWeek, addWeeks, startOfMonth, endOfMonth, addMonths, addDays } from "date-fns"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { AdvancedAnalytics } from "@/components/analytics/advanced-analytics"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Plus } from "lucide-react"
+import { useStudySessions, useTestMarks, useSubjects, useTasks, useMigration } from "@/hooks"
+import { useDataSync } from "@/lib/data-sync"
 
 export default function AnalyticsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [timeRange, setTimeRange] = useState("month")
+  const [studyTimeRange, setStudyTimeRange] = useState("weekly")
+  const [testScoreRange, setTestScoreRange] = useState("weekly")
+  const [selectedMonth, setSelectedMonth] = useState(new Date()) // Current month by default
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear()) // Current year by default
   const [selectedSubject, setSelectedSubject] = useState("all")
   const [newSubjectName, setNewSubjectName] = useState("")
-  const [realData, setRealData] = useState<{
-    studySessions: any[]
-    testMarks: any[]
-    subjects: any[]
-    tasks: any[]
-  }>({
-    studySessions: [],
-    testMarks: [],
-    subjects: [],
-    tasks: [],
-  })
-
-  // Helper function to safely access localStorage (client-side only)
+  
+  // Safe localStorage utility
   const safeLocalStorage = {
-    getItem: (key: string): string | null => {
+    getItem: (key: string) => {
       if (typeof window !== 'undefined' && window.localStorage) {
-        return localStorage.getItem(key)
+        try {
+          return window.localStorage.getItem(key)
+        } catch (error) {
+          console.error('Error accessing localStorage:', error)
+          return null
+        }
       }
       return null
     },
-    setItem: (key: string, value: string): void => {
+    setItem: (key: string, value: string) => {
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(key, value)
-      }
-    },
-    removeItem: (key: string): void => {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.removeItem(key)
+        try {
+          window.localStorage.setItem(key, value)
+        } catch (error) {
+          console.error('Error setting localStorage:', error)
+        }
       }
     }
   }
+  
+  // Use database hooks
+  const {
+    studySessions,
+    loading: studySessionsLoading,
+    error: studySessionsError
+  } = useStudySessions()
+
+  const {
+    testMarks,
+    loading: testMarksLoading,
+    error: testMarksError
+  } = useTestMarks()
+
+  const {
+    subjects,
+    loading: subjectsLoading,
+    error: subjectsError,
+    createSubject
+  } = useSubjects()
+
+  const {
+    tasks,
+    loading: tasksLoading,
+    error: tasksError
+  } = useTasks()
+
+  const { autoMigrateIfNeeded } = useMigration()
+
+  // Debug logging for all fetched data
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Analytics Page Data Debug:', {
+        studySessions: {
+          count: studySessions?.length || 0,
+          loading: studySessionsLoading,
+          error: studySessionsError,
+          sample: studySessions?.slice(0, 2) || []
+        },
+        testMarks: {
+          count: testMarks?.length || 0,
+          loading: testMarksLoading,
+          error: testMarksError,
+          sample: testMarks?.slice(0, 2) || []
+        },
+        subjects: {
+          count: subjects?.length || 0,
+          loading: subjectsLoading,
+          error: subjectsError,
+          sample: subjects?.slice(0, 2) || []
+        },
+        tasks: {
+          count: tasks?.length || 0,
+          loading: tasksLoading,
+          error: tasksError,
+          sample: tasks?.slice(0, 2) || [],
+          rawTasks: tasks,
+          tasksType: typeof tasks,
+          isArray: Array.isArray(tasks)
+        }
+      })
+      
+      // Log the actual data structure
+      console.log('📊 Raw Data Structure:', {
+        studySessions: studySessions?.slice(0, 2).map(s => ({
+          id: s.id,
+          subjectId: s.subjectId,
+          startTime: s.startTime,
+          durationMinutes: s.durationMinutes,
+          startTimeType: typeof s.startTime,
+          startTimeValue: s.startTime
+        })),
+        subjects: subjects?.slice(0, 2).map(s => ({
+          id: s.id,
+          name: s.name,
+          totalChapters: s.totalChapters,
+          completedChapters: s.completedChapters
+        }))
+      })
+    }
+  }, [studySessions, testMarks, subjects, tasks, studySessionsLoading, testMarksLoading, subjectsLoading, tasksLoading, studySessionsError, testMarksError, subjectsError, tasksError])
+
+  // Combine data from all hooks
+  const realData = {
+    studySessions: studySessions || [],
+    testMarks: testMarks || [],
+    subjects: subjects || [],
+    tasks: tasks || []
+  }
+  
+  // Debug: Log what's being received from hooks
+  console.log('🔍 Analytics Page Hook Data:', {
+    studySessions: {
+      count: studySessions?.length || 0,
+      loading: studySessionsLoading,
+      error: studySessionsError,
+      sample: studySessions?.slice(0, 2) || []
+    },
+    testMarks: {
+      count: testMarks?.length || 0,
+      loading: testMarksLoading,
+      error: testMarksError,
+      sample: testMarks?.slice(0, 2) || []
+    },
+    subjects: {
+      count: subjects?.length || 0,
+      loading: subjectsLoading,
+      error: subjectsError,
+      sample: subjects?.slice(0, 2) || []
+    },
+    tasks: {
+      count: tasks?.length || 0,
+      loading: tasksLoading,
+      error: tasksError,
+      sample: tasks?.slice(0, 2) || [],
+      rawTasks: tasks,
+      tasksType: typeof tasks,
+      isArray: Array.isArray(tasks)
+    }
+  })
 
   // Helper function to convert minutes to hours and minutes format
   const convertMinutesToHoursAndMinutes = (minutes: number) => {
@@ -91,7 +209,7 @@ export default function AnalyticsPage() {
   }
 
   // Function to manually add a new subject
-  const addNewSubject = () => {
+  const addNewSubject = async () => {
     if (!newSubjectName.trim()) return
     
     const trimmedName = newSubjectName.trim()
@@ -104,32 +222,34 @@ export default function AnalyticsPage() {
       return
     }
     
-    const newSubject = {
-      id: `subject-${Date.now()}`,
+    try {
+      // Create subject using the database hook
+      await createSubject({
       name: trimmedName,
       description: `Study sessions for ${trimmedName}`,
-      materials: [],
       color: `#${Math.floor(Math.random()*16777215).toString(16)}`,
       progress: 0,
       totalChapters: 0,
       completedChapters: 0,
-      createdAt: new Date().toISOString()
-    }
-    
-    const updatedSubjects = [...realData.subjects, newSubject]
-    safeLocalStorage.setItem("subjects", JSON.stringify(updatedSubjects))
-    
-    setRealData(prev => ({
-      ...prev,
-      subjects: updatedSubjects
-    }))
-    
+        credits: 3, // Default credits
+        instructor: null, // Default null instructor
+        nextExam: new Date(), // Default to today
+        assignmentsDue: 0, // Default no assignments due
+        code: null // Default null code
+      })
+      
+      // Clear the input field
     setNewSubjectName("")
-    
-    // Dispatch custom event to trigger data updates
-    window.dispatchEvent(new CustomEvent('subject-updated'))
+      
+      // Show success message (you can add a toast notification here if needed)
+      console.log(`Subject "${trimmedName}" created successfully!`)
+    } catch (error) {
+      console.error('Failed to create subject:', error)
+      // You can add error handling here (e.g., show error message to user)
+    }
   }
 
+  // Simple authentication check
   useEffect(() => {
     if (status === "loading") return
 
@@ -137,342 +257,419 @@ export default function AnalyticsPage() {
       router.push("/auth/login")
       return
     }
+  }, [status, router])
 
-    // Load real data from localStorage with error handling
-    let studySessions: any[] = []
-    let testMarks: any[] = []
-    let subjects: any[] = []
-    let tasks: any[] = []
-    
-    try {
-      studySessions = JSON.parse(safeLocalStorage.getItem("studySessions") || "[]")
-      // CRITICAL FIX: Convert study session dates to Date objects
-      studySessions = studySessions.map((session: any) => ({
-        ...session,
-        date: new Date(session.date)
-      }))
-    } catch (error) {
-      console.error('Failed to parse study sessions:', error)
-      safeLocalStorage.removeItem("studySessions")
-      studySessions = []
-    }
-    
-    try {
-      testMarks = JSON.parse(safeLocalStorage.getItem("testMarks") || "[]")
-      // CRITICAL FIX: Convert test mark dates to Date objects
-      testMarks = testMarks.map((mark: any) => ({
-        ...mark,
-        date: new Date(mark.date)
-      }))
-    } catch (error) {
-      console.error('Failed to parse test marks:', error)
-      safeLocalStorage.removeItem("testMarks")
-      testMarks = []
-    }
-    
-    // Debug test marks data
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Test Marks Data Debug:', {
-        testMarksCount: testMarks.length,
-        testMarksSample: testMarks.slice(0, 3),
-        testMarksStructure: testMarks.length > 0 ? Object.keys(testMarks[0]) : []
-      })
-    }
-    
-    try {
-      subjects = JSON.parse(safeLocalStorage.getItem("subjects") || "[]")
-      
-      // Clean up any invalid or test subjects that might exist
-      const invalidNames = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'sad', 'das', 'test', 'Test', '']
-      const validSubjects = subjects.filter((subject: any) => {
-        // Keep only subjects that have valid structure and non-invalid names
-        return subject && 
-               subject.name && 
-               typeof subject.name === 'string' &&
-               subject.name.trim().length > 0 &&
-               !invalidNames.includes(subject.name.trim()) &&
-               subject.name.length <= 50 // Reasonable name length limit
-      })
-      
-      // If we filtered out invalid subjects, update localStorage
-      if (validSubjects.length !== subjects.length) {
-        subjects = validSubjects
-        safeLocalStorage.setItem("subjects", JSON.stringify(subjects))
-        console.log('Cleaned up invalid subjects from localStorage')
-      }
-      
-      // Create subjects dynamically from study sessions
-      subjects = createSubjectsFromSessions(studySessions, subjects)
-      
-      // Don't create default subjects - let users add them manually
-      if (subjects.length === 0) {
-        console.log('No subjects found - users should add subjects manually')
-      }
-      
-      // Update localStorage if subjects were created
-      safeLocalStorage.setItem("subjects", JSON.stringify(subjects))
-    } catch (error) {
-      console.error('Failed to parse subjects:', error)
-      safeLocalStorage.removeItem("subjects")
-      // Don't create default subjects on error
-      subjects = []
-      safeLocalStorage.setItem("subjects", JSON.stringify(subjects))
-    }
-    
-    try {
-      tasks = JSON.parse(safeLocalStorage.getItem("tasks") || "[]")
-    } catch (error) {
-      console.error('Failed to parse tasks:', error)
-              safeLocalStorage.removeItem("tasks")
-    }
-
-    setRealData({
-      studySessions,
-      testMarks,
-      subjects,
-      tasks,
-    })
-  }, [router, status])
-
-  // Set up real-time data updates
+  // Auto-migrate data if needed
   useEffect(() => {
-    const handleStorageChange = () => {
-      // Reload data when localStorage changes
-      let studySessions = JSON.parse(safeLocalStorage.getItem("studySessions") || "[]")
-      // CRITICAL FIX: Convert study session dates to Date objects
-      studySessions = studySessions.map((session: any) => ({
-        ...session,
-        date: new Date(session.date)
-      }))
-      let testMarks = JSON.parse(safeLocalStorage.getItem("testMarks") || "[]")
-      // CRITICAL FIX: Convert test mark dates to Date objects
-      testMarks = testMarks.map((mark: any) => ({
-        ...mark,
-        date: new Date(mark.date)
-      }))
-      let subjects = JSON.parse(safeLocalStorage.getItem("subjects") || "[]")
-      let tasks = JSON.parse(safeLocalStorage.getItem("tasks") || "[]")
-      
-      // Debug data loading
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Storage Change Handler - Data Loaded:', {
-          studySessionsCount: studySessions.length,
-          testMarksCount: testMarks.length,
-          subjectsCount: subjects.length,
-          tasksCount: tasks.length
-        })
-      }
-      
-      // Clean up any invalid or test subjects that might exist
-      const invalidNames = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'sad', 'das', 'test', 'Test', '']
-      const validSubjects = subjects.filter((subject: any) => {
-        // Keep only subjects that have valid structure and non-invalid names
-        return subject && 
-               subject.name && 
-               typeof subject.name === 'string' &&
-               subject.name.trim().length > 0 &&
-               !invalidNames.includes(subject.name.trim()) &&
-               subject.name.length <= 50 // Reasonable name length limit
-      })
-      
-      // If we filtered out invalid subjects, update localStorage
-      if (validSubjects.length !== subjects.length) {
-        subjects = validSubjects
-        safeLocalStorage.setItem("subjects", JSON.stringify(subjects))
-      }
-      
-      // Create subjects dynamically from study sessions
-      subjects = createSubjectsFromSessions(studySessions, subjects)
-      
-      // Ensure at least one subject exists
-      if (subjects.length === 0) {
-        const defaultSubject = {
-          id: 'general-studies',
-          name: 'General Studies',
-          color: '#0ea5e9',
-          progress: 0
-        }
-        subjects = [defaultSubject]
-      }
-      
-      // Update localStorage with any new subjects
-              safeLocalStorage.setItem("subjects", JSON.stringify(subjects))
-      
-      setRealData({
-        studySessions,
-        testMarks,
-        subjects,
-        tasks,
-      })
+    if (status === "authenticated") {
+      autoMigrateIfNeeded()
     }
+  }, [status, autoMigrateIfNeeded])
 
-    // Set up interval to check for data updates every 5 seconds
-    const intervalId = setInterval(handleStorageChange, 5000)
-    
-    // Also listen for custom events from the dashboard
-    const handleDataUpdate = () => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Data update event received, refreshing data...')
-      }
-      handleStorageChange()
-    }
-    
-    window.addEventListener('study-session-updated', handleDataUpdate)
-    window.addEventListener('task-updated', handleDataUpdate)
-    window.addEventListener('test-mark-updated', handleDataUpdate)
-    window.addEventListener('subject-updated', handleDataUpdate)
+  // Use global data synchronization system
+  useDataSync('study-session-updated', () => {
+    console.log('Study session updated, analytics page will refresh data...')
+    // Force a re-render to get fresh data
+    setStudyTimeRange(prev => prev)
+  })
 
-    return () => {
-      clearInterval(intervalId)
-      window.removeEventListener('study-session-updated', handleDataUpdate)
-      window.removeEventListener('task-updated', handleDataUpdate)
-      window.removeEventListener('test-mark-updated', handleDataUpdate)
-      window.removeEventListener('subject-updated', handleDataUpdate)
-    }
-  }, [])
+  useDataSync('subject-updated', () => {
+    console.log('Subject updated, analytics page will refresh data...')
+    // Force a re-render to get fresh data
+    setSelectedSubject(prev => prev)
+  })
 
-  // One-time cleanup of old hardcoded data
-  useEffect(() => {
-    // Check if there are any old hardcoded subjects in localStorage and clear them
-    try {
-      const storedSubjects = JSON.parse(safeLocalStorage.getItem("subjects") || "[]")
-      const hardcodedNames = ['Mathematics', 'Physics', 'Chemistry', 'Biology']
-      const hasHardcodedSubjects = storedSubjects.some((subject: any) => hardcodedNames.includes(subject.name))
-      
-      // Clean up any invalid or test subjects
-      const invalidNames = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'sad', 'das', 'test', 'Test', '']
-      const hasInvalidSubjects = storedSubjects.some((subject: any) => 
-        !subject || 
-        !subject.name || 
-        typeof subject.name !== 'string' ||
-        subject.name.trim().length === 0 ||
-        invalidNames.includes(subject.name.trim()) ||
-        subject.name.length > 50
-      )
-      
-      if (hasInvalidSubjects) {
-        // Filter out invalid subjects
-        const validSubjects = storedSubjects.filter((subject: any) => {
-          return subject && 
-                 subject.name && 
-                 typeof subject.name === 'string' &&
-                 subject.name.trim().length > 0 &&
-                 !invalidNames.includes(subject.name.trim()) &&
-                 subject.name.length <= 50
-        })
-        
-        // If no valid subjects remain, don't create defaults
-        const finalSubjects = validSubjects
-        
-        safeLocalStorage.setItem("subjects", JSON.stringify(finalSubjects))
-        console.log('Cleaned up invalid subjects and set valid subjects')
-        
-        // Update the local state to reflect the change
-        setRealData(prev => ({
-          ...prev,
-          subjects: finalSubjects
-        }))
-      }
-    } catch (error) {
-      console.error('Error during cleanup:', error)
-    }
-  }, [])
+  useDataSync('all-data-refresh', () => {
+    console.log('All data refresh requested, analytics page will refresh...')
+    // Force a complete refresh
+    setStudyTimeRange(prev => prev)
+    setSelectedSubject(prev => prev)
+  })
 
-  // Use real subjects from user data only - filter out any old hardcoded subjects
-  let subjects = (realData.subjects || []).filter(subject => {
+
+  // Use subjects from database hooks - filter out any old hardcoded subjects
+  const filteredSubjects = (subjects || []).filter(subject => {
     // Filter out any old hardcoded subjects that might still exist
     const hardcodedNames = ['Mathematics', 'Physics', 'Chemistry', 'Biology']
     return !hardcodedNames.includes(subject.name)
   })
-  
-  // Don't ensure subjects exist - let users add them manually
-  // Subjects array can be empty
 
 
 
   // Generate dynamic study time data from real sessions
   const studyTimeData = useMemo(() => {
-    if (realData.studySessions.length === 0) return []
+    console.log('🔍 StudyTimeData Debug:', {
+      studyTimeRange,
+      totalSessions: realData.studySessions.length,
+      sessionsSample: realData.studySessions.slice(0, 3).map(s => ({
+        id: s.id,
+        subjectId: s.subjectId,
+        startTime: s.startTime,
+        durationMinutes: s.durationMinutes,
+        startTimeType: typeof s.startTime,
+        startTimeValue: s.startTime
+      })),
+      subjectsCount: subjects.length,
+      subjectsSample: subjects.map(s => ({ id: s.id, name: s.name }))
+    })
     
-    const weeks = 4
+    if (realData.studySessions.length === 0) {
+      console.log('❌ No study sessions found in realData')
+      return []
+    }
+    
     const data: any[] = []
-    const today = startOfDay(new Date()) // Normalize today to start of day
+    
+    if (studyTimeRange === "weekly") {
+      // Weekly view - last 4 weeks
+      const weeks = 4
+    
+    // Find the earliest and latest session dates to determine the time range
+    const sessionDates = realData.studySessions.map(s => new Date(s.startTime)).filter(d => !isNaN(d.getTime()))
+    
+    if (sessionDates.length === 0) {
+      console.log('❌ No valid session dates found')
+      return []
+    }
+    
+    const earliestDate = new Date(Math.min(...sessionDates.map(d => d.getTime())))
+    const latestDate = new Date(Math.max(...sessionDates.map(d => d.getTime())))
+    
+    console.log('📅 Session Date Range:', {
+      earliest: earliestDate.toISOString(),
+      latest: latestDate.toISOString(),
+      earliestFormatted: earliestDate.toDateString(),
+      latestFormatted: latestDate.toDateString()
+    })
+    
+    // Calculate weeks from the earliest session date
+    const baseDate = new Date(earliestDate)
+    baseDate.setDate(baseDate.getDate() - (baseDate.getDay() || 7)) // Start from Monday of that week
     
     for (let i = weeks - 1; i >= 0; i--) {
-      const weekStart = startOfDay(new Date())
-      weekStart.setDate(weekStart.getDate() - (i * 7))
-      const weekEnd = startOfDay(new Date(weekStart))
-      weekEnd.setDate(weekEnd.getDate() + 6)
+      // Calculate week boundaries from the base date
+      const weekStart = new Date(baseDate)
+      weekStart.setDate(baseDate.getDate() + (i * 7))
+      weekStart.setHours(0, 0, 0, 0) // Start of day
+      
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999) // End of day
+      
+      console.log(`📅 Week ${weeks - i}:`, {
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        weekStartDate: weekStart.toDateString(),
+        weekEndDate: weekEnd.toDateString()
+      })
       
       const weekSessions = realData.studySessions.filter((session: any) => {
-        const sessionDate = startOfDay(new Date(session.date)) // Normalize session date to start of day
-        return sessionDate >= weekStart && sessionDate <= weekEnd
+        try {
+          // Handle both Date objects and ISO strings
+          let sessionDate: Date
+          if (session.startTime instanceof Date) {
+            sessionDate = session.startTime
+          } else if (typeof session.startTime === 'string') {
+            sessionDate = new Date(session.startTime)
+          } else {
+            console.error(`❌ Invalid startTime format:`, session.startTime)
+            return false
+          }
+          
+          // Check if date is valid
+          if (isNaN(sessionDate.getTime())) {
+            console.error(`❌ Invalid date parsed:`, session.startTime, sessionDate)
+            return false
+          }
+          
+          const isInWeek = sessionDate >= weekStart && sessionDate <= weekEnd
+          
+          return isInWeek
+        } catch (error) {
+          console.error(`❌ Error parsing session date:`, session.startTime, error)
+          return false
+        }
       })
+      
+      console.log(`📈 Week ${weeks - i} sessions:`, weekSessions.length)
       
       const weekData: any = { date: `Week ${weeks - i}` }
       
       if (subjects.length > 0) {
         subjects.forEach(subject => {
-          const subjectSessions = weekSessions.filter((s: any) => s.subject === subject.name)
-          const totalHours = subjectSessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0) / 60
+          const subjectSessions = weekSessions.filter((s: any) => s.subjectId === subject.id)
+          const totalHours = subjectSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) / 60
           weekData[subject.name] = Math.round(totalHours * 10) / 10
         })
       } else {
         // If no subjects, show total study time
-        const totalHours = weekSessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0) / 60
+        const totalHours = weekSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) / 60
         weekData.totalHours = Math.round(totalHours * 10) / 10
       }
       
       data.push(weekData)
+      }
+         } else if (studyTimeRange === "monthly") {
+       // Monthly view - selected month with each day
+       const selectedMonthDate = startOfDay(selectedMonth)
+       const currentMonth = selectedMonthDate.getMonth()
+       const currentYear = selectedMonthDate.getFullYear()
+       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+       
+       console.log('📅 Monthly View for Study Time:', {
+         month: selectedMonthDate.toLocaleDateString('en-US', { month: 'long' }),
+         year: currentYear,
+         daysInMonth: daysInMonth,
+         selectedDate: selectedMonthDate.toISOString()
+       })
+       
+       for (let day = 1; day <= daysInMonth; day++) {
+         const dayDate = new Date(currentYear, currentMonth, day)
+         dayDate.setHours(0, 0, 0, 0) // Start of day
+         
+         const dayEnd = new Date(dayDate)
+         dayEnd.setHours(23, 59, 59, 999) // End of day
+         
+         const daySessions = realData.studySessions.filter((session: any) => {
+           try {
+             let sessionDate: Date
+             if (session.startTime instanceof Date) {
+               sessionDate = session.startTime
+             } else if (typeof session.startTime === 'string') {
+               sessionDate = new Date(session.startTime)
+             } else {
+               return false
+             }
+             
+             if (isNaN(sessionDate.getTime())) {
+               return false
+             }
+             
+             // Check if session is from selected month and specific day
+             return sessionDate.getMonth() === currentMonth && 
+                    sessionDate.getFullYear() === currentYear && 
+                    sessionDate.getDate() === day
+           } catch (error) {
+             return false
+           }
+         })
+         
+         const dayData: any = { 
+           date: dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+         }
+         
+         if (subjects.length > 0) {
+           subjects.forEach(subject => {
+             const subjectSessions = daySessions.filter((s: any) => s.subjectId === subject.id)
+             const totalHours = subjectSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) / 60
+             dayData[subject.name] = Math.round(totalHours * 10) / 10
+           })
+         } else {
+           const totalHours = daySessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) / 60
+           dayData.totalHours = Math.round(totalHours * 10) / 10
+         }
+         
+         data.push(dayData)
+       }
+    } else if (studyTimeRange === "yearly") {
+      // Yearly view - all 12 months of the selected year
+      const yearToProcess = selectedYear
+      
+      console.log(`📅 Processing year for study time:`, {
+        year: yearToProcess
+      })
+      
+      // Generate data for each month of the selected year
+      for (let month = 0; month < 12; month++) {
+        const monthStart = startOfMonth(new Date(yearToProcess, month, 1))
+        const monthEnd = endOfMonth(new Date(yearToProcess, month, 1))
+        const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' })
+        
+        const monthSessions = realData.studySessions.filter((session: any) => {
+          try {
+            let sessionDate: Date
+            if (session.startTime instanceof Date) {
+              sessionDate = session.startTime
+            } else if (typeof session.startTime === 'string') {
+              sessionDate = new Date(session.startTime)
+            } else {
+              return false
+            }
+            
+            if (isNaN(sessionDate.getTime())) {
+              return false
+            }
+            
+            const isInMonth = sessionDate >= monthStart && sessionDate < monthEnd
+            return isInMonth
+          } catch (error) {
+            return false
+          }
+        })
+        
+        const monthData: any = { date: monthName }
+        
+        if (subjects.length > 0) {
+          subjects.forEach(subject => {
+            const subjectSessions = monthSessions.filter((s: any) => s.subjectId === subject.id)
+            const totalHours = subjectSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) / 60
+            monthData[subject.name] = Math.round(totalHours * 10) / 10
+          })
+        } else {
+          const totalHours = monthSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) / 60
+          monthData.totalHours = Math.round(totalHours * 10) / 10
+        }
+        
+        data.push(monthData)
+      }
     }
     
+    console.log('📊 Final studyTimeData:', data)
     return data
-  }, [realData.studySessions, subjects])
+  }, [realData.studySessions, subjects, studyTimeRange, selectedMonth, selectedYear])
 
   // Generate dynamic test scores data from real test marks
   const testScoresData = useMemo(() => {
-    if (realData.testMarks.length === 0 || subjects.length === 0) return []
-    
-    // Debug logging to help identify issues
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Test Scores Data Debug:', {
+    console.log('🔍 Test Scores Data Generation:', {
+      testScoreRange,
         testMarksCount: realData.testMarks.length,
         subjectsCount: subjects.length,
-        testMarksSample: realData.testMarks.slice(0, 3).map(t => ({
-          id: t.id,
-          subjectName: t.subjectName,
-          marksObtained: t.marksObtained,
-          totalMarks: t.totalMarks,
-          date: t.date
-        })),
-        subjectsSample: subjects.map(s => ({ name: s.name, id: s.id }))
-      })
+      testMarksRaw: realData.testMarks,
+      subjectsRaw: subjects,
+      testMarksLoading,
+      testMarksError
+    })
+    
+    if (realData.testMarks.length === 0 || subjects.length === 0) {
+      console.log('❌ No test marks or subjects available for test scores data')
+      return []
     }
     
-    const months = 4
     const data: any[] = []
-    const today = startOfDay(new Date()) // Normalize today to start of day
     
-    for (let i = months - 1; i >= 0; i--) {
-      const monthStart = startOfMonth(addMonths(today, -i))
-      const monthEnd = endOfMonth(addMonths(today, -i))
+    if (testScoreRange === "weekly") {
+      // Weekly view - current week with each day
+      const today = startOfDay(new Date())
+      const weekStart = startOfWeek(today, { weekStartsOn: 1 }) // Monday
+      const weekEnd = endOfWeek(today, { weekStartsOn: 1 }) // Sunday
       
-      const monthTests = realData.testMarks.filter((test: any) => {
-        const testDate = startOfDay(new Date(test.date)) // Normalize test date to start of day
-        return testDate >= monthStart && testDate < monthEnd
+      console.log(`📅 Processing current week:`, {
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        today: today.toISOString()
       })
       
-      const monthData: any = { date: monthStart.toLocaleDateString('en-US', { month: 'short' }) }
+      // Generate data for each day of the current week
+      for (let i = 0; i < 7; i++) {
+        const dayDate = addDays(weekStart, i)
+        const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'short' })
+        
+        const dayTests = realData.testMarks.filter((test: any) => {
+          const testDate = startOfDay(new Date(test.testDate))
+          const isSameDay = testDate.getDate() === dayDate.getDate() && 
+                           testDate.getMonth() === dayDate.getMonth() && 
+                           testDate.getFullYear() === dayDate.getFullYear()
+          
+          return isSameDay
+        })
+        
+        const dayData: any = { date: dayName }
+        
+        subjects.forEach(subject => {
+          const subjectTests = dayTests.filter((t: any) => t.subjectId === subject.id)
+          
+          if (subjectTests.length > 0) {
+            const avgScore = subjectTests.reduce((sum: number, t: any) => {
+              const percentage = (t.score / t.maxScore) * 100
+              console.log(`📊 Day ${dayName} - Subject ${subject.name}: score=${t.score}, maxScore=${t.maxScore}, percentage=${percentage}`)
+              return sum + percentage
+            }, 0) / subjectTests.length
+            dayData[subject.name] = Math.round(avgScore)
+          } else {
+            dayData[subject.name] = 0
+          }
+        })
+        
+        data.push(dayData)
+      }
+             } else if (testScoreRange === "monthly") {
+      // Monthly view - selected month with each day
+      const selectedMonthDate = startOfDay(selectedMonth)
+      const currentMonth = selectedMonthDate.getMonth()
+      const currentYear = selectedMonthDate.getFullYear()
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+      
+      console.log(`📅 Processing selected month:`, {
+        month: selectedMonthDate.toLocaleDateString('en-US', { month: 'long' }),
+        year: currentYear,
+        daysInMonth: daysInMonth,
+        selectedDate: selectedMonthDate.toISOString()
+      })
+      
+      // Generate data for each day of the selected month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayDate = new Date(currentYear, currentMonth, day)
+        const dayName = dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        
+        const dayTests = realData.testMarks.filter((test: any) => {
+          const testDate = startOfDay(new Date(test.testDate))
+          const isSameDay = testDate.getDate() === dayDate.getDate() && 
+                           testDate.getMonth() === dayDate.getMonth() && 
+                           testDate.getFullYear() === dayDate.getFullYear()
+          
+          return isSameDay
+        })
+        
+        const dayData: any = { date: dayName }
+        
+        subjects.forEach(subject => {
+          const subjectTests = dayTests.filter((t: any) => t.subjectId === subject.id)
+          
+          if (subjectTests.length > 0) {
+            const avgScore = subjectTests.reduce((sum: number, t: any) => {
+              const percentage = (t.score / t.maxScore) * 100
+              console.log(`📊 Day ${dayName} - Subject ${subject.name}: score=${t.score}, maxScore=${t.maxScore}, percentage=${percentage}`)
+              return sum + percentage
+            }, 0) / subjectTests.length
+            dayData[subject.name] = Math.round(avgScore)
+          } else {
+            dayData[subject.name] = 0
+          }
+        })
+        
+        data.push(dayData)
+      }
+    } else if (testScoreRange === "yearly") {
+      // Yearly view - all 12 months of the selected year
+      const yearToProcess = selectedYear
+      
+      console.log(`📅 Processing year:`, {
+        year: yearToProcess
+      })
+      
+      // Generate data for each month of the selected year
+      for (let month = 0; month < 12; month++) {
+        const monthStart = startOfMonth(new Date(yearToProcess, month, 1))
+        const monthEnd = endOfMonth(new Date(yearToProcess, month, 1))
+        const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' })
+      
+      const monthTests = realData.testMarks.filter((test: any) => {
+          const testDate = startOfDay(new Date(test.testDate))
+          const isInMonth = testDate >= monthStart && testDate < monthEnd
+          
+          return isInMonth
+        })
+        
+        const monthData: any = { date: monthName }
       
       subjects.forEach(subject => {
-        // CORRECTED: Use subjectName for filtering as per TestMark interface
-        const subjectTests = monthTests.filter((t: any) => t.subjectName === subject.name)
+        const subjectTests = monthTests.filter((t: any) => t.subjectId === subject.id)
+        
         if (subjectTests.length > 0) {
           const avgScore = subjectTests.reduce((sum: number, t: any) => {
-            // CORRECTED: Use marksObtained and totalMarks as per TestMark interface
-            const score = t.marksObtained || 0
-            const maxScore = t.totalMarks || 1
-            return sum + (score / maxScore * 100)
+              const percentage = (t.score / t.maxScore) * 100
+              console.log(`📊 Month ${monthName} - Subject ${subject.name}: score=${t.score}, maxScore=${t.maxScore}, percentage=${percentage}`)
+              return sum + percentage
           }, 0) / subjectTests.length
           monthData[subject.name] = Math.round(avgScore)
         } else {
@@ -481,31 +678,60 @@ export default function AnalyticsPage() {
       })
       
       data.push(monthData)
+      }
     }
     
+    console.log('📊 Final testScoresData:', data)
     return data
-  }, [realData.testMarks, subjects])
+  }, [realData.testMarks, subjects, testScoreRange, selectedMonth, selectedYear])
 
   // Generate dynamic subject progress data from real sessions and chapter progress
   const subjectProgressData = useMemo(() => {
-    if (subjects.length === 0) return []
+    console.log('🔍 Subject Progress Data Debug:', {
+      totalSubjects: subjects.length,
+      totalSessions: realData.studySessions.length,
+      subjectsSample: subjects.map(s => ({
+        id: s.id,
+        name: s.name,
+        totalChapters: s.totalChapters,
+        completedChapters: s.completedChapters
+      })),
+      sessionsSample: realData.studySessions.slice(0, 3).map(s => ({
+        id: s.id,
+        subjectId: s.subjectId,
+        durationMinutes: s.durationMinutes
+      }))
+    })
     
-    return subjects.map((subject) => {
-      const subjectSessions = realData.studySessions.filter((s: any) => s.subject === subject.name)
-      const studyTime = subjectSessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0)
+    return subjects.map(subject => {
+      const subjectSessions = realData.studySessions.filter((s: any) => s.subjectId === subject.id)
+      const studyTime = subjectSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0)
       
-      // Use actual chapter progress from subject data instead of tasks
-      const progress = subject.progress || 0
+      // Calculate progress based on chapter completion, not study sessions
+      const totalChapters = subject.totalChapters || 0
+      const completedChapters = subject.completedChapters || 0
+      const progressPercentage = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0
+      
+      console.log(`📚 Subject ${subject.name} Progress:`, {
+        subjectId: subject.id,
+        sessions: subjectSessions.length,
+        studyTimeMinutes: studyTime,
+        studyTimeFormatted: convertMinutesToHoursAndMinutes(studyTime),
+        totalChapters,
+        completedChapters,
+        progressPercentage,
+        sessionIds: subjectSessions.map(s => s.id)
+      })
       
       return {
+        id: subject.id,
         name: subject.name,
-        completed: Math.round(progress),
-        total: 100,
-        color: subject.color || '#0ea5e9',
+        color: subject.color,
+        progress: progressPercentage, // Based on chapter completion
         studyTime: convertMinutesToHoursAndMinutes(studyTime),
         sessions: subjectSessions.length,
-        // Remove task-related data - chapters are managed separately
-        chapters: `${subject.completedChapters || 0}/${subject.totalChapters || 0}`
+        chapters: totalChapters,
+        completedChapters: completedChapters
       }
     })
   }, [subjects, realData.studySessions, convertMinutesToHoursAndMinutes])
@@ -583,26 +809,26 @@ export default function AnalyticsPage() {
     
     // Daily goals - based on today's study sessions
     const todaySessions = realData.studySessions.filter((s: any) => {
-      const sessionDate = new Date(s.date)
+      const sessionDate = new Date(s.startTime)
       return sessionDate.toDateString() === today.toDateString()
     })
-    const dailyStudyTime = todaySessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0)
+    const dailyStudyTime = todaySessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) // Use durationMinutes instead of duration
     const dailyAchievement = Math.min(100, (dailyStudyTime / dailyGoalMinutes) * 100)
     
     // Weekly goals - based on this week's study sessions
     const weekSessions = realData.studySessions.filter((s: any) => {
-      const sessionDate = new Date(s.date)
+      const sessionDate = new Date(s.startTime)
       return sessionDate >= weekStart && sessionDate <= today
     })
-    const weeklyStudyTime = weekSessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0)
+    const weeklyStudyTime = weekSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) // Use durationMinutes instead of duration
     const weeklyAchievement = Math.min(100, (weeklyStudyTime / weeklyGoalMinutes) * 100)
     
     // Monthly goals - based on this month's study sessions
     const monthSessions = realData.studySessions.filter((s: any) => {
-      const sessionDate = new Date(s.date)
+      const sessionDate = new Date(s.startTime)
       return sessionDate >= monthStart && sessionDate <= today
     })
-    const monthlyStudyTime = monthSessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0)
+    const monthlyStudyTime = monthSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0) // Use durationMinutes instead of duration
     const monthlyAchievement = Math.min(100, (monthlyStudyTime / monthlyGoalMinutes) * 100)
     
     // Debug logging for goal achievements
@@ -657,41 +883,73 @@ export default function AnalyticsPage() {
 
   // Generate dynamic study distribution data from real sessions
   const studyDistribution = useMemo(() => {
+    // Debug logging for subjects and study sessions
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Study Distribution Debug:', {
+        subjectsCount: subjects.length,
+        subjects: subjects.map(s => ({ id: s.id, name: s.name, color: s.color })),
+        studySessionsCount: realData.studySessions.length,
+        studySessionsSample: realData.studySessions.slice(0, 3).map(s => ({
+          id: s.id,
+          subjectId: s.subjectId,
+          durationMinutes: s.durationMinutes
+        }))
+      })
+    }
+
     if (subjects.length === 0) {
       // If no subjects, group all sessions as "General Study"
-      if (realData.studySessions.length > 0) {
-        const totalStudyTime = realData.studySessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0)
-        return [{
-          name: "General Study",
-          value: Math.round(totalStudyTime / 60 * 10) / 10,
-          color: "#0ea5e9",
-          sessions: realData.studySessions.length,
-          avgSessionLength: Math.round((totalStudyTime / realData.studySessions.length / 60) * 10) / 10
-        }]
-      }
-      return []
+      const generalSessions = realData.studySessions.filter((s: any) => !s.subjectId)
+      const generalStudyTime = generalSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0)
+      
+      return [{
+        name: "General Study",
+        color: "#6b7280",
+        value: Math.round((generalStudyTime / 60) * 10) / 10, // Convert to hours for chart
+        studyTime: convertMinutesToHoursAndMinutes(generalStudyTime),
+        sessions: generalSessions.length,
+        avgSessionLength: generalSessions.length > 0
+          ? Math.round((generalStudyTime / generalSessions.length / 60) * 10) / 10
+          : 0
+      }]
     }
-    
-    return subjects.map((subject) => {
-      const subjectSessions = realData.studySessions.filter((s: any) => s.subject === subject.name)
-      const totalStudyTime = subjectSessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0)
+
+    return subjects.map((subject, index) => {
+      const subjectSessions = realData.studySessions.filter((s: any) => s.subjectId === subject.id)
+      const totalStudyTime = subjectSessions.reduce((sum: number, s: any) => sum + (s.durationMinutes || 0), 0)
+      
+      // Debug logging for subject study time calculation
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📚 Subject Study Time: ${subject.name}`, {
+          subjectId: subject.id,
+          subjectName: subject.name,
+          sessionsCount: subjectSessions.length,
+          totalMinutes: totalStudyTime,
+          totalHours: Math.round((totalStudyTime / 60) * 10) / 10
+        })
+      }
+      
+      // Use predefined colors array for consistent coloring across charts
+      const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1']
+      const subjectColor = colors[index % colors.length]
       
       return {
-    name: subject.name,
-        value: Math.round(totalStudyTime / 60 * 10) / 10,
-        color: subject.color || '#0ea5e9',
+        name: subject.name,
+        color: subjectColor, // Assign distinct color to each subject
+        value: Math.round((totalStudyTime / 60) * 10) / 10, // Convert to hours for chart
+        studyTime: convertMinutesToHoursAndMinutes(totalStudyTime),
         sessions: subjectSessions.length,
-        avgSessionLength: subjectSessions.length > 0 
-          ? Math.round((totalStudyTime / subjectSessions.length / 60) * 10) / 10 
+        avgSessionLength: subjectSessions.length > 0
+          ? Math.round((totalStudyTime / subjectSessions.length / 60) * 10) / 10
           : 0
       }
-    }).filter(subject => subject.value > 0) // Only show subjects with study time
+    })
   }, [subjects, realData.studySessions])
 
   // Calculate total study time from real data
   const totalStudyTime = useMemo(() => {
-    return realData.studySessions.reduce((total: number, session: any) => {
-      return total + (session.duration || 0)
+    return realData.studySessions.reduce((sum: number, session: any) => {
+      return sum + (session.durationMinutes || 0)
     }, 0)
   }, [realData.studySessions])
 
@@ -705,23 +963,25 @@ export default function AnalyticsPage() {
         testMarksCount: realData.testMarks.length,
         testMarksSample: realData.testMarks.slice(0, 3).map(t => ({
           id: t.id,
-          marksObtained: t.marksObtained,
-          totalMarks: t.totalMarks,
-          percentage: t.percentage,
-          subjectName: t.subjectName
+          marksObtained: t.score,
+          totalMarks: t.maxScore,
+          percentage: (t.score / t.maxScore) * 100,
+          subjectName: `Subject ${t.subjectId}` // Using subjectId since subjectName doesn't exist
         }))
       })
     }
     
     const totalScore = realData.testMarks.reduce((sum: number, test: any) => {
-      // Use percentage if available, otherwise calculate from marks
-      if (test.percentage !== undefined && test.percentage !== null) {
-        return sum + test.percentage
-      } else {
-        const marksObtained = test.marksObtained || 0
-        const totalMarks = test.totalMarks || 1
-        return sum + (marksObtained / totalMarks * 100)
+      // Calculate percentage from score and maxScore (database fields)
+      const marksObtained = Number(test.score) || 0
+      const totalMarks = Number(test.maxScore) || 1
+      
+      if (totalMarks > 0) {
+        const percentage = (marksObtained / totalMarks) * 100
+        console.log(`📊 Test Score: ${marksObtained}/${totalMarks} = ${percentage}%`)
+        return sum + percentage
       }
+      return sum
     }, 0)
     
     const result = Math.round(totalScore / realData.testMarks.length)
@@ -747,10 +1007,19 @@ export default function AnalyticsPage() {
     return subjects.reduce((sum, subject) => sum + (subject.totalChapters || 0), 0)
   }, [subjects])
 
-  if (status === "loading") {
+  if (status === "loading" || studySessionsLoading || testMarksLoading || subjectsLoading || tasksLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading analytics data...</p>
+          <div className="mt-2 text-sm text-muted-foreground">
+            {studySessionsLoading && <div>Loading study sessions...</div>}
+            {testMarksLoading && <div>Loading test marks...</div>}
+            {subjectsLoading && <div>Loading subjects...</div>}
+            {tasksLoading && <div>Loading tasks...</div>}
+          </div>
+        </div>
       </div>
     )
   }
@@ -781,6 +1050,27 @@ export default function AnalyticsPage() {
       </header>
 
       <div className="container mx-auto p-4 sm:p-6 space-y-6">
+        {/* Error Display */}
+        {(studySessionsError || testMarksError || subjectsError || tasksError) && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-4">
+            <h3 className="text-lg font-semibold text-destructive mb-2">Data Loading Errors</h3>
+            <div className="space-y-2 text-sm">
+              {studySessionsError && (
+                <div className="text-destructive">Study Sessions: {studySessionsError}</div>
+              )}
+              {testMarksError && (
+                <div className="text-destructive">Test Marks: {testMarksError}</div>
+              )}
+              {subjectsError && (
+                <div className="text-destructive">Subjects: {subjectsError}</div>
+              )}
+              {tasksError && (
+                <div className="text-destructive">Tasks: {tasksError}</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Advanced Analytics Component */}
         <AdvancedAnalytics data={realData} />
         
@@ -792,15 +1082,14 @@ export default function AnalyticsPage() {
             <p className="text-muted-foreground">Track your academic progress and performance</p>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={timeRange} onValueChange={setTimeRange}>
+            <Select value={studyTimeRange} onValueChange={setStudyTimeRange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="quarter">This Quarter</SelectItem>
-                <SelectItem value="year">This Year</SelectItem>
+                <SelectItem value="weekly">This Week</SelectItem>
+                <SelectItem value="monthly">This Month</SelectItem>
+                <SelectItem value="yearly">This Year</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm">
@@ -1040,10 +1329,10 @@ export default function AnalyticsPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium">{subject.name}</span>
                           <span className="text-sm text-muted-foreground">
-                              {subject.completed}% complete
+                              {subject.progress}% complete
                           </span>
                           </div>
-                          <Progress value={subject.completed} className="h-2" />
+                          <Progress value={subject.progress} className="h-2" />
                           <div className="flex justify-between text-xs text-muted-foreground">
                             <span>{subject.sessions} sessions</span>
                             <span>{subject.studyTime} studied</span>
@@ -1093,6 +1382,21 @@ export default function AnalyticsPage() {
                           ]}
                         />
                       <Legend />
+                      
+                      {/* Subject Colors Legend */}
+                      <div className="mt-4 flex flex-wrap justify-center gap-3">
+                        {studyDistribution.map((entry, index) => (
+                          <div key={index} className="flex items-center gap-2 text-sm">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: entry.color }}
+                            />
+                            <span className="text-muted-foreground">
+                              {entry.name}: {entry.studyTime}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </PieChart>
                     ) : (
                       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -1111,7 +1415,92 @@ export default function AnalyticsPage() {
           <TabsContent value="study-time" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Weekly Study Hours</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Study Hours</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={studyTimeRange === "weekly" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setStudyTimeRange("weekly")}
+                    >
+                      Weekly
+                    </Button>
+                    <Button
+                      variant={studyTimeRange === "monthly" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setStudyTimeRange("monthly")}
+                    >
+                      Monthly
+                    </Button>
+                    <Button
+                      variant={studyTimeRange === "yearly" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setStudyTimeRange("yearly")}
+                    >
+                      Yearly
+                    </Button>
+                    
+                    {/* Month Navigation (only show when monthly view is selected) */}
+                    {studyTimeRange === "monthly" && (
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
+                        >
+                          ←
+                        </Button>
+                        <span className="text-sm font-medium min-w-[80px] text-center">
+                          {selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                        >
+                          →
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMonth(new Date())}
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Year Navigation (only show when yearly view is selected) */}
+                    {studyTimeRange === "yearly" && (
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedYear(selectedYear - 1)}
+                        >
+                          ←
+                        </Button>
+                        <span className="text-sm font-medium min-w-[60px] text-center">
+                          {selectedYear}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedYear(selectedYear + 1)}
+                        >
+                          →
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedYear(new Date().getFullYear())}
+                        >
+                          Current
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={400}>
@@ -1120,16 +1509,38 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip 
+                      formatter={(value, name) => [`${value}h`, name]}
+                      labelFormatter={(label) => `${label}`}
+                    />
                     <Legend />
-                        {subjects.length > 0 ? subjects.map((subject) => (
+                        {subjects.length > 0 ? subjects.map((subject, index) => {
+                          // Generate a unique color for each subject - force different colors
+                          const colors = [
+                            '#3b82f6', // Blue
+                            '#ef4444', // Red
+                            '#10b981', // Green
+                            '#f59e0b', // Yellow
+                            '#8b5cf6', // Purple
+                            '#06b6d4', // Cyan
+                            '#f97316', // Orange
+                            '#ec4899', // Pink
+                            '#84cc16', // Lime
+                            '#6366f1'  // Indigo
+                          ]
+                          const subjectColor = colors[index % colors.length]
+                          console.log(`🎨 Subject ${subject.name} color:`, subjectColor, 'index:', index)
+                          
+                          return (
                           <Bar 
                             key={subject.name}
                             dataKey={subject.name} 
-                            fill={subject.color} 
+                              fill={subjectColor}
+                              radius={[4, 4, 0, 0]}
                           />
-                        )) : (
-                          <Bar dataKey="totalHours" fill="#0ea5e9" />
+                          )
+                        }) : (
+                          <Bar dataKey="totalHours" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
                         )}
                   </BarChart>
                     ) : (
@@ -1141,6 +1552,39 @@ export default function AnalyticsPage() {
                       </div>
                     )}
                 </ResponsiveContainer>
+                
+                {/* Subject Color Legend */}
+                {subjects.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border/30">
+                    <h5 className="text-sm font-medium text-muted-foreground mb-3">Subject Colors:</h5>
+                    <div className="flex flex-wrap gap-3">
+                      {subjects.map((subject, index) => {
+                        const colors = [
+                          '#3b82f6', // Blue
+                          '#ef4444', // Red
+                          '#10b981', // Green
+                          '#f59e0b', // Yellow
+                          '#8b5cf6', // Purple
+                          '#06b6d4', // Cyan
+                          '#f97316', // Orange
+                          '#ec4899', // Pink
+                          '#84cc16', // Lime
+                          '#6366f1'  // Indigo
+                        ]
+                        const subjectColor = colors[index % colors.length]
+                        return (
+                          <div key={subject.id} className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: subjectColor }}
+                            ></div>
+                            <span className="text-xs text-muted-foreground">{subject.name}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1148,7 +1592,92 @@ export default function AnalyticsPage() {
           <TabsContent value="performance" className="space-y-4">
             <Card>
               <CardHeader>
+                <div className="flex items-center justify-between">
                 <CardTitle>Test Score Trends</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant={testScoreRange === "weekly" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setTestScoreRange("weekly")}
+                    >
+                      Weekly
+                    </Button>
+                    <Button
+                      variant={testScoreRange === "monthly" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setTestScoreRange("monthly")}
+                    >
+                      Monthly
+                    </Button>
+                    <Button
+                      variant={testScoreRange === "yearly" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setTestScoreRange("yearly")}
+                    >
+                      Yearly
+                    </Button>
+                    
+                    {/* Month Navigation (only show when monthly view is selected) */}
+                    {testScoreRange === "monthly" && (
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
+                        >
+                          ←
+                        </Button>
+                        <span className="text-sm font-medium min-w-[80px] text-center">
+                          {selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+                        >
+                          →
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMonth(new Date())}
+                        >
+                          Today
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Year Navigation (only show when yearly view is selected) */}
+                    {testScoreRange === "yearly" && (
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedYear(selectedYear - 1)}
+                        >
+                          ←
+                        </Button>
+                        <span className="text-sm font-medium min-w-[60px] text-center">
+                          {selectedYear}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedYear(selectedYear + 1)}
+                        >
+                          →
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedYear(new Date().getFullYear())}
+                        >
+                          Current
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={400}>
@@ -1157,17 +1686,39 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis domain={[0, 100]} />
-                    <Tooltip />
+                    <Tooltip 
+                      formatter={(value, name) => [`${value}%`, name]}
+                      labelFormatter={(label) => `${label}`}
+                    />
                     <Legend />
-                        {subjects.length > 0 ? subjects.map((subject) => (
+                        {subjects.length > 0 ? subjects.map((subject, index) => {
+                          // Generate a unique color for each subject - same colors as study sessions
+                          const colors = [
+                            '#3b82f6', // Blue
+                            '#ef4444', // Red
+                            '#10b981', // Green
+                            '#f59e0b', // Yellow
+                            '#8b5cf6', // Purple
+                            '#06b6d4', // Cyan
+                            '#f97316', // Orange
+                            '#ec4899', // Pink
+                            '#84cc16', // Lime
+                            '#6366f1'  // Indigo
+                          ]
+                          const subjectColor = colors[index % colors.length]
+                          
+                          return (
                           <Line 
                             key={subject.name}
                             type="monotone" 
                             dataKey={subject.name} 
-                            stroke={subject.color} 
-                            strokeWidth={2} 
-                          />
-                        )) : (
+                              stroke={subjectColor}
+                              strokeWidth={3}
+                              dot={{ fill: subjectColor, strokeWidth: 2, r: 4 }}
+                              activeDot={{ r: 6, stroke: subjectColor, strokeWidth: 2 }}
+                            />
+                          )
+                        }) : (
                           <Line 
                             type="monotone" 
                             dataKey="averageScore" 
@@ -1185,6 +1736,39 @@ export default function AnalyticsPage() {
                       </div>
                     )}
                 </ResponsiveContainer>
+                
+                {/* Subject Color Legend */}
+                {subjects.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border/30">
+                    <h5 className="text-sm font-medium text-muted-foreground mb-3">Subject Colors:</h5>
+                    <div className="flex flex-wrap gap-3">
+                      {subjects.map((subject, index) => {
+                        const colors = [
+                          '#3b82f6', // Blue
+                          '#ef4444', // Red
+                          '#10b981', // Green
+                          '#f59e0b', // Yellow
+                          '#8b5cf6', // Purple
+                          '#06b6d4', // Cyan
+                          '#f97316', // Orange
+                          '#ec4899', // Pink
+                          '#84cc16', // Lime
+                          '#6366f1'  // Indigo
+                        ]
+                        const subjectColor = colors[index % colors.length]
+                        return (
+                          <div key={subject.id} className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: subjectColor }}
+                            ></div>
+                            <span className="text-xs text-muted-foreground">{subject.name}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

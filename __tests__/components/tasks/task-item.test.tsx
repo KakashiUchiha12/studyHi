@@ -49,7 +49,8 @@ describe('TaskItem', () => {
   it('handles task completion toggle', () => {
     render(<TaskItem {...defaultProps} />)
     
-    const toggleButton = screen.getByRole('button', { name: /mark task as incomplete/i })
+    // Initially the task is not completed, so button should say "Mark as complete"
+    const toggleButton = screen.getByRole('button', { name: /mark task as complete/i })
     fireEvent.click(toggleButton)
     
     expect(defaultProps.onToggle).toHaveBeenCalledWith('1')
@@ -246,9 +247,16 @@ describe('TaskItem', () => {
     const editButton = screen.getByRole('button', { name: /edit task/i })
     fireEvent.click(editButton)
     
-    // Change priority
-    const prioritySelect = screen.getByDisplayValue('high')
-    fireEvent.change(prioritySelect, { target: { value: 'medium' } })
+    // Find priority select and change value using onValueChange
+    const prioritySelect = screen.getByRole('combobox')
+    
+    // Simulate the Select component's onValueChange
+    const selectTrigger = prioritySelect.querySelector('[data-radix-collection-item]') || prioritySelect
+    fireEvent.click(selectTrigger)
+    
+    // Find and click the medium option
+    const mediumOption = screen.getByText('🟡 Medium')
+    fireEvent.click(mediumOption)
     
     // Save changes
     const saveButton = screen.getByRole('button', { name: /save/i })
@@ -309,7 +317,8 @@ describe('TaskItem', () => {
     const editButton = screen.getByRole('button', { name: /edit task/i })
     fireEvent.click(editButton)
     
-    const taskCard = screen.getByText('Test Task').closest('[draggable]')
+    // Find the task card by looking for the draggable attribute
+    const taskCard = screen.getByDisplayValue('Test Task').closest('[draggable]')
     expect(taskCard).toHaveAttribute('draggable', 'false')
   })
 

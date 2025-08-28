@@ -28,6 +28,11 @@ interface Subject {
   totalChapters: number
   completedChapters: number
   createdAt: string
+  code?: string
+  credits?: number
+  instructor?: string
+  nextExam?: string
+  assignmentsDue?: number
 }
 
 interface EditSubjectDialogProps {
@@ -38,13 +43,13 @@ interface EditSubjectDialogProps {
 }
 
 const colorOptions = [
-  { name: "Primary", value: "bg-primary" },
-  { name: "Accent", value: "bg-accent" },
-  { name: "Chart 1", value: "bg-chart-1" },
-  { name: "Chart 2", value: "bg-chart-2" },
-  { name: "Chart 3", value: "bg-chart-3" },
-  { name: "Chart 4", value: "bg-chart-4" },
-  { name: "Chart 5", value: "bg-chart-5" },
+  { name: "Primary", value: "bg-primary", hex: "#3B82F6" },
+  { name: "Accent", value: "bg-accent", hex: "#8B5CF6" },
+  { name: "Chart 1", value: "bg-chart-1", hex: "#10B981" },
+  { name: "Chart 2", value: "bg-chart-2", hex: "#F59E0B" },
+  { name: "Chart 3", value: "bg-chart-3", hex: "#EF4444" },
+  { name: "Chart 4", value: "bg-chart-4", hex: "#EC4899" },
+  { name: "Chart 5", value: "bg-chart-5", hex: "#14B8A6" },
 ]
 
 export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }: EditSubjectDialogProps) {
@@ -52,6 +57,11 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
     name: "",
     description: "",
     color: "bg-primary",
+    code: "",
+    credits: "",
+    instructor: "",
+    nextExam: "",
+    assignmentsDue: "",
   })
   const [materials, setMaterials] = useState<string[]>([])
   const [newMaterial, setNewMaterial] = useState("")
@@ -62,6 +72,11 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
         name: subject.name,
         description: subject.description || '',
         color: subject.color,
+        code: subject.code || '',
+        credits: subject.credits?.toString() || '',
+        instructor: subject.instructor || '',
+        nextExam: subject.nextExam ? new Date(subject.nextExam).toISOString().split('T')[0] : '',
+        assignmentsDue: subject.assignmentsDue?.toString() || '',
       })
       setMaterials(subject.materials || [])
     }
@@ -78,6 +93,11 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
       description: formData.description.trim(),
       materials,
       color: formData.color,
+      code: formData.code.trim(),
+      credits: Number.parseInt(formData.credits) || 3,
+      instructor: formData.instructor.trim(),
+      nextExam: formData.nextExam || '',
+      assignmentsDue: Number.parseInt(formData.assignmentsDue) || 0,
       // Keep existing chapter data - chapters are managed separately
       totalChapters: subject.totalChapters || 0,
       completedChapters: subject.completedChapters || 0,
@@ -129,6 +149,65 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="code">Subject Code</Label>
+              <Input
+                id="code"
+                placeholder="e.g., CS101, MATH201"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="credits">Credit Hours</Label>
+              <Input
+                id="credits"
+                type="number"
+                min="1"
+                max="6"
+                placeholder="e.g., 3"
+                value={formData.credits}
+                onChange={(e) => setFormData({ ...formData, credits: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="instructor">Instructor</Label>
+            <Input
+              id="instructor"
+              placeholder="e.g., Dr. Smith, Prof. Johnson"
+              value={formData.instructor}
+              onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="nextExam">Next Exam Date</Label>
+              <Input
+                id="nextExam"
+                type="date"
+                value={formData.nextExam}
+                onChange={(e) => setFormData({ ...formData, nextExam: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="assignmentsDue">Assignments Due</Label>
+              <Input
+                id="assignmentsDue"
+                type="number"
+                min="0"
+                placeholder="e.g., 2"
+                value={formData.assignmentsDue}
+                onChange={(e) => setFormData({ ...formData, assignmentsDue: e.target.value })}
+              />
+            </div>
+          </div>
+
           <div className="rounded-lg bg-muted/50 p-4">
             <div className="text-sm text-muted-foreground">
               <p className="font-medium mb-2">📚 Chapter Management</p>
@@ -138,21 +217,27 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
 
           <div className="space-y-2">
             <Label>Color Theme</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-7 gap-2">
               {colorOptions.map((color) => (
                 <button
                   key={color.value}
                   type="button"
-                  className={`flex items-center space-x-2 rounded-md border px-3 py-2 text-sm ${
-                    formData.color === color.value ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                    formData.color === color.value
+                      ? 'border-primary ring-2 ring-primary/20'
+                      : 'border-border hover:border-primary/50'
                   }`}
+                  style={{ backgroundColor: color.hex }}
                   onClick={() => setFormData({ ...formData, color: color.value })}
+                  title={color.name}
                 >
-                  <div className={`h-3 w-3 rounded-full ${color.value}`} />
-                  <span>{color.name}</span>
+                  <span className="sr-only">{color.name}</span>
                 </button>
               ))}
             </div>
+            <p className="text-sm text-muted-foreground">
+              Selected: {colorOptions.find(c => c.value === formData.color)?.name}
+            </p>
           </div>
 
           <div className="space-y-2">

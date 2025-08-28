@@ -46,7 +46,13 @@ interface EditTestDialogProps {
   onEditTest: (test: TestMark) => void
 }
 
-export function EditTestDialog({ open, onOpenChange, test, subjects, onEditTest }: EditTestDialogProps) {
+export function EditTestDialog({
+  test,
+  subjects,
+  open,
+  onOpenChange,
+  onEditTest,
+}: EditTestDialogProps) {
   const [formData, setFormData] = useState({
     testName: "",
     subjectId: "",
@@ -70,6 +76,10 @@ export function EditTestDialog({ open, onOpenChange, test, subjects, onEditTest 
       })
     }
   }, [test])
+
+  if (!test) {
+    return null
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,10 +117,9 @@ export function EditTestDialog({ open, onOpenChange, test, subjects, onEditTest 
             <Label htmlFor="testName">Test Name</Label>
             <Input
               id="testName"
-              placeholder="e.g., Calculus Quiz 1, Midterm Exam"
               value={formData.testName}
               onChange={(e) => setFormData({ ...formData, testName: e.target.value })}
-              required
+              placeholder="e.g., Calculus Quiz 1, Midterm Exam"
             />
           </div>
 
@@ -196,10 +205,9 @@ export function EditTestDialog({ open, onOpenChange, test, subjects, onEditTest 
             <Label htmlFor="comments">Comments (Optional)</Label>
             <Textarea
               id="comments"
-              placeholder="Add notes about your performance, areas to improve, etc."
               value={formData.comments}
               onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-              rows={3}
+              placeholder="Add notes about your performance, areas to improve, etc."
             />
           </div>
 

@@ -1,43 +1,41 @@
-
-
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { useSession, signOut } from "next-auth/react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { 
-  BookOpen, Search, Bell, Settings, LogOut, ChevronDown, Plus, BarChart3,
-  CheckCircle2, Circle, X, User, Calendar as CalendarIcon, Clock,
-  Flag, Tag, Filter, SortAsc, SortDesc, FileText, Timer, CheckSquare, Square,
-  Zap, Download
-} from "lucide-react"
-import { format, isToday, isTomorrow, isPast, addDays, startOfWeek, endOfWeek, eachDayOfInterval, startOfDay } from "date-fns"
-import { ExpandableSection } from "@/components/expandable-section"
-import { ProgressiveTaskManager } from "@/components/progressive-task-manager"
-import { TaskManager } from "@/components/tasks/task-manager"
-import { ClientOnly } from "@/components/client-only"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { NotificationCenter } from "@/components/notifications/notification-center"
-import { useRealtimeSync } from "@/hooks/use-realtime-sync"
-import { notificationManager } from "@/lib/notifications"
-import { StudyTimer } from "@/components/study-sessions/study-timer"
-import TimeTableButton from "@/components/dashboard/TimeTableButton"
-import Link from "next/link"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { TimePicker } from '@/components/ui/time-picker'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Clock, BookOpen, Target, TrendingUp, TrendingDown, Plus, ArrowRight, CheckCircle, CheckCircle2, Circle, AlertTriangle, Award, Users, FileText, BarChart3, Flag, Search, Bell, Settings, LogOut, ChevronDown, X, User, CalendarIcon, Timer, CheckSquare, Square, Zap, Download } from 'lucide-react'
+import { useSubjects, useTasks, useStudySessions, useTestMarks } from '@/hooks'
+import { useUserSettings } from '@/hooks/useUserSettings'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { ExpandableSection } from '@/components/expandable-section'
+import { ProgressiveTaskManager } from '@/components/progressive-task-manager'
+import { TaskManager } from '@/components/tasks/task-manager'
+import { ClientOnly } from '@/components/client-only'
+import { NotificationCenter } from '@/components/notifications/notification-center'
+import { StudyTimer } from '@/components/study-sessions/study-timer'
+import TimeTableButton from '@/components/dashboard/TimeTableButton'
+import Link from 'next/link'
+import { format, isToday, isTomorrow, isPast, addDays, startOfWeek, endOfWeek, eachDayOfInterval, startOfDay } from 'date-fns'
+import { notificationManager } from '@/lib/notifications'
+import { useDataSync } from '@/lib/data-sync'
+import type { Task } from '@prisma/client'
+import { signOut } from 'next-auth/react'
 
 // Custom hook to avoid hydration mismatch
 function useTimeOfDay() {
@@ -63,25 +61,9 @@ interface User {
   bio?: string
   badges?: string[]
   isPrivate?: boolean
-  studyGoal?: number // daily study goal in hours
+
   currentStreak?: number // consecutive days of studying
   totalStudyTime?: number // total study time this week
-}
-
-interface Task {
-  id: string
-  title: string
-  description?: string
-  completed: boolean
-  createdAt: Date
-  dueDate?: Date
-  priority: "low" | "medium" | "high"
-  category: string
-  estimatedTime?: number // in minutes
-  tags: string[]
-  subject?: string
-  progress?: number // 0-100
-  timeSpent?: number // in minutes
 }
 
 interface TestMark {
@@ -125,15 +107,96 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const [user, setUser] = useState<User | null>(null)
   
-  // Real-time sync
-  const { triggerUpdate } = useRealtimeSync({
-    onDataUpdate: (data) => {
-      // Handle real-time data updates
-      console.log("Real-time data update:", JSON.stringify(data, null, 2))
-    }
-  })
   const [showTasks, setShowTasks] = useState(false)
-  const [tasks, setTasks] = useState<Task[]>([])
+  // Use the useTasks hook for proper database integration
+  const { 
+    tasks, 
+    loading: tasksLoading, 
+    error: tasksError,
+    createTask,
+    toggleTaskComplete,
+    updateTask,
+    deleteTask,
+    refreshTasks
+  } = useTasks()
+  
+  // Debug: Log any errors from the useTasks hook
+  useEffect(() => {
+    if (tasksError) {
+      console.error('🔍 Tasks Hook Error:', tasksError)
+    }
+  }, [tasksError])
+  
+  // Debug: Log loading state
+  useEffect(() => {
+    console.log('🔍 Tasks Loading State:', {
+      loading: tasksLoading,
+      error: tasksError,
+      hasTasks: !!tasks,
+      tasksCount: tasks?.length || 0
+    })
+    
+    // Log detailed task data
+    if (tasks && tasks.length > 0) {
+      console.log('🔍 Raw Database Tasks:', tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        category: task.category,
+        priority: task.priority,
+        description: task.description,
+        dueDate: task.dueDate,
+        completed: task.completedAt ? true : false,
+        allFields: Object.keys(task)
+      })))
+    }
+  }, [tasksLoading, tasksError, tasks])
+  
+  // Use database tasks instead of local state
+  const adaptedTasks = useMemo(() => {
+    return tasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      completed: task.status === 'completed', // Convert status to completed boolean
+      createdAt: new Date(task.createdAt),
+      dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+      priority: task.priority as 'low' | 'medium' | 'high',
+      category: task.category || 'Study', // Use actual category or default to 'Study'
+      estimatedTime: task.estimatedTime || 0,
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      subject: task.subjectId || undefined, // Convert null to undefined
+      progress: task.progress || 0,
+      timeSpent: task.timeSpent || 0
+    }))
+  }, [tasks])
+
+  // Debug: Log the adapted tasks
+  useEffect(() => {
+    if (adaptedTasks.length > 0) {
+      console.log('🔍 Adapted Tasks for TaskManager:', adaptedTasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        completed: task.completed,
+        category: task.category,
+        priority: task.priority,
+        status: task.completed ? 'completed' : 'pending'
+      })))
+    }
+  }, [adaptedTasks])
+
+  // Debug: Monitor adaptedTasks for TaskManager
+  useEffect(() => {
+    console.log('🔍 Dashboard: adaptedTasks updated:', {
+      count: adaptedTasks.length,
+      tasks: adaptedTasks.map(t => ({ id: t.id, title: t.title, completed: t.completed }))
+    })
+  }, [adaptedTasks])
+
+  const [taskSort, setTaskSort] = useState("dueDate") // dueDate, priority, createdAt
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  
+  // Local state for new task form
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -143,7 +206,7 @@ export default function DashboardPage() {
     estimatedTime: 0,
     tags: [] as string[]
   })
-
+  
   const [newStudySession, setNewStudySession] = useState({
     subjectId: "",
     date: new Date().toISOString().split("T")[0],
@@ -157,17 +220,106 @@ export default function DashboardPage() {
   const [materialsUsed, setMaterialsUsed] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState("")
   const [newMaterial, setNewMaterial] = useState("")
-
+  
   const [showCreateTask, setShowCreateTask] = useState(false)
   const [showCreateStudySession, setShowCreateStudySession] = useState(false)
   const [showStudyTimer, setShowStudyTimer] = useState(false)
   const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [taskFilter, setTaskFilter] = useState("all") // all, pending, completed, overdue
-  const [taskSort, setTaskSort] = useState("dueDate") // dueDate, priority, createdAt
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-  const [testMarks, setTestMarks] = useState<TestMark[]>([])
-  const [studySessions, setStudySessions] = useState<StudySession[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
+  const { subjects, loading: subjectsLoading } = useSubjects()
+  
+  // Use the useTestMarks hook for proper database integration
+  const { 
+    testMarks, 
+    loading: testMarksLoading, 
+    error: testMarksError,
+    createTestMark,
+    updateTestMark,
+    deleteTestMark,
+    refreshTestMarks
+  } = useTestMarks()
+  
+  // Debug: Log test marks data to check database synchronization
+  useEffect(() => {
+    console.log('🔍 Test Marks Debug:', {
+      testMarksCount: testMarks?.length || 0,
+      testMarks: testMarks?.map(t => ({
+        id: t.id,
+        title: t.title,
+        subjectName: t.subjectName,
+        marksObtained: t.marksObtained,
+        totalMarks: t.totalMarks,
+        percentage: t.percentage,
+        date: t.date
+      })),
+      loading: testMarksLoading,
+      error: testMarksError
+    })
+    
+    // Refresh test marks to ensure we have the latest data
+    if (!testMarksLoading && testMarks?.length === 0) {
+      console.log('🔄 Refreshing test marks to ensure database sync...')
+      refreshTestMarks()
+    }
+  }, [testMarks, testMarksLoading, testMarksError, refreshTestMarks])
+  
+  // Use the useStudySessions hook for proper database integration
+  const { 
+    studySessions: dbStudySessions, 
+    createStudySession, 
+    loading: studySessionsLoading, 
+    error: studySessionsError 
+  } = useStudySessions()
+
+  // Create a proper type for StudySession with subject relation
+  type StudySessionWithSubject = {
+    id: string
+    userId: string
+    subjectId: string | null
+    createdAt: Date
+    startTime: Date
+    endTime: Date
+    notes: string | null
+    sessionType: string | null
+    productivity: number | null
+    topicsCovered: string | null
+    materialsUsed: string | null
+    durationMinutes: number
+    efficiency: number | null
+    subject?: {
+      id: string
+      name: string
+      color: string
+    } | null
+  }
+
+  // Use database study sessions with proper typing
+  const studySessions: StudySessionWithSubject[] = dbStudySessions || []
+  
+  // Debug: Log study sessions data to check database synchronization
+  useEffect(() => {
+    console.log('🔍 Study Sessions Debug:', {
+      studySessionsCount: studySessions?.length || 0,
+      studySessions: studySessions?.map(s => ({
+        id: s.id,
+        startTime: s.startTime,
+        startTimeISO: s.startTime instanceof Date ? s.startTime.toISOString() : String(s.startTime),
+        durationMinutes: s.durationMinutes,
+        subject: s.subject?.name || 'No Subject'
+      })),
+      loading: studySessionsLoading,
+      error: studySessionsError
+    })
+    
+    // Refresh study sessions to ensure we have the latest data
+    if (!studySessionsLoading && studySessions?.length === 0) {
+      console.log('🔄 Refreshing study sessions to ensure database sync...')
+      // Note: useStudySessions doesn't have refreshStudySessions, so we'll rely on the hook
+    }
+  }, [studySessions, studySessionsLoading, studySessionsError])
+  
+
+  
   // Consolidated date state management
   const [dateState, setDateState] = useState<{
     selected: Date;
@@ -184,18 +336,52 @@ export default function DashboardPage() {
   const setCurrentYear = (year: number) => setDateState(prev => ({ ...prev, currentYear: year }))
   const { selected: selectedDate, currentMonth, currentYear } = dateState
 
+  // Use the new user settings hook
+  const { getSetting, settings } = useUserSettings()
+
+  // Force dashboard refresh when settings change
+  useEffect(() => {
+    if (settings) {
+      console.log('🔧 Dashboard: Settings updated, refreshing display', settings)
+      // Force a re-render to update all the calculated values
+      setShowCreateTask(prev => prev)
+    }
+  }, [settings])
+
   // Helper function to get study goal from settings
   const getStudyGoal = () => {
-    const savedSettings = localStorage.getItem("userSettings")
-    if (savedSettings) {
-      try {
-        const settings = JSON.parse(savedSettings)
-        return settings.studyGoals?.dailyHours || 4
-      } catch (error) {
-        return 4
-      }
-    }
-    return 4
+    const goal = getSetting('defaultStudyGoal') / 60 // Convert minutes to hours
+    console.log('🔧 Dashboard getStudyGoal called:', { 
+      rawSetting: getSetting('defaultStudyGoal'), 
+      convertedGoal: goal,
+      settingsLoaded: !!settings 
+    })
+    return goal
+  }
+
+  // Helper function to get break duration from settings
+  const getBreakDuration = () => {
+    return getSetting('breakDuration')
+  }
+
+  // Helper function to get reminder time from settings
+  const getReminderTime = () => {
+    return getSetting('reminderTime')
+  }
+
+  // Helper function to get preferred study time from settings
+  const getPreferredStudyTime = () => {
+    return getSetting('preferredStudyTime')
+  }
+
+  // Helper function to check if progress bars should be shown
+  const shouldShowProgressBars = () => {
+    return getSetting('showProgressBars')
+  }
+
+  // Helper function to check if compact mode is enabled
+  const isCompactMode = () => {
+    return getSetting('compactMode')
   }
 
   // Helper function to convert minutes to hours and minutes format
@@ -250,7 +436,7 @@ export default function DashboardPage() {
   useDebouncedPersistence('tasks', tasks)
   useDebouncedPersistence('studySessions', studySessions)
   useDebouncedPersistence('subjects', subjects)
-  useDebouncedPersistence('testMarks', testMarks)
+  // Test marks are now managed by the database - no need for localStorage persistence
 
   const router = useRouter()
 
@@ -285,28 +471,41 @@ export default function DashboardPage() {
 
   // Task management functions - optimized with useCallback
   // Optimized task management functions using functional updates
-  const toggleTaskComplete = useCallback((taskId: string) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    )
-  }, [])
+  // toggleTaskComplete is now provided by the useTasks hook
+  
+  const updateTaskProgress = useCallback(async (taskId: string, progress: number) => {
+    try {
+      await updateTask(taskId, { progress })
+      
+      // Refresh tasks to ensure data consistency
+      await refreshTasks()
+      
+      console.log('✅ Task progress updated successfully')
+    } catch (error) {
+      console.error('Failed to update task progress:', error)
+    }
+  }, [updateTask])
 
-  const updateTaskProgress = useCallback((taskId: string, progress: number) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task =>
-        task.id === taskId ? { ...task, progress } : task
-      )
-    )
-  }, [])
+  const deleteTaskLocal = async (taskId: string) => {
+    try {
+      await deleteTask(taskId)
+      
+      // Refresh tasks to ensure data consistency
+      await refreshTasks()
+      
+      console.log('✅ Task deleted successfully')
+    } catch (error) {
+      console.error('❌ Failed to delete task:', error)
+    }
+  }
 
   const addTimeToTask = useCallback((taskId: string, minutes: number) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task =>
-        task.id === taskId ? { ...task, timeSpent: (task.timeSpent || 0) + minutes } : task
-      )
-    )
+    // This function is no longer needed as tasks are managed by the database
+    // setTasks(prevTasks => 
+    //   prevTasks.map(task =>
+    //     task.id === taskId ? { ...task, timeSpent: (task.timeSpent || 0) + minutes } : task
+    //   )
+    // )
   }, [])
 
   // Date picker helper functions
@@ -362,95 +561,19 @@ export default function DashboardPage() {
 
         badges: ["Academic Excellence", "Study Streak", "Top Performer"],
         isPrivate: false,
-        studyGoal: 4, // 4 hours daily goal
         currentStreak: 5,
         totalStudyTime: 0
       })
     }
 
-    // Load study sessions
-    const savedStudySessions = localStorage.getItem("studySessions")
-    if (savedStudySessions) {
-      try {
-        const parsed = JSON.parse(savedStudySessions).map((session: any) => ({
-          ...session,
-          date: new Date(session.date)
-        }))
-        setStudySessions(parsed)
-      } catch (error) {
-        console.error('Failed to parse saved study sessions:', error)
-        localStorage.removeItem("studySessions")
-        setStudySessions([])
-      }
-    }
+    // Load study sessions - now handled by useStudySessions hook
+    // No need to load from localStorage anymore
 
-    // Load subjects
-    const savedSubjects = localStorage.getItem("subjects")
-    if (savedSubjects) {
-      try {
-        const parsed = JSON.parse(savedSubjects).map((subject: any) => ({
-          ...subject,
-          nextExam: subject.nextExam ? new Date(subject.nextExam) : undefined
-        }))
-        setSubjects(parsed)
-      } catch (error) {
-        console.error('Failed to parse saved subjects:', error)
-        // Set default subjects if none exist
-        setSubjects([
-          {
-            id: "1",
-            name: "Computer Science",
-            code: "CS101",
-            credits: 3,
-            instructor: "Dr. Smith",
-            color: "#3B82F6",
-            progress: 75,
-            assignmentsDue: 2
-          },
-          {
-            id: "2",
-            name: "Mathematics",
-            code: "MATH201",
-            credits: 4,
-            instructor: "Prof. Johnson",
-            color: "#10B981",
-            progress: 60,
-            nextExam: addDays(new Date(), 7)
-          }
-        ])
-      }
-    }
+    // Subjects are now loaded via useSubjects hook
 
-    const savedTasks = localStorage.getItem("tasks")
-    if (savedTasks) {
-      try {
-        const parsedTasks = JSON.parse(savedTasks).map((task: any) => ({
-          ...task,
-          createdAt: new Date(task.createdAt),
-          dueDate: task.dueDate ? new Date(task.dueDate) : undefined
-        }))
-        setTasks(parsedTasks)
-      } catch (error) {
-        console.error('Failed to parse saved tasks:', error)
-        // Clear corrupted data and start fresh
-        localStorage.removeItem("tasks")
-        setTasks([])
-      }
-    }
+    // Tasks are now loaded via useTasks hook - no need to load from localStorage
 
-    const savedTestMarks = localStorage.getItem("testMarks")
-    if (savedTestMarks) {
-      try {
-        setTestMarks(JSON.parse(savedTestMarks))
-      } catch (error) {
-        console.error('Failed to parse saved test marks:', error)
-        // Clear corrupted data and start fresh
-        localStorage.removeItem("testMarks")
-        setTestMarks([])
-      }
-    }
-
-    
+    // Test marks are now loaded via useTestMarks hook - no need to load from localStorage
 
     // Restore dashboard section open state
     try {
@@ -464,8 +587,7 @@ export default function DashboardPage() {
       // ignore parse errors
     }
 
-    // Check for pending notifications
-    notificationManager.checkPendingNotifications()
+    // Notifications are now managed by the database and don't need manual checking
   }, [router, session, status])
 
   // Persist dashboard section open state
@@ -485,51 +607,66 @@ export default function DashboardPage() {
     // Removed debug logging for production
   }, [newTask.dueDate])
 
-  const addTask = () => {
+  // Use global data synchronization system
+  useDataSync('study-session-updated', () => {
+    console.log('Study session updated, dashboard will refresh data...')
+    // Force a re-render to get fresh data
+    setShowCreateStudySession(prev => prev)
+  })
+
+  useDataSync('subject-updated', () => {
+    console.log('Subject updated, dashboard will refresh data...')
+    // Force a re-render to get fresh data
+    setShowCreateTask(prev => prev)
+  })
+
+  useDataSync('all-data-refresh', () => {
+    console.log('All data refresh requested, dashboard will refresh...')
+    // Force a complete refresh
+    setShowCreateTask(prev => prev)
+    setShowCreateStudySession(prev => prev)
+  })
+
+  const addTask = async () => {
     if (!newTask.title.trim()) return
 
-    const task: Task = {
-      id: Date.now().toString(),
-      title: newTask.title.trim(),
-      description: newTask.description.trim(),
-      completed: false,
-      createdAt: new Date(),
-      dueDate: newTask.dueDate,
-      priority: newTask.priority,
-      category: newTask.category,
-      estimatedTime: newTask.estimatedTime,
-      tags: newTask.tags
+    try {
+      // Create task in database using the API
+      const createdTask = await createTask({
+        title: newTask.title.trim(),
+        description: newTask.description.trim(),
+        dueDate: newTask.dueDate?.toISOString(),
+        priority: newTask.priority,
+        status: 'pending' as const,
+        category: newTask.category || 'Study',
+        estimatedTime: newTask.estimatedTime || undefined
+      })
+      
+      if (createdTask) {
+        console.log('✅ Task created successfully:', createdTask)
+        
+        // Refresh tasks to ensure data consistency
+        await refreshTasks()
+      }
+      
+      // Reset form
+      setNewTask({
+        title: "",
+        description: "",
+        dueDate: undefined,
+        priority: "medium",
+        category: "",
+        estimatedTime: 0,
+        tags: []
+      })
+      setShowCreateTask(false)
+    } catch (error) {
+      console.error('Failed to create task:', error)
+      // You could add error handling UI here
     }
-
-    setTasks(prevTasks => {
-      const updatedTasks = [...prevTasks, task]
-      // Use updatedTasks instead of tasks state variable
-      localStorage.setItem("tasks", JSON.stringify(updatedTasks))
-      return updatedTasks
-    })
-    
-    // Trigger real-time sync
-    triggerUpdate("task-updated", { type: "created", task })
-    
-    // Schedule deadline notification if due date is set
-    if (task.dueDate) {
-      notificationManager.notifyTaskDeadline(task.title, task.dueDate)
-    }
-    
-    // Reset form
-    setNewTask({
-      title: "",
-      description: "",
-      dueDate: undefined,
-      priority: "medium",
-      category: "",
-      estimatedTime: 0,
-      tags: []
-    })
-    setShowCreateTask(false)
   }
 
-  const addStudySession = () => {
+  const addStudySession = async () => {
     if (!newStudySession.subjectId || !newStudySession.sessionType || !newStudySession.startTime || !newStudySession.endTime) return
 
     const selectedSubject = subjects.find((s) => s.id === newStudySession.subjectId)
@@ -538,39 +675,47 @@ export default function DashboardPage() {
     const duration = calculateDuration(newStudySession.startTime, newStudySession.endTime)
     if (duration <= 0) return
 
-    const session: StudySession = {
-      id: Date.now().toString(),
-      subject: selectedSubject.name,
-      duration,
-      date: new Date(newStudySession.date),
-      notes: newStudySession.notes.trim(),
-      sessionType: newStudySession.sessionType as "Focused Study" | "Review" | "Practice" | "Research" | "Group Study",
-      productivity: newStudySession.productivity,
-      topicsCovered,
-      materialsUsed
-    }
+    try {
+      // Create study session using the database API
+      const sessionData = {
+        subjectId: newStudySession.subjectId,
+        durationMinutes: duration,
+        startTime: new Date(`${newStudySession.date}T${newStudySession.startTime}:00`),
+        endTime: new Date(`${newStudySession.date}T${newStudySession.endTime}:00`),
+        notes: newStudySession.notes.trim(),
+        sessionType: newStudySession.sessionType as "Focused Study" | "Review" | "Practice" | "Research" | "Group Study",
+        productivity: newStudySession.productivity,
+        topicsCovered: topicsCovered.length > 0 ? JSON.stringify(topicsCovered) : null,
+        materialsUsed: materialsUsed.length > 0 ? JSON.stringify(materialsUsed) : null
+      }
 
-    const updatedSessions = [...studySessions, session]
-    setStudySessions(updatedSessions)
-    
-    // Trigger real-time sync
-    triggerUpdate("study-session-updated", { type: "created", session })
-    
-    // Reset form
-    setNewStudySession({
-      subjectId: "",
-      date: new Date().toISOString().split("T")[0],
-      startTime: "",
-      endTime: "",
-      sessionType: "",
-      productivity: 3,
-      notes: "",
-    })
-    setTopicsCovered([])
-    setMaterialsUsed([])
-    setNewTopic("")
-    setNewMaterial("")
-    setShowCreateStudySession(false)
+      const createdSession = await createStudySession(sessionData)
+      
+      if (createdSession) {
+        console.log('✅ Study session created successfully:', createdSession)
+        
+        // Notify other parts of the application about the session creation
+        // triggerUpdate removed - no longer needed
+        
+        // Reset form
+        setNewStudySession({
+          subjectId: "",
+          date: new Date().toISOString().split("T")[0],
+          startTime: "",
+          endTime: "",
+          sessionType: "",
+          productivity: 3,
+          notes: "",
+        })
+        setTopicsCovered([])
+        setMaterialsUsed([])
+        setNewTopic("")
+        setNewMaterial("")
+        setShowCreateStudySession(false)
+      }
+    } catch (error) {
+      console.error('❌ Failed to create study session:', error)
+    }
   }
 
   const calculateDuration = (start: string, end: string) => {
@@ -604,24 +749,56 @@ export default function DashboardPage() {
   }
 
   const removeTask = (taskId: string) => {
-    const updatedTasks = tasks.filter((task) => task.id !== taskId)
-    setTasks(updatedTasks)
+    // This function is no longer needed as tasks are managed by the database
+    // const updatedTasks = tasks.filter((task) => task.id !== taskId)
+    // setTasks(updatedTasks)
   }
 
   // Memoized calculations for better performance
   const todayStudyTime = useMemo(() => {
     const today = new Date()
     return studySessions
-      .filter(session => isToday(session.date))
-      .reduce((total, session) => total + session.duration, 0)
+      .filter(session => {
+        const sessionStartTime = session.startTime instanceof Date ? session.startTime : new Date(session.startTime)
+        return isToday(sessionStartTime)
+      })
+      .reduce((total, session) => total + session.durationMinutes, 0)
   }, [studySessions])
 
   const weeklyStudyTime = useMemo(() => {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 })
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 })
-    return studySessions
-      .filter(session => session.date >= weekStart && session.date <= weekEnd)
-      .reduce((total, session) => total + session.duration, 0)
+    
+    console.log('🔍 Weekly Study Time Debug:', {
+      weekStart: weekStart.toISOString(),
+      weekEnd: weekEnd.toISOString(),
+      totalSessions: studySessions.length,
+      sessions: studySessions.map(s => ({
+        id: s.id,
+        startTime: s.startTime,
+        startTimeISO: s.startTime instanceof Date ? s.startTime.toISOString() : String(s.startTime),
+        durationMinutes: s.durationMinutes,
+        subject: s.subject
+      }))
+    })
+    
+    const weeklySessions = studySessions.filter(session => {
+      // Ensure startTime is a Date object
+      const sessionStartTime = session.startTime instanceof Date ? session.startTime : new Date(session.startTime)
+      const isInWeek = sessionStartTime >= weekStart && sessionStartTime <= weekEnd
+      console.log(`Session ${session.id}: ${sessionStartTime.toISOString()} in week? ${isInWeek}`)
+      return isInWeek
+    })
+    
+    const total = weeklySessions.reduce((total, session) => total + session.durationMinutes, 0)
+    
+    console.log('📊 Weekly Study Time Result:', {
+      weeklySessionsCount: weeklySessions.length,
+      totalMinutes: total,
+      totalHours: Math.round(total / 60 * 10) / 10
+    })
+    
+    return total
   }, [studySessions])
 
   const studyStreak = useMemo(() => {
@@ -630,9 +807,25 @@ export default function DashboardPage() {
     // Create a Set of date strings for O(1) lookup
     const sessionDates = new Set(
       studySessions.map(session => {
-        const date = new Date(session.date)
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-      })
+        // Handle both Date objects and string dates from database
+        let sessionStartTime: Date
+        if (session.startTime instanceof Date) {
+          sessionStartTime = session.startTime
+        } else if (typeof session.startTime === 'string') {
+          sessionStartTime = new Date(session.startTime)
+        } else {
+          // Fallback for any other type
+          sessionStartTime = new Date()
+        }
+        
+        // Ensure the date is valid
+        if (isNaN(sessionStartTime.getTime())) {
+          console.warn('Invalid date in study session:', session.startTime)
+          return null
+        }
+        
+        return `${sessionStartTime.getFullYear()}-${String(sessionStartTime.getMonth() + 1).padStart(2, '0')}-${String(sessionStartTime.getDate()).padStart(2, '0')}`
+      }).filter(Boolean) // Remove null values
     )
     
     let streak = 0
@@ -654,56 +847,169 @@ export default function DashboardPage() {
   }, [studySessions])
 
   const upcomingDeadlines = useMemo(() => {
-    const nextWeek = addDays(new Date(), 7)
-    return tasks.filter(task => 
-      task.dueDate && 
-      task.dueDate <= nextWeek && 
-      !task.completed
-    ).sort((a, b) => (a.dueDate?.getTime() || 0) - (b.dueDate?.getTime() || 0))
-  }, [tasks])
+    // Show all pending tasks, prioritizing those with due dates
+    const pendingTasks = adaptedTasks.filter(task => !task.completed)
+    
+    // Sort by priority: overdue first, then due soon, then no due date
+    return pendingTasks.sort((a, b) => {
+      // If both have due dates, sort by due date
+      if (a.dueDate && b.dueDate) {
+        return a.dueDate.getTime() - b.dueDate.getTime()
+      }
+      
+      // If only one has due date, prioritize the one with due date
+      if (a.dueDate && !b.dueDate) return -1
+      if (!a.dueDate && b.dueDate) return 1
+      
+      // If neither has due date, sort by creation date (newest first)
+      return b.createdAt.getTime() - a.createdAt.getTime()
+    })
+  }, [adaptedTasks])
 
   // Helper function for task overdue check
-  const isTaskOverdue = (task: Task) => {
+  const isTaskOverdue = (task: any) => {
     if (!task.dueDate || task.completed) return false;
     return isPast(task.dueDate) && !isToday(task.dueDate);
   };
 
   const taskStats = useMemo(() => {
-    const completed = tasks.filter((task) => task.completed).length
-    const pending = tasks.filter((task) => !task.completed).length
-    const overdue = tasks.filter((task) => isTaskOverdue(task)).length
-    const highPriority = tasks.filter((task) => !task.completed && task.priority === "high").length
+    const completed = adaptedTasks.filter((task) => task.completed).length
+    const pending = adaptedTasks.filter((task) => !task.completed).length
+    const overdue = adaptedTasks.filter((task) => isTaskOverdue(task)).length
+    const highPriority = adaptedTasks.filter((task) => !task.completed && task.priority === "high").length
     
     return { completed, pending, overdue, highPriority }
-  }, [tasks])
+  }, [adaptedTasks])
 
   const averageScore = useMemo(() => {
     return testMarks.length > 0
       ? Math.round(testMarks.reduce((sum, test) => {
-          // Use percentage if available, otherwise calculate from marks
-          if (test.percentage !== undefined && test.percentage !== null) {
-            return sum + test.percentage
-          } else {
-            const marksObtained = test.marksObtained || 0
-            const totalMarks = test.totalMarks || 1
-            return sum + (marksObtained / totalMarks) * 100
-          }
+          // Calculate percentage from score and maxScore (actual database fields)
+          const score = test.score || 0
+          const maxScore = test.maxScore || 1
+          const percentage = (score / maxScore) * 100
+          return sum + percentage
         }, 0) / testMarks.length)
       : 0
   }, [testMarks])
 
+  // Debug: Log calculated values to check if they're updating
+  useEffect(() => {
+    console.log('🔍 Calculated Values Debug:', {
+      averageScore,
+      studyStreak,
+      taskStats,
+      testMarksCount: testMarks?.length || 0,
+      studySessionsCount: studySessions?.length || 0
+    })
+  }, [averageScore, studyStreak, taskStats, testMarks, studySessions])
+
+  // Debug: Log testMarks data structure to diagnose the issue
+  useEffect(() => {
+    if (testMarks && testMarks.length > 0) {
+      console.log('🔍 TestMarks Data Structure Debug:', {
+        count: testMarks.length,
+        firstTest: testMarks[0],
+        allTests: testMarks.map(t => ({
+          id: t.id,
+          testName: t.testName,
+          subjectId: t.subjectId,
+          score: t.score,
+          maxScore: t.maxScore,
+          calculatedPercentage: ((t.score || 0) / (t.maxScore || 1)) * 100,
+          testDate: t.testDate,
+          allFields: Object.keys(t)
+        }))
+      })
+    } else {
+      console.log('🔍 TestMarks Debug: No test marks found or empty array')
+    }
+  }, [testMarks])
+
+  // Debug: Log studySessions data structure to diagnose the study streak issue
+  useEffect(() => {
+    if (studySessions && studySessions.length > 0) {
+      console.log('🔍 StudySessions Data Structure Debug:', {
+        count: studySessions.length,
+        firstSession: studySessions[0],
+        allSessions: studySessions.map(s => ({
+          id: s.id,
+          startTime: s.startTime,
+          startTimeISO: s.startTime instanceof Date ? s.startTime.toISOString() : String(s.startTime),
+          durationMinutes: s.durationMinutes,
+          subject: s.subject?.name || 'No Subject',
+          allFields: Object.keys(s)
+        }))
+      })
+    } else {
+      console.log('🔍 StudySessions Debug: No study sessions found or empty array')
+    }
+  }, [studySessions])
+
   const subjectsProgress = useMemo(() => {
-    return subjects.reduce((sum, s) => sum + s.progress, 0) / Math.max(subjects.length, 1)
+    return subjects.reduce((sum, s) => sum + (s.progress || 0), 0) / Math.max(subjects.length, 1)
   }, [subjects])
 
+  // Daily study hours by subject for the current month
+  const dailyStudyHoursBySubject = useMemo(() => {
+    const currentMonth = new Date().getMonth()
+    const currentYear = new Date().getFullYear()
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+    
+    // Initialize data structure for each day and subject
+    const dailyData: { [day: number]: { [subjectName: string]: number } } = {}
+    
+    // Initialize all days with 0 hours for all subjects
+    for (let day = 1; day <= daysInMonth; day++) {
+      dailyData[day] = {}
+      subjects.forEach(subject => {
+        dailyData[day][subject.name] = 0
+      })
+    }
+    
+    // Fill in actual study data
+    studySessions.forEach(session => {
+      const sessionStartTime = session.startTime instanceof Date ? session.startTime : new Date(session.startTime)
+      
+      // Only include sessions from current month
+      if (sessionStartTime.getMonth() === currentMonth && sessionStartTime.getFullYear() === currentYear) {
+        const day = sessionStartTime.getDate()
+        const subjectName = session.subject?.name || 'Unknown Subject'
+        const hours = session.durationMinutes / 60
+        
+        if (!dailyData[day]) {
+          dailyData[day] = {}
+        }
+        if (!dailyData[day][subjectName]) {
+          dailyData[day][subjectName] = 0
+        }
+        
+        dailyData[day][subjectName] += hours
+      }
+    })
+    
+    return dailyData
+  }, [studySessions, subjects])
+
   // Unified task update function
-  const updateTask = useCallback((taskId: string, updates: Partial<Task>) => {
-    setTasks(prevTasks => 
-      prevTasks.map((task) => 
-        task.id === taskId ? { ...task, ...updates } : task
-      )
-    )
-  }, [])
+  const updateTaskLocal = useCallback(async (taskId: string, updates: any) => {
+    try {
+      await updateTask(taskId, updates)
+      
+      // Refresh tasks to ensure data consistency
+      await refreshTasks()
+      
+      // Notify other parts of the application about the task update
+      // triggerUpdate removed - no longer needed
+      
+      // Also trigger a general task refresh
+      // triggerUpdate removed - no longer needed
+      
+      console.log('✅ Task updated successfully')
+    } catch (error) {
+      console.error('❌ Failed to update task:', error)
+    }
+  }, [updateTask])
 
 
 
@@ -719,6 +1025,36 @@ export default function DashboardPage() {
     return format(date, "MMM dd");
   };
 
+  // Debug: Log task data to check for mismatches
+  useEffect(() => {
+    if (tasks.length > 0) {
+      console.log('🔍 Tasks Data Debug:', {
+        totalTasks: tasks.length,
+        taskSample: tasks.slice(0, 2).map(task => ({
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+          hasStatus: 'status' in task,
+          statusType: typeof task.status,
+          allFields: Object.keys(task)
+        }))
+      })
+    }
+  }, [tasks])
+
+  // Handle task reordering (drag and drop)
+  const handleTaskReorder = useCallback((reorderedTasks: Task[]) => {
+    console.log('🔍 Task Reorder:', {
+      originalCount: tasks.length,
+      reorderedCount: reorderedTasks.length,
+      tasks: reorderedTasks.map(t => ({ id: t.id, title: t.title, priority: t.priority }))
+    })
+    
+    // TODO: In the future, we can add an API endpoint to save the new order
+    // For now, we'll just log the reordering
+    console.log('📝 Tasks reordered:', reorderedTasks)
+  }, [tasks])
 
   if (status === "loading" || !user) {
     return (
@@ -730,8 +1066,8 @@ export default function DashboardPage() {
 
   // Task filtering and sorting
   const filteredTasks = tasks.filter(task => {
-    if (taskFilter === "pending") return !task.completed
-    if (taskFilter === "completed") return task.completed
+    if (taskFilter === "pending") return task.status !== 'completed'
+    if (taskFilter === "completed") return task.status === 'completed'
     if (taskFilter === "overdue") return isTaskOverdue(task)
     return true
   })
@@ -744,11 +1080,18 @@ export default function DashboardPage() {
         if (!a.dueDate && !b.dueDate) comparison = 0
         else if (!a.dueDate) comparison = 1
         else if (!b.dueDate) comparison = -1
-        else comparison = a.dueDate.getTime() - b.dueDate.getTime()
+        else {
+          // Ensure dueDate is a Date object before calling getTime()
+          const aDate = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate)
+          const bDate = b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate)
+          comparison = aDate.getTime() - bDate.getTime()
+        }
         break
       case "priority":
         const priorityOrder = { high: 3, medium: 2, low: 1 }
-        comparison = priorityOrder[a.priority] - priorityOrder[b.priority]
+        const aPriority = a.priority as 'high' | 'medium' | 'low'
+        const bPriority = b.priority as 'high' | 'medium' | 'low'
+        comparison = (priorityOrder[bPriority] || 0) - (priorityOrder[aPriority] || 0)
         break
       case "createdAt":
         comparison = a.createdAt.getTime() - b.createdAt.getTime()
@@ -838,38 +1181,40 @@ export default function DashboardPage() {
                     </p>
                   
                   {/* Enhanced Progress Bar - Client Only - Mobile Optimized */}
-                  <ClientOnly fallback={
-                    <div className="max-w-xs sm:max-w-sm mx-auto space-y-2 sm:space-y-3">
-                      <div className="relative h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden">
-                        <div className="absolute top-0 left-0 h-full bg-muted rounded-full" style={{ width: '0%' }}></div>
-                      </div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>0h</span>
-                        <span className="font-medium">0% complete</span>
-                        <span>{user?.studyGoal || 4}h</span>
-                      </div>
-                    </div>
-                  }>
-                    <div className="max-w-xs sm:max-w-sm mx-auto space-y-2 sm:space-y-3">
-                      <div className="relative h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden shadow-inner">
-                        <div 
-                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-accent-purple rounded-full transition-all duration-700 ease-out shadow-sm"
-                          style={{ 
-                            width: `${Math.min((todayStudyTime / 60) / getStudyGoal() * 100, 100)}%` 
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
+                  {shouldShowProgressBars() && (
+                    <ClientOnly fallback={
+                      <div className="max-w-xs sm:max-w-sm mx-auto space-y-2 sm:space-y-3">
+                        <div className="relative h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden">
+                          <div className="absolute top-0 left-0 h-full bg-muted rounded-full" style={{ width: '0%' }}></div>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>0h</span>
+                          <span className="font-medium">0% complete</span>
+                          <span>{getStudyGoal()}h</span>
                         </div>
                       </div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>0h</span>
-                        <span className="font-medium">
-                          {Math.round((todayStudyTime / 60) / getStudyGoal() * 100)}% complete
-                        </span>
-                        <span>{getStudyGoal()}h</span>
+                    }>
+                      <div className="max-w-xs sm:max-w-sm mx-auto space-y-2 sm:space-y-3">
+                        <div className="relative h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden shadow-inner">
+                          <div 
+                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-accent-purple rounded-full transition-all duration-700 ease-out shadow-sm"
+                            style={{ 
+                              width: `${Math.min((todayStudyTime / 60) / getStudyGoal() * 100, 100)}%` 
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>0h</span>
+                          <span className="font-medium">
+                            {Math.round((todayStudyTime / 60) / getStudyGoal() * 100)}% complete
+                          </span>
+                          <span>{getStudyGoal()}h</span>
+                        </div>
                       </div>
-                    </div>
-                  </ClientOnly>
+                    </ClientOnly>
+                  )}
                 </div>
               </div>
             </div>
@@ -891,10 +1236,31 @@ export default function DashboardPage() {
           
           {/* Urgent Tasks (Progressive Disclosure) - Mobile Optimized */}
           <ClientOnly fallback={null}>
-            {upcomingDeadlines.length > 0 && (
+            {upcomingDeadlines.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {tasks.length === 0 ? (
+                  <div>
+                    <p>No tasks found. Create your first task to get started!</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowCreateTask(true)}
+                      className="mt-2"
+                    >
+                      Create Task
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    <p>All tasks completed! Great job!</p>
+                    <p className="text-sm mt-1">You have {tasks.filter(t => t.status === 'completed').length} completed tasks</p>
+                  </div>
+                )}
+              </div>
+            ) : (
               <div className="space-y-3 pt-4 sm:pt-6 border-t border-border/50">
                 <h2 className="text-sm font-medium text-muted-foreground">
-                  Urgent Tasks
+                  Pending Tasks
                 </h2>
                 <div className="space-y-2">
                   {upcomingDeadlines.slice(0, 3).map(task => (
@@ -910,14 +1276,13 @@ export default function DashboardPage() {
                           {task.dueDate ? formatDueDate(task.dueDate) : 'No due date'}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleTaskComplete(task.id)}
-                        className="ml-2 h-8 w-8 sm:h-9 sm:w-9 p-0"
-                      >
-                        <Circle className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-muted-foreground">
+                            {task.status === 'completed' ? 'Completed' : 'Pending'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -929,9 +1294,15 @@ export default function DashboardPage() {
                     onClick={() => setShowTasks(true)}
                     className="text-primary text-sm"
                   >
-                    +{upcomingDeadlines.length - 3} more urgent tasks
+                    +{upcomingDeadlines.length - 3} more pending tasks
                   </Button>
                 )}
+                
+                <div className="text-center pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    💡 Go to the <strong>Tasks</strong> section below to mark tasks as complete
+                  </p>
+                </div>
               </div>
             )}
           </ClientOnly>
@@ -959,7 +1330,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
                 <div>
                   <div className="text-xl sm:text-2xl font-light text-primary">
-                    {studySessions.filter(s => isToday(s.date)).length}
+                    {studySessions.filter(s => isToday(s.startTime)).length}
                   </div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Sessions Today</p>
                 </div>
@@ -981,10 +1352,10 @@ export default function DashboardPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Weekly Goal</span>
                   <span className="text-foreground">
-                    {Math.round(weeklyStudyTime / 60)}h / {user?.studyGoal || 4 * 7}h
+                    {Math.round(weeklyStudyTime / 60)}h / {getStudyGoal() * 7}h
                   </span>
                 </div>
-                <Progress value={(weeklyStudyTime / 60) / ((user?.studyGoal || 4) * 7) * 100} className="h-2" />
+                <Progress value={(weeklyStudyTime / 60) / (getStudyGoal() * 7) * 100} className="h-2" />
               </div>
             </div>
           </ExpandableSection>
@@ -1084,9 +1455,6 @@ export default function DashboardPage() {
                       <p className="text-xs sm:text-sm text-muted-foreground">Manage your account</p>
                     </div>
                   </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    {user?.badges?.length || 0} badges earned
-                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1098,7 +1466,7 @@ export default function DashboardPage() {
             icon={BarChart3}
             defaultExpanded={false}
           >
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-xs sm:text-sm font-medium">Total Tasks</CardTitle>
@@ -1136,19 +1504,6 @@ export default function DashboardPage() {
                   <div className="text-xl sm:text-2xl font-bold">{studyStreak}</div>
                   <p className="text-xs text-muted-foreground">
                     Days in a row
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xs sm:text-sm font-medium">Achievements</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xl sm:text-2xl font-bold">{user?.badges?.length || 0}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Badges earned
                   </p>
                 </CardContent>
               </Card>
@@ -1257,9 +1612,136 @@ export default function DashboardPage() {
 
               {/* Enhanced Task Manager with Drag & Drop */}
               <div className="min-h-0">
-                <TaskManager 
-                  tasks={tasks}
-                  onTasksChange={setTasks}
+                <TaskManager
+                  tasks={adaptedTasks}
+                  onTasksChange={async (updatedTasks: any[]) => {
+                    console.log('🔍 TaskManager onTasksChange called with:', updatedTasks.length, 'tasks')
+                    
+                    // Check if any tasks were deleted
+                    const deletedTasks = adaptedTasks.filter(originalTask => 
+                      !updatedTasks.find(updatedTask => updatedTask.id === originalTask.id)
+                    )
+                    
+                    if (deletedTasks.length > 0) {
+                      console.log('🔍 Task deletions detected:', deletedTasks.map(t => ({
+                        id: t.id,
+                        title: t.title
+                      })))
+                      
+                      // Delete tasks from database
+                      for (const deletedTask of deletedTasks) {
+                        try {
+                          console.log('🔄 Deleting task:', deletedTask.id)
+                          await deleteTask(deletedTask.id)
+                          console.log('✅ Task deleted successfully:', deletedTask.id)
+                        } catch (error) {
+                          console.error('❌ Failed to delete task:', error)
+                        }
+                      }
+                      
+                      // Refresh tasks to ensure data consistency
+                      await refreshTasks()
+                      
+                      // Notify other parts of the application about the task deletion
+                      // triggerUpdate removed - no longer needed
+                    }
+                    
+                    // Check if any tasks were completed/uncompleted
+                    const completionChanges = updatedTasks.filter(updatedTask => {
+                      const originalTask = adaptedTasks.find(t => t.id === updatedTask.id)
+                      const hasChanged = originalTask && originalTask.completed !== updatedTask.completed
+                      
+                      if (hasChanged) {
+                        console.log('🔍 Task completion change detected:', {
+                          taskId: updatedTask.id,
+                          taskTitle: updatedTask.title,
+                          originalCompleted: originalTask?.completed,
+                          newCompleted: updatedTask.completed,
+                          originalStatus: tasks.find(t => t.id === updatedTask.id)?.status,
+                          newStatus: updatedTask.completed ? 'completed' : 'pending'
+                        })
+                      }
+                      
+                      return hasChanged
+                    })
+                    
+                    if (completionChanges.length > 0) {
+                      console.log('🔍 Task completion changes detected:', completionChanges.map(t => ({
+                        id: t.id,
+                        title: t.title,
+                        completed: t.completed
+                      })))
+                      
+                      // Update task completion status in database
+                      for (const changedTask of completionChanges) {
+                        try {
+                          console.log('🔄 Updating task completion for:', changedTask.id, 'to:', changedTask.completed)
+                          console.log('🔄 Task details:', {
+                            id: changedTask.id,
+                            title: changedTask.title,
+                            completed: changedTask.completed,
+                            status: changedTask.completed ? 'completed' : 'pending'
+                          })
+                          
+                          await toggleTaskComplete(changedTask.id)
+                          console.log('✅ Task completion status updated for:', changedTask.id)
+                          
+                          // Refresh tasks to ensure data consistency
+                          await refreshTasks()
+                        } catch (error) {
+                          console.error('❌ Failed to update task completion:', error)
+                        }
+                      }
+                    }
+                    
+                    // Check if tasks were reordered by comparing the order of task IDs
+                    const originalOrder = adaptedTasks.map(t => t.id)
+                    const newOrder = updatedTasks.map(t => t.id)
+                    const isReordering = JSON.stringify(originalOrder) !== JSON.stringify(newOrder)
+                    
+                    console.log('🔍 Reordering check:', {
+                      originalOrder,
+                      newOrder,
+                      isReordering,
+                      originalLength: originalOrder.length,
+                      newLength: newOrder.length
+                    })
+                    
+                    if (isReordering) {
+                      console.log('🔍 Task reordering detected')
+                      console.log('🔍 Original order:', originalOrder)
+                      console.log('🔍 New order:', newOrder)
+                      
+                      try {
+                        // Save the new order to the database
+                        const response = await fetch('/api/tasks', {
+                          method: 'PATCH',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({ tasks: updatedTasks }),
+                        })
+                        
+                        if (response.ok) {
+                          console.log('✅ Task order saved successfully')
+                          
+                          // Refresh tasks to ensure data consistency
+                          await refreshTasks()
+                          
+                          // Notify other parts of the application about the task reordering
+                          triggerUpdate("task-reordered", { 
+                            tasks: updatedTasks.map(t => ({ id: t.id, title: t.title }))
+                          })
+                        } else {
+                          console.error('❌ Failed to save task order')
+                        }
+                      } catch (error) {
+                        console.error('❌ Error saving task order:', error)
+                      }
+                    } else {
+                      console.log('🔍 No reordering detected - tasks are in the same order')
+                    }
+                  }}
                   onOpenCreateDialog={() => setShowCreateTask(true)}
                 />
               </div>
@@ -1283,7 +1765,7 @@ export default function DashboardPage() {
                     </div>
                     <p className="text-sm text-muted-foreground">Today</p>
                     <div className="mt-2">
-                      <Progress value={(todayStudyTime / 60) / (user?.studyGoal || 4) * 100} className="h-2" />
+                      <Progress value={(todayStudyTime / 60) / getStudyGoal() * 100} className="h-2" />
                     </div>
                   </div>
                   
@@ -1293,7 +1775,7 @@ export default function DashboardPage() {
                     </div>
                     <p className="text-sm text-muted-foreground">This Week</p>
                     <div className="mt-2">
-                      <Progress value={(weeklyStudyTime / 60) / ((user?.studyGoal || 4) * 7) * 100} className="h-2" />
+                      <Progress value={(weeklyStudyTime / 60) / (getStudyGoal() * 7) * 100} className="h-2" />
                     </div>
                   </div>
                   
@@ -1318,9 +1800,9 @@ export default function DashboardPage() {
                       <span className="text-sm text-muted-foreground">Test Average</span>
                       <span className="text-lg font-semibold text-foreground">{averageScore}%</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Based on {testMarks.length} test{testMarks.length !== 1 ? 's' : ''}
-                    </div>
+                    </p>
                   </div>
                   
                   <div className="p-4 bg-muted/30 rounded-lg">
@@ -1344,14 +1826,14 @@ export default function DashboardPage() {
                       <div className="flex items-center space-x-3">
                         <div className="w-2 h-2 bg-primary rounded-full"></div>
                         <div>
-                          <p className="text-sm font-medium">{session.subject}</p>
+                          <p className="text-sm font-medium">{session.subject?.name || 'Unknown Subject'}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(session.date, "MMM dd, HH:mm")}
+                            {format(session.startTime, "MMM dd, HH:mm")}
                           </p>
                         </div>
                       </div>
                       <div className="text-sm font-medium text-primary">
-                        {convertMinutesToHoursAndMinutes(session.duration)}
+                        {convertMinutesToHoursAndMinutes(session.durationMinutes)}
                       </div>
                     </div>
                   ))}
@@ -1361,6 +1843,92 @@ export default function DashboardPage() {
                       No study sessions yet. Start your first session!
                     </p>
                   )}
+                </div>
+              </div>
+
+              {/* Daily Study Hours by Subject - Monthly View */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-foreground">Study Hours by Day (This Month)</h4>
+                <div className="bg-muted/20 rounded-lg p-4">
+                  {/* Subject Legend */}
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {subjects.map((subject, index) => (
+                      <div key={subject.id} className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: subject.color || `hsl(${index * 137.5 % 360}, 70%, 60%)` }}
+                        ></div>
+                        <span className="text-xs text-muted-foreground">{subject.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Daily Grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {/* Day headers */}
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                      <div key={i} className="text-center text-xs font-medium text-muted-foreground py-1">
+                        {day}
+                      </div>
+                    ))}
+                    
+                    {/* Daily data */}
+                    {Array.from({ length: 31 }, (_, i) => {
+                      const day = i + 1
+                      const currentDate = new Date()
+                      const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
+                      const isCurrentMonth = dayDate.getMonth() === currentDate.getMonth()
+                      
+                      const dayData = dailyStudyHoursBySubject[day] || {}
+                      const totalHours = Object.values(dayData).reduce((sum, hours) => sum + hours, 0)
+                      
+                      return (
+                        <div 
+                          key={i} 
+                          className="min-h-[60px] p-1 border border-border/20 rounded bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
+                          title={`Day ${day}: ${totalHours > 0 ? `${Math.round(totalHours * 10) / 10}h` : '0h'}`}
+                        >
+                          <div className="text-center text-xs text-muted-foreground mb-1">
+                            {day}
+                          </div>
+                          {isCurrentMonth && totalHours > 0 ? (
+                            <div className="space-y-1">
+                              <div className="text-lg font-bold text-foreground text-center">
+                                {Math.round(totalHours * 10) / 10}h
+                              </div>
+                              {/* Subject breakdown with colors */}
+                              {Object.entries(dayData)
+                                .filter(([_, hours]) => hours > 0)
+                                .slice(0, 3) // Show max 3 subjects per day
+                                .map(([subjectName, hours]) => {
+                                  const subject = subjects.find(s => s.name === subjectName)
+                                  const color = subject?.color || `hsl(${Math.random() * 360}, 70%, 60%)`
+                                  return (
+                                    <div key={subjectName} className="text-center">
+                                      <div className="text-[10px] font-medium truncate" style={{ color }}>
+                                        {subjectName}
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        {Math.round(hours * 10) / 10}h
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              {Object.entries(dayData).filter(([_, hours]) => hours > 0).length > 3 && (
+                                <div className="text-[10px] text-muted-foreground text-center">
+                                  +{Object.entries(dayData).filter(([_, hours]) => hours > 0).length - 3} more
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-center text-muted-foreground text-xs">
+                              {isCurrentMonth ? '0h' : '-'}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -1391,30 +1959,48 @@ export default function DashboardPage() {
         <ChevronDown className="h-5 w-5 rotate-180" />
       </Button>
 
+
+
       {/* Enhanced Study Timer Component */}
       <StudyTimer 
         subjects={subjects}
         isOpen={showStudyTimer}
         onOpenChange={setShowStudyTimer}
-        onSessionComplete={(session: any) => {
-          // Convert the session to match our StudySession interface
-          const newSession: StudySession = {
-            id: Date.now().toString(),
-            subject: session.subjectName,
-            duration: session.duration,
-            date: new Date(session.date),
-            notes: session.notes,
-            sessionType: session.sessionType,
-            productivity: session.productivity,
-            topicsCovered: session.topicsCovered || [],
-            materialsUsed: session.materialsUsed || []
+        defaultDuration={getSetting('defaultStudyGoal')}
+        breakDuration={getBreakDuration()}
+        showBreakReminders={getSetting('breakReminders')}
+        onSessionComplete={async (session: any) => {
+          try {
+            // Create study session using the database API
+            const sessionData = {
+              subjectId: session.subjectId,
+              durationMinutes: session.duration,
+              startTime: new Date(`${session.date}T${session.startTime}:00`),
+              endTime: new Date(`${session.date}T${session.endTime}:00`),
+              notes: session.notes,
+              sessionType: session.sessionType,
+              productivity: session.productivity,
+              topicsCovered: session.topicsCovered?.length > 0 ? JSON.stringify(session.topicsCovered) : null,
+              materialsUsed: session.materialsUsed?.length > 0 ? JSON.stringify(session.materialsUsed) : null,
+              // Use user settings for session defaults
+              targetDuration: getSetting('defaultStudyGoal'),
+              breakDuration: getBreakDuration(),
+              reminderTime: getReminderTime()
+            }
+
+            const createdSession = await createStudySession(sessionData)
+            
+            if (createdSession) {
+              console.log('✅ Study timer session created successfully:', createdSession)
+              
+              // Notify other parts of the application about the session creation
+              // triggerUpdate removed - no longer needed
+            }
+          } catch (error) {
+            console.error('❌ Failed to create study timer session:', error)
           }
           
-          setStudySessions(prev => [...prev, newSession])
           setShowStudyTimer(false)
-          
-          // Trigger real-time sync
-          triggerUpdate("study-session-updated", { type: "created", session: newSession })
         }}
       />
 
@@ -1641,20 +2227,18 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time *</Label>
-                <Input
-                  id="startTime"
-                  type="time"
+                <TimePicker
                   value={newStudySession.startTime}
-                  onChange={(e) => setNewStudySession({...newStudySession, startTime: e.target.value})}
+                  onChange={(time) => setNewStudySession({...newStudySession, startTime: time})}
+                  placeholder="Select start time"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endTime">End Time *</Label>
-                <Input
-                  id="endTime"
-                  type="time"
+                <TimePicker
                   value={newStudySession.endTime}
-                  onChange={(e) => setNewStudySession({...newStudySession, endTime: e.target.value})}
+                  onChange={(time) => setNewStudySession({...newStudySession, endTime: time})}
+                  placeholder="Select end time"
                 />
               </div>
               <div className="space-y-2">

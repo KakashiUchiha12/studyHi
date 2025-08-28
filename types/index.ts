@@ -1,58 +1,69 @@
 export interface Task {
   id: string
   title: string
-  description?: string
-  completed: boolean
+  description?: string | null
+  status: string
   createdAt: Date
+  updatedAt: Date
   dueDate?: Date
+  completedAt?: Date
   priority: 'low' | 'medium' | 'high'
   category: string
   estimatedTime?: number
-  tags: string[]
-  subject: string
-  progress: number
-  timeSpent: number
+  timeSpent?: number
+  tags: string
+  progress?: number
+  userId: string
+  subjectId?: string | null
+  order: number
 }
 
 export interface Subject {
   id: string
   name: string
-  code: string
-  credits: number
-  instructor: string
   color: string
+  description?: string
+  code?: string
+  credits: number
+  instructor?: string
+  totalChapters: number
+  completedChapters: number
   progress: number
   nextExam?: Date
   assignmentsDue: number
-  materials: string[]
-  topics: string[]
-  completedChapters: number
-  totalChapters: number
+  createdAt: Date
+  updatedAt: Date
+  userId: string
 }
 
 export interface StudySession {
   id: string
-  subject: string
-  duration: number
-  date: Date
-  notes: string
-  efficiency: number
-  sessionType: 'Focused Study' | 'Review' | 'Practice' | 'Group Study'
-  productivity: number
-  topicsCovered: string[]
-  materialsUsed: string[]
+  userId: string
+  subjectId?: string
+  durationMinutes: number
+  startTime: Date
+  endTime: Date
+  notes?: string
+  efficiency?: number
+  sessionType?: string
+  productivity?: number
+  topicsCovered?: string
+  materialsUsed?: string
+  createdAt: Date
 }
 
 export interface TestMark {
   id: string
-  date: Date
+  testDate: Date
   subjectId: string
-  subjectName: string
-  marksObtained: number
-  totalMarks: number
-  title: string
-  percentage: number
-  grade: string
+  testName: string
+  testType: string
+  score: number
+  maxScore: number
+  notes?: string | null
+  createdAt: Date
+  updatedAt: Date
+  mistakes?: string | null
 }
 
 export interface StudyGoal {

@@ -16,11 +16,14 @@ import { DeleteSubjectDialog } from "@/components/subjects/delete-subject-dialog
 import { SubjectDetailDialog } from "@/components/subjects/subject-detail-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
-import { Subject } from "@/types"
+import { useSubjects, useMigration } from "@/hooks"
+import { Subject } from "@prisma/client"
+import { notifyDataUpdate } from "@/lib/data-sync"
+import { getColorHex } from "@/lib/utils/colors"
+import { FileUploadSimple } from '@/components/subjects/file-upload-simple'
 
 export default function SubjectsPage() {
   const { data: session, status } = useSession()
-  const [subjects, setSubjects] = useState<Subject[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
   const [dialogState, setDialogState] = useState<{
@@ -38,6 +41,19 @@ export default function SubjectsPage() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const router = useRouter()
 
+  // Use database hooks
+  const { 
+    subjects, 
+    loading: subjectsLoading, 
+    error: subjectsError,
+    createSubject, 
+    updateSubject, 
+    deleteSubject,
+    refreshSubjects 
+  } = useSubjects()
+  
+  const { autoMigrateIfNeeded } = useMigration()
+
   useEffect(() => {
     // Check authentication using NextAuth
     if (status === "loading") return // Wait for session to load
@@ -47,25 +63,39 @@ export default function SubjectsPage() {
       return
     }
 
-    // Load subjects from localStorage or initialize with sample data
-    const savedSubjects = localStorage.getItem("subjects")
-    if (savedSubjects) {
-      try {
-        setSubjects(JSON.parse(savedSubjects))
-      } catch (error) {
-        console.error('Failed to parse saved subjects:', error)
-        // Clear corrupted data
-        localStorage.removeItem("subjects")
-        setSubjects([])
-      }
-    } else {
-      // No subjects exist - start with empty array
-      setSubjects([])
+    // Auto-migrate data if needed
+    if (status === "authenticated") {
+      autoMigrateIfNeeded()
     }
-  }, [router, status])
+  }, [router, status, autoMigrateIfNeeded])
+
+  // Listen for subject updates from other components
+  useEffect(() => {
+    const handleSubjectUpdate = () => {
+      refreshSubjects()
+    }
+
+    window.addEventListener('subject-updated', handleSubjectUpdate)
+    
+    return () => {
+      window.removeEventListener('subject-updated', handleSubjectUpdate)
+    }
+  }, [refreshSubjects])
 
   // Show loading state while checking authentication
   if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state while loading subjects (only after authentication is confirmed)
+  if (status === "authenticated" && subjectsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -92,46 +122,81 @@ export default function SubjectsPage() {
 
   const filteredSubjects = subjects.filter((subject) =>
     subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    subject.code.toLowerCase().includes(searchQuery.toLowerCase())
+    (subject.description && subject.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
 
 
-  const handleAddSubject = (newSubject: Omit<Subject, "id">) => {
-    const subject: Subject = {
-      ...newSubject,
-      id: `subject-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      progress: 0,
-      nextExam: undefined,
-      assignmentsDue: 0,
-      materials: [],
-      topics: [],
-      totalChapters: 0,
-      completedChapters: 0
+  const handleAddSubject = async (newSubject: Omit<Subject, "id">) => {
+    try {
+      await createSubject({
+        name: newSubject.name,
+        color: newSubject.color,
+        description: newSubject.description || '',
+        code: newSubject.code || '',
+        credits: newSubject.credits || 3,
+        instructor: newSubject.instructor || '',
+        totalChapters: newSubject.totalChapters || 0,
+        completedChapters: newSubject.completedChapters || 0,
+        progress: newSubject.progress || 0,
+        nextExam: newSubject.nextExam || undefined,
+        assignmentsDue: newSubject.assignmentsDue || 0
+      })
+      
+      // Notify other pages to refresh their data
+      notifyDataUpdate.subject()
+      
+      setDialogState({ ...dialogState, add: false })
+    } catch (error) {
+      console.error('Failed to create subject:', error)
+      // Error handling is managed by the hook
     }
-    const updatedSubjects = [...subjects, subject]
-    setSubjects(updatedSubjects)
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects))
-    setDialogState({ ...dialogState, add: false })
   }
 
-  const handleEditSubject = (updatedSubject: Subject) => {
-    const updatedSubjects = subjects.map((subject) => (subject.id === updatedSubject.id ? updatedSubject : subject))
-    setSubjects(updatedSubjects)
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects))
-    setDialogState({ ...dialogState, edit: false })
-    setSelectedSubject(null)
+  const handleEditSubject = async (updatedSubject: Subject) => {
+    try {
+      await updateSubject(updatedSubject.id, {
+        name: updatedSubject.name,
+        color: updatedSubject.color,
+        description: updatedSubject.description || '',
+        code: updatedSubject.code || '',
+        credits: updatedSubject.credits || 3,
+        instructor: updatedSubject.instructor || '',
+        totalChapters: updatedSubject.totalChapters || 0,
+        completedChapters: updatedSubject.completedChapters || 0,
+        progress: updatedSubject.progress || 0,
+        nextExam: updatedSubject.nextExam || undefined,
+        assignmentsDue: updatedSubject.assignmentsDue || 0
+      })
+      
+      // Notify other pages to refresh their data
+      notifyDataUpdate.subject()
+      
+      setDialogState({ ...dialogState, edit: false })
+      setSelectedSubject(null)
+    } catch (error) {
+      console.error('Failed to update subject:', error)
+      // Error handling is managed by the hook
+    }
   }
 
-  const handleDeleteSubject = (subjectId: string) => {
-    const updatedSubjects = subjects.filter((subject) => subject.id !== subjectId)
-    setSubjects(updatedSubjects)
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects))
-    setDialogState({ ...dialogState, delete: false })
-    setSelectedSubject(null)
+  const handleDeleteSubject = async (subjectId: string) => {
+    try {
+      await deleteSubject(subjectId)
+      
+      // Notify other pages to refresh their data
+      notifyDataUpdate.subject()
+      
+      setDialogState({ ...dialogState, delete: false })
+      setSelectedSubject(null)
+    } catch (error) {
+      console.error('Failed to delete subject:', error)
+      // Error handling is managed by the hook
+    }
   }
 
   const handleDragStart = (e: React.DragEvent, subjectId: string) => {
+    console.log('Drag started for subject:', subjectId)
     setDraggedSubject(subjectId)
     e.dataTransfer.effectAllowed = "move"
   }
@@ -146,23 +211,48 @@ export default function SubjectsPage() {
     setDragOverIndex(null)
   }
 
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
+    console.log('Drop event triggered at index:', dropIndex)
+    console.log('Dragged subject:', draggedSubject)
+    
     if (!draggedSubject) return
 
     const draggedIndex = filteredSubjects.findIndex((subject) => subject.id === draggedSubject)
+    console.log('Dragged index:', draggedIndex, 'Drop index:', dropIndex)
+    
     if (draggedIndex === -1 || draggedIndex === dropIndex) {
+      console.log('Invalid drop - same position or subject not found')
       setDraggedSubject(null)
       setDragOverIndex(null)
       return
     }
 
-    const newSubjects = [...filteredSubjects]
-    const [draggedItem] = newSubjects.splice(draggedIndex, 1)
-    newSubjects.splice(dropIndex, 0, draggedItem)
+    try {
+      console.log('Starting reorder process...')
+      // Create a new array with the reordered subjects
+      const reorderedSubjects = [...filteredSubjects]
+      const [draggedSubjectData] = reorderedSubjects.splice(draggedIndex, 1)
+      reorderedSubjects.splice(dropIndex, 0, draggedSubjectData)
 
-    setSubjects(newSubjects)
-    localStorage.setItem("subjects", JSON.stringify(newSubjects))
+      console.log('Reordered subjects:', reorderedSubjects.map(s => ({ name: s.name, order: s.order })))
+
+      // Update the order field for all subjects
+      const updatePromises = reorderedSubjects.map((subject, index) => {
+        console.log(`Updating ${subject.name} to order ${index}`)
+        return updateSubject(subject.id, { order: index })
+      })
+
+      console.log('Waiting for all updates to complete...')
+      await Promise.all(updatePromises)
+      console.log('All updates completed successfully')
+      
+      // Refresh subjects to show the new order
+      refreshSubjects()
+    } catch (error) {
+      console.error('Failed to reorder subjects:', error)
+    }
+
     setDraggedSubject(null)
     setDragOverIndex(null)
   }
@@ -174,6 +264,15 @@ export default function SubjectsPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Error Display */}
+      {subjectsError && (
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+            <p className="text-sm text-destructive">{subjectsError}</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -265,7 +364,11 @@ export default function SubjectsPage() {
                       <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
                         <GripVertical className="h-4 w-4 text-muted-foreground transition-opacity" />
                       </div>
-                      <div className={`h-3 w-3 rounded-full ${subject.color}`} />
+                      <div 
+                        className="h-3 w-3 rounded-full border border-border"
+                        style={{ backgroundColor: getColorHex(subject.color) }}
+                        title={subject.color}
+                      />
                       <CardTitle className="text-lg">{subject.name}</CardTitle>
                     </div>
                     <div className="flex items-center space-x-1">
@@ -307,57 +410,52 @@ export default function SubjectsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Progress */}
-                    <div>
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{subject.progress}%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{ 
-                            width: `${subject.progress}%`,
-                            backgroundColor: subject.color && subject.color.startsWith('#') ? subject.color : undefined
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Chapters */}
+                    {/* Description */}
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Chapters</span>
+                      <span className="text-muted-foreground">Description</span>
                       <span className="font-medium">
-                        {subject.completedChapters || 0}/{subject.totalChapters || 0}
+                        {subject.description || 'No description'}
                       </span>
                     </div>
 
-                    {/* Materials */}
+                    {/* Progress Bar */}
                     <div>
-                      <span className="text-sm text-muted-foreground">Materials</span>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {subject.materials && subject.materials.length > 0 ? (
-                          <>
-                            {subject.materials.slice(0, 2).map((material, index) => {
-                              const materialName = typeof material === 'string' ? material : 
-                                (material && typeof material === 'object' && 'name' in material ? (material as any).name : 'Unknown');
-                              const displayName = materialName.length > 20 ? `${materialName.substring(0, 20)}...` : materialName;
-                              
-                              return (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {displayName}
-                                </Badge>
-                              );
-                            })}
-                            {subject.materials.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{subject.materials.length - 2} more
-                              </Badge>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No materials added</span>
-                        )}
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium">{Math.round(subject.progress || 0)}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${subject.progress || 0}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>{subject.completedChapters || 0} of {subject.totalChapters || 0} chapters</span>
+                      </div>
+                    </div>
+
+                    {/* Subject Details */}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Credits:</span>
+                        <span className="ml-2 font-medium">{subject.credits || 3}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Instructor:</span>
+                        <span className="ml-2 font-medium">{subject.instructor || 'Not assigned'}</span>
+                      </div>
+                      {subject.nextExam && (
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Next Exam:</span>
+                          <span className="ml-2 font-medium">
+                            {new Date(subject.nextExam).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Assignments Due:</span>
+                        <span className="ml-2 font-medium">{subject.assignmentsDue || 0}</span>
                       </div>
                     </div>
                   </div>

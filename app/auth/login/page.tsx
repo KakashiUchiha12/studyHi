@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { signIn, getSession } from "next-auth/react"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,7 +35,7 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError("Invalid email or password. Try demo@studyplanner.com / demo123")
+        setError("Invalid email or password. Please try again.")
         toast.error("Login failed")
       } else {
         toast.success("Welcome back!")
@@ -137,9 +137,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">Demo credentials: demo@studyplanner.com / demo123</p>
-        </div>
+
       </div>
     </div>
   )
