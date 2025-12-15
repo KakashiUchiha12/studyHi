@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Plus, Users, Search, Globe, Lock } from "lucide-react";
 import { StudyHiLogo } from "@/components/ui/studyhi-logo";
+import ReactMarkdown from "react-markdown";
 
 interface Community {
     id: string;
     name: string;
     description: string;
+    coverImage: string | null;
     _count: {
         members: number;
     };
@@ -98,32 +100,58 @@ export default function CommunityPage() {
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <div key={i} className="h-48 rounded-xl bg-muted animate-pulse"></div>
+                            <div key={i} className="h-64 rounded-xl bg-muted animate-pulse"></div>
                         ))}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {communities.map((community) => (
                             <Link href={`/community/${community.id}`} key={community.id} className="block group">
-                                <Card className="h-full hover:shadow-md transition-all border-border hover:border-primary/50">
-                                    <CardHeader>
-                                        <div className="flex justify-between items-start">
-                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xl mb-2 group-hover:bg-primary group-hover:text-white transition-colors">
-                                                {community.name[0].toUpperCase()}
+                                <Card className="h-full hover:shadow-lg transition-all border-border hover:border-primary/50 overflow-hidden flex flex-col p-0 border">
+                                    <div className="h-32 bg-gray-100 relative w-full">
+                                        {community.coverImage ? (
+                                            <img
+                                                src={community.coverImage}
+                                                alt={community.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
+                                                <div className="text-4xl font-bold text-primary/20">
+                                                    {community.name[0]?.toUpperCase()}
+                                                </div>
                                             </div>
-                                            {community.isPrivate ? (
-                                                <Lock className="w-4 h-4 text-muted-foreground" />
-                                            ) : (
-                                                <Globe className="w-4 h-4 text-muted-foreground" />
-                                            )}
+                                        )}
+                                        {community.isPrivate && (
+                                            <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full">
+                                                <Lock className="w-3 h-3" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <CardHeader className="pb-2">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <div className="flex-1">
+                                                <CardTitle className="text-xl line-clamp-1" title={community.name}>
+                                                    {community.name}
+                                                </CardTitle>
+                                            </div>
                                         </div>
-                                        <CardTitle className="text-xl">{community.name}</CardTitle>
-                                        <CardDescription className="line-clamp-2">
-                                            {community.description || "No description provided."}
-                                        </CardDescription>
+                                        <div className="text-sm text-muted-foreground line-clamp-2 h-[40px] prose prose-sm max-w-none">
+                                            <ReactMarkdown
+                                                components={{
+                                                    p: ({ node, ...props }) => <p className="mb-0" {...props} />,
+                                                    h1: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                                                    h2: ({ node, ...props }) => <span className="font-bold" {...props} />,
+                                                    ul: ({ node, ...props }) => <span {...props} />,
+                                                    li: ({ node, ...props }) => <span className="mr-1" {...props} />,
+                                                }}
+                                            >
+                                                {community.description || "No description provided."}
+                                            </ReactMarkdown>
+                                        </div>
                                     </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-center text-sm text-muted-foreground">
+                                    <CardContent className="mt-auto pt-0">
+                                        <div className="flex items-center text-sm text-muted-foreground pt-4 border-t">
                                             <Users className="w-4 h-4 mr-2" />
                                             {community._count.members} members
                                         </div>

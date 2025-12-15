@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Hash, ArrowLeft, Settings, LogOut } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Hash, ArrowLeft, Settings, LogOut, Info, BookOpen } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 export default async function CommunityLayout({
     children,
@@ -36,6 +37,17 @@ export default async function CommunityLayout({
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
             {/* Community Header */}
+            {community.coverImage && (
+                <div className="w-full h-48 md:h-64 relative">
+                    <img
+                        src={community.coverImage}
+                        alt="Cover"
+                        className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                </div>
+            )}
+
             <header className="bg-white border-b border-border shadow-sm sticky top-0 z-10">
                 <div className="container mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -43,8 +55,12 @@ export default async function CommunityLayout({
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                                {community.name[0].toUpperCase()}
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-lg overflow-hidden relative">
+                                {community.icon ? (
+                                    <img src={community.icon} alt="Icon" className="w-full h-full object-cover" />
+                                ) : (
+                                    community.name[0].toUpperCase()
+                                )}
                             </div>
                             <div>
                                 <h1 className="text-lg font-bold leading-tight">{community.name}</h1>
@@ -88,6 +104,34 @@ export default async function CommunityLayout({
                         </CardContent>
                     </Card>
 
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-2">
+                                <Info className="w-4 h-4" /> About
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm prose prose-sm max-w-none dark:prose-invert">
+                            {community.description ? (
+                                <ReactMarkdown>{community.description}</ReactMarkdown>
+                            ) : (
+                                <span className="text-muted-foreground italic">No description.</span>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {community.rules && (
+                        <Card>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-2">
+                                    <BookOpen className="w-4 h-4" /> Rules
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-sm prose prose-sm max-w-none dark:prose-invert">
+                                <ReactMarkdown>{community.rules}</ReactMarkdown>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <div className="text-xs text-muted-foreground text-center">
                         Community ID: {community.id.slice(0, 8)}
                     </div>
@@ -98,6 +142,6 @@ export default async function CommunityLayout({
                     {children}
                 </main>
             </div>
-        </div>
+        </div >
     );
 }

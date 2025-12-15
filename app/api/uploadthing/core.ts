@@ -77,6 +77,17 @@ export const ourFileRouter = {
       console.log("Post attachment upload complete:", file.url)
       return { uploadedBy: metadata.userId, url: file.url, name: file.name, size: file.size }
     }),
+
+  communityCoverImage: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
+    .middleware(async ({ req }) => {
+      const session = await getServerSession(authOptions)
+      const userId = (session?.user as any)?.id || "anonymous"
+      return { userId }
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      console.log("Community cover upload complete:", file.url)
+      return { uploadedBy: metadata.userId, url: file.url }
+    }),
 } satisfies FileRouter
 
 export type OurFileRouter = typeof ourFileRouter

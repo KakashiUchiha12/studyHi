@@ -13,6 +13,8 @@ export async function GET(req: Request) {
         const communityId = searchParams.get("communityId");
         const userId = searchParams.get("userId"); // View specific user's posts
 
+        const isAnnouncement = searchParams.get("isAnnouncement") === "true";
+
         // Build where clause
         let whereClause: any = {};
         if (communityId) {
@@ -29,6 +31,10 @@ export async function GET(req: Request) {
             // Let's stick to Global view or Community view for simplicity first.
         }
 
+        if (isAnnouncement) {
+            whereClause.isAnnouncement = true;
+        }
+
         let posts;
 
         if (cursor) {
@@ -38,7 +44,7 @@ export async function GET(req: Request) {
                 cursor: { id: cursor },
                 where: whereClause,
                 include: {
-                    author: {
+                    user: {
                         select: { name: true, image: true, id: true }
                     },
                     community: {
@@ -59,7 +65,7 @@ export async function GET(req: Request) {
                 take: POSTS_BATCH,
                 where: whereClause,
                 include: {
-                    author: {
+                    user: {
                         select: { name: true, image: true, id: true }
                     },
                     community: {
@@ -91,7 +97,7 @@ export async function POST(req: Request) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { content, communityId, attachments } = await req.json();
+        const { content, communityId, attachments, isAnnouncement } = await req.json();
 
         if (!content && (!attachments || attachments.length === 0)) {
             return new NextResponse("Content or attachments missing", { status: 400 });
@@ -102,6 +108,7 @@ export async function POST(req: Request) {
                 content: content || "",
                 userId: (session.user as any).id,
                 communityId, // Optional
+                isAnnouncement: isAnnouncement || false,
                 attachments: {
                     create: attachments?.map((att: any) => ({
                         url: att.url,

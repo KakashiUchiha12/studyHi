@@ -18,12 +18,13 @@ export async function GET(req: Request) {
         if (query) {
             communities = await prisma.community.findMany({
                 where: {
-                    name: {
-                        contains: query,
-                        // mode: "insensitive", // SQLite doesn't support insensitive mode easily, removed for compatibility
-                    },
+                    OR: [
+                        { name: { contains: query } },
+                        { id: { contains: query } } // Allow searching by ID
+                    ],
                     isPrivate: false,
-                },
+                    showInSearch: true // Only show if allowed
+                } as any,
                 include: {
                     _count: {
                         select: { members: true },
@@ -35,7 +36,8 @@ export async function GET(req: Request) {
             communities = await prisma.community.findMany({
                 where: {
                     isPrivate: false,
-                },
+                    showInSearch: true // Only show if allowed
+                } as any, // Cast to any to avoid type error if client is stale
                 include: {
                     _count: {
                         select: { members: true },
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { name, description, isPrivate } = await req.json();
+        const { name, description, isPrivate, showInSearch, coverImage, icon, rules } = await req.json();
 
         if (!name) {
             return new NextResponse("Name is required", { status: 400 });
@@ -79,19 +81,17 @@ export async function POST(req: Request) {
             return new NextResponse("User not found", { status: 404 });
         }
 
-        const existingCommunity = await prisma.community.findUnique({
-            where: { name }
-        });
-
-        if (existingCommunity) {
-            return new NextResponse("Community already exists", { status: 409 });
-        }
+        // Removed unique name check as per new requirement
 
         const community = await prisma.community.create({
             data: {
                 name,
                 description,
                 isPrivate,
+                showInSearch: showInSearch !== undefined ? showInSearch : true,
+                coverImage,
+                icon,
+                rules,
                 ownerId: user.id,
                 members: {
                     create: {
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
                         { name: "announcements", type: "announcement" }
                     ]
                 }
-            }
+            } as any
         });
 
         return NextResponse.json(community);

@@ -19,6 +19,7 @@ import { X, FileText, Image as ImageIcon } from "lucide-react";
 export function CreatePost({ communityId, currentUser, onPostCreated }: CreatePostProps) {
     const [content, setContent] = useState("");
     const [attachments, setAttachments] = useState<any[]>([]);
+    const [isAnnouncement, setIsAnnouncement] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async () => {
@@ -28,7 +29,7 @@ export function CreatePost({ communityId, currentUser, onPostCreated }: CreatePo
             const res = await fetch("/api/posts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content, communityId, attachments })
+                body: JSON.stringify({ content, communityId, attachments, isAnnouncement })
             });
 
             if (res.ok) {
@@ -133,6 +134,20 @@ export function CreatePost({ communityId, currentUser, onPostCreated }: CreatePo
                                 Post
                             </Button>
                         </div>
+
+                        {communityId && (
+                            <div className="flex items-center gap-2 pt-2">
+                                <label className="text-xs text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isAnnouncement}
+                                        onChange={(e) => setIsAnnouncement(e.target.checked)}
+                                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    Post as Announcement
+                                </label>
+                            </div>
+                        )}
                     </div>
                 </div>
             </CardContent>

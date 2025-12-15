@@ -9,9 +9,10 @@ interface FeedViewProps {
     communityId?: string; // If present, scoped to community
     userId?: string; // If present, scoped to user
     currentUser?: any; // Session user
+    isAnnouncement?: boolean; // Filter by announcement
 }
 
-export function FeedView({ communityId, userId, currentUser }: FeedViewProps) {
+export function FeedView({ communityId, userId, currentUser, isAnnouncement }: FeedViewProps) {
     const [posts, setPosts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -25,6 +26,7 @@ export function FeedView({ communityId, userId, currentUser }: FeedViewProps) {
             const params = new URLSearchParams();
             if (communityId) params.append("communityId", communityId);
             if (userId) params.append("userId", userId);
+            if (isAnnouncement) params.append("isAnnouncement", "true");
 
             const res = await fetch(`/api/posts?${params.toString()}`);
             if (res.ok) {
