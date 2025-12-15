@@ -5,13 +5,14 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthSessionProvider } from "@/components/providers/session-provider"
 import { Toaster } from "react-hot-toast"
 import { Analytics } from "@vercel/analytics/next"
+import ErrorBoundary from "@/components/error-boundary"
 
 
 
 export const metadata: Metadata = {
-  title: "StudyPlanner - Organize Your Academic Success",
+  title: "StudyHi - Welcome to Learning",
   description:
-    "A comprehensive study planner app for students to track subjects, syllabus, test marks, and study sessions.",
+    "Your ultimate study companion. Welcome to Learning - track subjects, syllabus, test marks, and study sessions with our comprehensive study planner.",
   generator: "v0.app",
 }
 
@@ -33,13 +34,15 @@ export default function RootLayout({
         {/* PDF.js will be loaded dynamically when needed */}
       </head>
       <body className="font-sans antialiased">
-        <AuthSessionProvider>
-          <ThemeProvider defaultTheme="system">
-            {children}
-            <Toaster position="top-right" />
-            <Analytics />
-          </ThemeProvider>
-        </AuthSessionProvider>
+        <ErrorBoundary>
+          <AuthSessionProvider>
+            <ThemeProvider defaultTheme="light">
+              {children}
+              <Toaster position="top-right" />
+              <Analytics />
+            </ThemeProvider>
+          </AuthSessionProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

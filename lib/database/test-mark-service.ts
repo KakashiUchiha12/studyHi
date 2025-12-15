@@ -27,8 +27,7 @@ export class TestMarkService {
   private prisma = dbService.getPrisma()
 
   constructor() {
-    // Ensure the mistakes column exists when the service is initialized
-    this.ensureMistakesColumnExists().catch(console.error)
+    // Note: Mistakes column is confirmed to exist, no need to check on every initialization
   }
 
   // Get all test marks for a user

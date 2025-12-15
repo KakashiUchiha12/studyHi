@@ -12,6 +12,13 @@ export function QuickActions() {
       href: "/subjects",
     },
     {
+      title: "Global Feed",
+      description: "See what's happening",
+      icon: FileText,
+      color: "bg-primary text-primary-foreground hover:bg-primary/90",
+      href: "/feed",
+    },
+    {
       title: "Log Study Session",
       description: "Record your study time",
       icon: Clock,

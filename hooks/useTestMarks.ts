@@ -23,7 +23,7 @@ export function useTestMarks() {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Build query parameters
       const params = new URLSearchParams()
       if (filters?.subjectId && filters.subjectId !== 'all') {
@@ -39,11 +39,11 @@ export function useTestMarks() {
 
       const url = `/api/test-marks${params.toString() ? `?${params.toString()}` : ''}`
       const response = await fetch(url)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch test marks')
       }
-      
+
       const data = await response.json()
       setTestMarks(data)
     } catch (err) {
@@ -52,7 +52,7 @@ export function useTestMarks() {
     } finally {
       setLoading(false)
     }
-  }, [userId])
+  }, [])
 
   // Create a new test mark
   const createTestMark = useCallback(async (testData: {
@@ -319,8 +319,10 @@ export function useTestMarks() {
 
   // Load test marks on mount and when user changes
   useEffect(() => {
-    loadTestMarks()
-  }, [loadTestMarks])
+    if (userId) {
+      loadTestMarks()
+    }
+  }, [userId, loadTestMarks])
 
   return {
     testMarks,

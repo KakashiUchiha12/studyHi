@@ -1,0 +1,124 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+const POSTS_BATCH = 20;
+
+export async function GET(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        const { searchParams } = new URL(req.url);
+        const cursor = searchParams.get("cursor");
+        const communityId = searchParams.get("communityId");
+        const userId = searchParams.get("userId"); // View specific user's posts
+
+        // Build where clause
+        let whereClause: any = {};
+        if (communityId) {
+            whereClause.communityId = communityId;
+        } else if (userId) {
+            whereClause.authorId = userId;
+        } else if (session) {
+            // Global Feed: Posts from communities user follows OR people user follows?
+            // Simple v1: All posts from joined communities + global public posts?
+            // Or specific "My Feed" logic.
+            // Let's implement: All posts sorted by newest for now, or if scoped, scoped.
+            // If no params, global feed (all public posts).
+            // To strictly "Followed Feed", we'd need more complex query.
+            // Let's stick to Global view or Community view for simplicity first.
+        }
+
+        let posts;
+
+        if (cursor) {
+            posts = await prisma.post.findMany({
+                take: POSTS_BATCH,
+                skip: 1,
+                cursor: { id: cursor },
+                where: whereClause,
+                include: {
+                    author: {
+                        select: { name: true, image: true, id: true }
+                    },
+                    community: {
+                        select: { name: true, id: true }
+                    },
+                    _count: {
+                        select: { comments: true, likes: true }
+                    },
+                    likes: session ? {
+                        where: { userId: (session.user as any).id },
+                        select: { userId: true }
+                    } : false
+                },
+                orderBy: { createdAt: "desc" }
+            });
+        } else {
+            posts = await prisma.post.findMany({
+                take: POSTS_BATCH,
+                where: whereClause,
+                include: {
+                    author: {
+                        select: { name: true, image: true, id: true }
+                    },
+                    community: {
+                        select: { name: true, id: true }
+                    },
+                    _count: {
+                        select: { comments: true, likes: true }
+                    },
+                    likes: session ? {
+                        where: { userId: (session.user as any).id },
+                        select: { userId: true }
+                    } : false
+                },
+                orderBy: { createdAt: "desc" }
+            });
+        }
+
+        return NextResponse.json(posts);
+    } catch (error) {
+        console.error("[POSTS_GET]", error);
+        return new NextResponse("Internal Error", { status: 500 });
+    }
+}
+
+export async function POST(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+
+        const { content, communityId, attachments } = await req.json();
+
+        if (!content && (!attachments || attachments.length === 0)) {
+            return new NextResponse("Content or attachments missing", { status: 400 });
+        }
+
+        const post = await prisma.post.create({
+            data: {
+                content: content || "",
+                userId: (session.user as any).id,
+                communityId, // Optional
+                attachments: {
+                    create: attachments?.map((att: any) => ({
+                        url: att.url,
+                        type: att.type,
+                        name: att.name,
+                        size: att.size
+                    }))
+                }
+            },
+            include: {
+                attachments: true
+            }
+        });
+
+        return NextResponse.json(post);
+    } catch (error) {
+        console.error("[POSTS_CREATE]", error);
+        return new NextResponse("Internal Error", { status: 500 });
+    }
+}

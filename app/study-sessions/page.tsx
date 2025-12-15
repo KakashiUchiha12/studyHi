@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { 
-  Clock, Search, Plus, ArrowLeft, Calendar, BookOpen, Target, TrendingUp, 
+import {
+  Clock, Search, Plus, ArrowLeft, Calendar, BookOpen, Target, TrendingUp,
   Edit, Trash2, Timer, BarChart3, Filter, SortAsc, SortDesc, Eye, EyeOff,
   Play, Pause, Square, RotateCcw, Zap, Bookmark, Star, CheckCircle, Info
 } from "lucide-react"
@@ -20,7 +20,7 @@ import { AddSessionDialog } from "@/components/study-sessions/add-session-dialog
 import { EditSessionDialog } from "@/components/study-sessions/edit-session-dialog"
 import { DeleteSessionDialog } from "@/components/study-sessions/delete-session-dialog"
 
-import { ThemeToggle } from "@/components/theme-toggle"
+
 import Link from "next/link"
 import { useStudySessions, useSubjects, useMigration, useTestMarks } from "@/hooks"
 import { StudySession, Subject, TestMark } from "@prisma/client"
@@ -54,7 +54,7 @@ export default function StudySessionsPage() {
     notes?: string
   }) => {
     console.log('🔍 calculateEfficiency called with:', sessionData)
-    
+
     // Topics Score (40% weight) - 0-5 points
     let topicsScore = 0
     if (sessionData.topicsCovered.length === 0) topicsScore = 0
@@ -96,13 +96,13 @@ export default function StudySessionsPage() {
 
     // Calculate weighted efficiency (this gives us a score out of 3.5 total possible points)
     const weightedSum = (topicsScore * 0.4) + (materialsScore * 0.3) + (durationScore * 0.2) + (productivityScore * 0.1)
-    
+
     // Convert to 0-10 scale: (weightedSum / 3.5) * 10
     // 3.5 is the maximum possible weighted sum: (5*0.4) + (3*0.3) + (2.5*0.2) + (1*0.1) = 2 + 0.9 + 0.5 + 0.1 = 3.5
     const efficiency = Math.round((weightedSum / 3.5) * 10)
-    
+
     const finalEfficiency = Math.max(0, Math.min(10, efficiency))
-    
+
     console.log('🔍 Final efficiency calculation:', {
       weightedSum,
       maxPossibleSum: 3.5,
@@ -126,19 +126,19 @@ export default function StudySessionsPage() {
       notes: "test"
     })
     console.log('🔍 TEST: Expected efficiency for your session should be 10, got:', testEfficiency)
-    
+
     // Manual calculation verification
     const topicsScore = 5 // 5 topics = 5 points
     const materialsScore = 3 // 5+ materials = 3 points  
     const durationScore = 2.5 // 390 minutes = 2.5 points
     const productivityScore = (5 - 1) * 0.25 // 5 productivity = 1 point
-    
+
     const weightedSum = (topicsScore * 0.4) + (materialsScore * 0.3) + (durationScore * 0.2) + (productivityScore * 0.1)
     const expectedEfficiency = Math.round((weightedSum / 3.5) * 10)
-    
+
     console.log('🔍 MANUAL CALCULATION VERIFICATION:', {
       topicsScore,
-      materialsScore, 
+      materialsScore,
       durationScore,
       productivityScore,
       weightedSum,
@@ -153,12 +153,12 @@ export default function StudySessionsPage() {
       console.log('🔍 No jsonString, returning default:', defaultValue)
       return defaultValue
     }
-    
+
     try {
       // First parse - might return a string if double-encoded
       let parsed = JSON.parse(jsonString)
       console.log('🔍 First parse result:', { parsed, type: typeof parsed, isArray: Array.isArray(parsed) })
-      
+
       // If the result is still a string, parse it again (handles double-encoding)
       if (typeof parsed === 'string') {
         try {
@@ -169,7 +169,7 @@ export default function StudySessionsPage() {
           return defaultValue
         }
       }
-      
+
       console.log('🔍 Final parsed result:', { parsed, isArray: Array.isArray(parsed), length: Array.isArray(parsed) ? parsed.length : 'N/A' })
       return Array.isArray(parsed) ? parsed : defaultValue
     } catch (error) {
@@ -214,14 +214,14 @@ export default function StudySessionsPage() {
         materialsType: typeof session.materialsUsed,
         currentEfficiency: session.efficiency
       })))
-      
+
       // Check if any sessions need efficiency updates
       const sessionsNeedingUpdate = studySessions.filter(session => {
         const topicsCovered = safeJsonParse(session.topicsCovered)
         const materialsUsed = safeJsonParse(session.materialsUsed)
         return topicsCovered && materialsUsed && session.durationMinutes && session.productivity
       })
-      
+
       if (sessionsNeedingUpdate.length > 0) {
         console.log('🔍 Found sessions that may need efficiency updates:', sessionsNeedingUpdate.length)
         // You can add logic here to update sessions if needed
@@ -241,7 +241,7 @@ export default function StudySessionsPage() {
       // Recalculate efficiency for existing sessions to ensure consistency
       const topicsCovered = safeJsonParse(session.topicsCovered)
       const materialsUsed = safeJsonParse(session.materialsUsed)
-      
+
       // Only recalculate if we have the necessary data
       let recalculatedEfficiency = session.efficiency
       if (topicsCovered && materialsUsed && session.durationMinutes && session.productivity) {
@@ -254,7 +254,7 @@ export default function StudySessionsPage() {
           topicsLength: Array.isArray(topicsCovered) ? topicsCovered.length : 'Not array',
           materialsLength: Array.isArray(materialsUsed) ? materialsUsed.length : 'Not array'
         })
-        
+
         recalculatedEfficiency = calculateEfficiency({
           subjectId: session.subjectId || '',
           duration: session.durationMinutes,
@@ -263,7 +263,7 @@ export default function StudySessionsPage() {
           materialsUsed: Array.isArray(materialsUsed) ? materialsUsed : [],
           notes: session.notes || undefined
         })
-        
+
         console.log('🔍 Efficiency recalculated:', {
           id: session.id,
           original: session.efficiency,
@@ -278,7 +278,7 @@ export default function StudySessionsPage() {
           hasProductivity: !!session.productivity
         })
       }
-      
+
       // Return session with recalculated efficiency
       return {
         ...session,
@@ -297,13 +297,13 @@ export default function StudySessionsPage() {
           recalculatedEfficiency: session.efficiency
         })
       }
-      
+
       const subjectName = subjects.find(s => s.id === session.subjectId)?.name || 'Unknown Subject'
       const topicsCovered = safeJsonParse(session.topicsCovered)
       const materialsUsed = safeJsonParse(session.materialsUsed)
       const subjectId = session.subjectId
       const sessionType = session.sessionType
-      
+
       // Debug logging only for sessions with data
       if (session.topicsCovered || session.materialsUsed) {
         console.log('🔍 Session data after parsing:', {
@@ -314,7 +314,7 @@ export default function StudySessionsPage() {
           parsedMaterials: materialsUsed
         })
       }
-      
+
       const matchesSearch =
         subjectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         topicsCovered.some((topic: string) => topic.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -327,7 +327,7 @@ export default function StudySessionsPage() {
       // Fallback to startTime if createdAt is not available
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.startTime).getTime()
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.startTime).getTime()
-      
+
       // Debug: Log sorting information for first few sessions
       if (studySessions.indexOf(a) < 3) {
         console.log('🔍 Sorting session:', {
@@ -337,7 +337,7 @@ export default function StudySessionsPage() {
           sortDate: new Date(dateA).toISOString()
         })
       }
-      
+
       return dateB - dateA
     })
   }, [studySessions, subjects, searchQuery, selectedSubject, selectedSessionType])
@@ -353,7 +353,7 @@ export default function StudySessionsPage() {
   useEffect(() => {
     // Check authentication using NextAuth
     if (status === "loading") return // Wait for session to load
-    
+
     if (status === "unauthenticated") {
       router.push("/auth/login")
       return
@@ -419,13 +419,13 @@ export default function StudySessionsPage() {
   const getWeekString = (date: Date | string) => {
     // Ensure we have a Date object
     const dateObj = typeof date === 'string' ? new Date(date) : date
-    
+
     // Check if the date is valid
     if (isNaN(dateObj.getTime())) {
       console.warn('Invalid date passed to getWeekString:', date)
       return 'Invalid-Date'
     }
-    
+
     const year = dateObj.getFullYear()
     const week = Math.ceil(((dateObj.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + 1) / 7)
     return `${year}-W${week}`
@@ -437,7 +437,7 @@ export default function StudySessionsPage() {
     const startTime = typeof session.startTime === 'string' ? new Date(session.startTime) : session.startTime
     const endTime = typeof session.endTime === 'string' ? new Date(session.endTime) : session.endTime
     const createdAt = typeof session.createdAt === 'string' ? new Date(session.createdAt) : session.createdAt
-    
+
     return {
       id: session.id,
       subjectId: session.subjectId || '',
@@ -458,7 +458,7 @@ export default function StudySessionsPage() {
   // Helper function to convert dialog format back to Prisma format
   const convertFromDialogFormat = (session: any) => {
     console.log('🔍 convertFromDialogFormat called with:', session)
-    
+
     // Calculate new efficiency based on updated data
     const newEfficiency = calculateEfficiency({
       subjectId: session.subjectId,
@@ -468,9 +468,9 @@ export default function StudySessionsPage() {
       materialsUsed: session.materialsUsed,
       notes: session.notes
     })
-    
+
     console.log('🔍 Calculated new efficiency:', newEfficiency)
-    
+
     const result = {
       subjectId: session.subjectId,
       durationMinutes: session.duration,
@@ -483,7 +483,7 @@ export default function StudySessionsPage() {
       topicsCovered: JSON.stringify(session.topicsCovered),
       materialsUsed: JSON.stringify(session.materialsUsed)
     }
-    
+
     console.log('🔍 convertFromDialogFormat result:', result)
     return result
   }
@@ -502,13 +502,13 @@ export default function StudySessionsPage() {
     try {
       // Calculate efficiency automatically
       const efficiency = calculateEfficiency(newSession)
-      
+
       // Parse dates properly
       const sessionDate = new Date(newSession.startTime)
       if (isNaN(sessionDate.getTime())) {
         throw new Error('Invalid start time format')
       }
-      
+
       const endDate = new Date(newSession.endTime)
       if (isNaN(endDate.getTime())) {
         throw new Error('Invalid end time format')
@@ -536,10 +536,10 @@ export default function StudySessionsPage() {
       })
 
       await createStudySession(sessionData as any) // Type assertion needed due to Prisma type mismatch
-      
+
       // Notify other pages to refresh their data
       notifyDataUpdate.studySession()
-      
+
       setDialogState({ ...dialogState, add: false })
     } catch (error) {
       console.error('Failed to create study session:', error)
@@ -559,22 +559,22 @@ export default function StudySessionsPage() {
         duration: updatedSession.duration,
         productivity: updatedSession.productivity
       })
-      
+
       const convertedUpdates = convertFromDialogFormat(updatedSession)
       console.log('🔍 Converted updates:', convertedUpdates)
-      
+
       console.log('🔍 About to call updateStudySession with:', {
         sessionId: updatedSession.id,
         updates: convertedUpdates
       })
-      
+
       await updateStudySession(updatedSession.id, convertedUpdates as any) // Type assertion needed due to Prisma type mismatch
-      
+
       console.log('🔍 Study session updated successfully')
-      
+
       // Notify other pages to refresh their data
       notifyDataUpdate.studySession()
-      
+
       setDialogState({ ...dialogState, edit: false })
       setSelectedSession(null)
     } catch (error) {
@@ -585,10 +585,10 @@ export default function StudySessionsPage() {
   const handleDeleteSession = async (sessionId: string) => {
     try {
       await deleteStudySession(sessionId)
-      
+
       // Notify other pages to refresh their data
       notifyDataUpdate.studySession()
-      
+
       setDialogState({ ...dialogState, delete: false })
       setSelectedSession(null)
     } catch (error) {
@@ -650,13 +650,13 @@ export default function StudySessionsPage() {
   const formatDate = (date: Date | string) => {
     // Ensure we have a Date object
     const dateObj = typeof date === 'string' ? new Date(date) : date
-    
+
     // Check if the date is valid
     if (isNaN(dateObj.getTime())) {
       console.warn('Invalid date passed to formatDate:', date)
       return 'Invalid Date'
     }
-    
+
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'short',
       month: 'short',
@@ -667,13 +667,13 @@ export default function StudySessionsPage() {
   const formatTime = (time: Date | string) => {
     // Ensure we have a Date object
     const timeObj = typeof time === 'string' ? new Date(time) : time
-    
+
     // Check if the time is valid
     if (isNaN(timeObj.getTime())) {
       console.warn('Invalid time passed to formatTime:', time)
       return 'Invalid Time'
     }
-    
+
     return timeObj.toTimeString().slice(0, 5)
   }
 
@@ -683,7 +683,7 @@ export default function StudySessionsPage() {
   const totalSessions = studySessions.length
   const averageEfficiency = filteredSessions
     .filter(session => session.efficiency)
-    .reduce((total, session) => total + (session.efficiency || 0), 0) / 
+    .reduce((total, session) => total + (session.efficiency || 0), 0) /
     filteredSessions.filter(session => session.efficiency).length || 0
 
   // Group sessions by week for the chart
@@ -733,7 +733,7 @@ export default function StudySessionsPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <ThemeToggle />
+
             </div>
           </div>
         </div>
@@ -781,7 +781,7 @@ export default function StudySessionsPage() {
                     <TooltipContent className="max-w-xs">
                       <div className="space-y-3">
                         <p className="font-semibold text-center text-white">Efficiency Score (0-10) based on:</p>
-                        
+
                         <div className="space-y-2">
                           <div>
                             <p className="font-medium text-blue-300">Topics Covered (40% weight)</p>
@@ -792,7 +792,7 @@ export default function StudySessionsPage() {
                               <p>• 5+ topics = 5 points</p>
                             </div>
                           </div>
-                          
+
                           <div>
                             <p className="font-medium text-green-300">Materials Used (30% weight)</p>
                             <div className="text-sm space-y-1 ml-2 text-gray-200">
@@ -801,7 +801,7 @@ export default function StudySessionsPage() {
                               <p>• 2+ materials = 3 points</p>
                             </div>
                           </div>
-                          
+
                           <div>
                             <p className="font-medium text-yellow-300">Session Duration (20% weight)</p>
                             <div className="text-sm space-y-1 ml-2 text-gray-200">
@@ -811,7 +811,7 @@ export default function StudySessionsPage() {
                               <p>• 2+ hours = 2.5 points</p>
                             </div>
                           </div>
-                          
+
                           <div>
                             <p className="font-medium text-purple-300">Productivity Rating (10% weight)</p>
                             <div className="text-sm space-y-1 ml-2 text-gray-200">
@@ -902,183 +902,183 @@ export default function StudySessionsPage() {
           </div>
           <div className="grid gap-6 grid-cols-1">
             {filteredSessions.map((session) => (
-            <Card key={session.id} className="relative">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">{subjects.find(s => s.id === session.subjectId)?.name || 'Unknown Subject'}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{formatDate(session.startTime)}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge className={getSessionTypeColor(session.sessionType)}>
-                      {session.sessionType || 'Unknown Type'}
-                    </Badge>
-                    {session.productivity && (
-                      <Badge className={getProductivityColor(session.productivity)}>
-                        {getProductivityLabel(session.productivity)}
+              <Card key={session.id} className="relative">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-lg">{subjects.find(s => s.id === session.subjectId)?.name || 'Unknown Subject'}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{formatDate(session.startTime)}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge className={getSessionTypeColor(session.sessionType)}>
+                        {session.sessionType || 'Unknown Type'}
                       </Badge>
-                    )}
+                      {session.productivity && (
+                        <Badge className={getProductivityColor(session.productivity)}>
+                          {getProductivityLabel(session.productivity)}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Main session info in horizontal layout */}
-                <div className="grid grid-cols-4 gap-6 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Duration</p>
-                    <p className="font-semibold">{formatDuration(session.durationMinutes)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Time</p>
-                    <p className="font-semibold">
-                      {formatTime(session.startTime)} - {formatTime(session.endTime)}
-                    </p>
-                  </div>
-                  {session.efficiency && (
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Main session info in horizontal layout */}
+                  <div className="grid grid-cols-4 gap-6 text-sm">
                     <div>
-                      <div className="flex items-center gap-1">
-                        <p className="text-muted-foreground">Efficiency</p>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <div className="space-y-3">
-                                <p className="font-semibold text-center text-white">Efficiency Score (0-10) based on:</p>
-                                
-                                <div className="space-y-2">
-                                  <div>
-                                    <p className="font-medium text-blue-300">Topics Covered (40% weight)</p>
-                                    <div className="text-sm space-y-1 ml-2 text-gray-200">
-                                      <p>• 0 topics = 0 points</p>
-                                      <p>• 1-2 topics = 2 points</p>
-                                      <p>• 3-4 topics = 4 points</p>
-                                      <p>• 5+ topics = 5 points</p>
+                      <p className="text-muted-foreground">Duration</p>
+                      <p className="font-semibold">{formatDuration(session.durationMinutes)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Time</p>
+                      <p className="font-semibold">
+                        {formatTime(session.startTime)} - {formatTime(session.endTime)}
+                      </p>
+                    </div>
+                    {session.efficiency && (
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <p className="text-muted-foreground">Efficiency</p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <div className="space-y-3">
+                                  <p className="font-semibold text-center text-white">Efficiency Score (0-10) based on:</p>
+
+                                  <div className="space-y-2">
+                                    <div>
+                                      <p className="font-medium text-blue-300">Topics Covered (40% weight)</p>
+                                      <div className="text-sm space-y-1 ml-2 text-gray-200">
+                                        <p>• 0 topics = 0 points</p>
+                                        <p>• 1-2 topics = 2 points</p>
+                                        <p>• 3-4 topics = 4 points</p>
+                                        <p>• 5+ topics = 5 points</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="font-medium text-green-300">Materials Used (30% weight)</p>
-                                    <div className="text-sm space-y-1 ml-2 text-gray-200">
-                                      <p>• 0 materials = 0 points</p>
-                                      <p>• 1 material = 1.5 points</p>
-                                      <p>• 2+ materials = 3 points</p>
+
+                                    <div>
+                                      <p className="font-medium text-green-300">Materials Used (30% weight)</p>
+                                      <div className="text-sm space-y-1 ml-2 text-gray-200">
+                                        <p>• 0 materials = 0 points</p>
+                                        <p>• 1 material = 1.5 points</p>
+                                        <p>• 2+ materials = 3 points</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="font-medium text-yellow-300">Session Duration (20% weight)</p>
-                                    <div className="text-sm space-y-1 ml-2 text-gray-200">
-                                      <p>• &lt; 30 min = 1 point</p>
-                                      <p>• 30-60 min = 1.5 points</p>
-                                      <p>• 1-2 hours = 2 points</p>
-                                      <p>• 2+ hours = 2.5 points</p>
+
+                                    <div>
+                                      <p className="font-medium text-yellow-300">Session Duration (20% weight)</p>
+                                      <div className="text-sm space-y-1 ml-2 text-gray-200">
+                                        <p>• &lt; 30 min = 1 point</p>
+                                        <p>• 30-60 min = 1.5 points</p>
+                                        <p>• 1-2 hours = 2 points</p>
+                                        <p>• 2+ hours = 2.5 points</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="font-medium text-purple-300">Productivity Rating (10% weight)</p>
-                                    <div className="text-sm space-y-1 ml-2 text-gray-200">
-                                      <p>• User's self-rating (1-5) converted to 0-1 point</p>
+
+                                    <div>
+                                      <p className="font-medium text-purple-300">Productivity Rating (10% weight)</p>
+                                      <div className="text-sm space-y-1 ml-2 text-gray-200">
+                                        <p>• User's self-rating (1-5) converted to 0-1 point</p>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <p className={`font-semibold ${getEfficiencyColor(session.efficiency)}`}>
+                          {session.efficiency}/10
+                        </p>
                       </div>
-                      <p className={`font-semibold ${getEfficiencyColor(session.efficiency)}`}>
-                        {session.efficiency}/10
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-muted-foreground">Topics</p>
-                    <p className="font-semibold">{safeJsonParse(session.topicsCovered).length}</p>
-                  </div>
-                </div>
-
-                {/* Notes section */}
-                {session.notes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Notes</p>
-                    <p className="text-sm line-clamp-2">{session.notes}</p>
-                  </div>
-                )}
-
-                {/* Topics and Materials in horizontal layout */}
-                <div className="grid grid-cols-2 gap-6">
-                  {session.topicsCovered && (
+                    )}
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Topics Covered</p>
-                      <div className="flex flex-wrap gap-1">
-                        {safeJsonParse(session.topicsCovered).slice(0, 5).map((topic: string, index: number) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {topic}
-                          </Badge>
-                        ))}
-                        {safeJsonParse(session.topicsCovered).length > 5 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{safeJsonParse(session.topicsCovered).length - 5} more
-                          </Badge>
-                        )}
-                      </div>
+                      <p className="text-muted-foreground">Topics</p>
+                      <p className="font-semibold">{safeJsonParse(session.topicsCovered).length}</p>
                     </div>
-                  )}
-
-                  {session.materialsUsed && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Materials Used</p>
-                      <div className="flex flex-wrap gap-1">
-                        {safeJsonParse(session.materialsUsed).slice(0, 5).map((material: string, index: number) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {material}
-                          </Badge>
-                        ))}
-                        {safeJsonParse(session.materialsUsed).length > 5 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{safeJsonParse(session.materialsUsed).length - 5} more
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex items-center justify-between pt-2">
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedSession(session)
-                        setDialogState({ ...dialogState, edit: true })
-                      }}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedSession(session)
-                        setDialogState({ ...dialogState, delete: true })
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                  {/* Notes section */}
+                  {session.notes && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                      <p className="text-sm line-clamp-2">{session.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Topics and Materials in horizontal layout */}
+                  <div className="grid grid-cols-2 gap-6">
+                    {session.topicsCovered && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Topics Covered</p>
+                        <div className="flex flex-wrap gap-1">
+                          {safeJsonParse(session.topicsCovered).slice(0, 5).map((topic: string, index: number) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {topic}
+                            </Badge>
+                          ))}
+                          {safeJsonParse(session.topicsCovered).length > 5 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{safeJsonParse(session.topicsCovered).length - 5} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {session.materialsUsed && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Materials Used</p>
+                        <div className="flex flex-wrap gap-1">
+                          {safeJsonParse(session.materialsUsed).slice(0, 5).map((material: string, index: number) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {material}
+                            </Badge>
+                          ))}
+                          {safeJsonParse(session.materialsUsed).length > 5 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{safeJsonParse(session.materialsUsed).length - 5} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedSession(session)
+                          setDialogState({ ...dialogState, edit: true })
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedSession(session)
+                          setDialogState({ ...dialogState, delete: true })
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-      </div>
 
         {/* Empty State */}
         {filteredSessions.length === 0 && (

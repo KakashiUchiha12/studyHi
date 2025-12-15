@@ -20,7 +20,7 @@ import { AddTestDialog } from '@/components/test-marks/add-test-dialog'
 import { EditTestDialog } from '@/components/test-marks/edit-test-dialog'
 import { DeleteTestDialog } from '@/components/test-marks/delete-test-dialog'
 import { TestPerformanceChart } from "@/components/test-marks/test-performance-chart"
-import { ThemeToggle } from "@/components/theme-toggle"
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FileText, Search, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
@@ -123,7 +123,7 @@ export default function TestMarksPage() {
     // Calculate percentage and grade on the frontend
     const percentage = Math.round((prismaMark.score / prismaMark.maxScore) * 100)
     const grade = calculateGrade(percentage)
-    
+
     // Handle testDate which could be a Date object or string
     let testDate: string
     if (prismaMark.testDate instanceof Date) {
@@ -140,7 +140,7 @@ export default function TestMarksPage() {
     } else {
       testDate = new Date(prismaMark.testDate as any).toISOString().split('T')[0]
     }
-    
+
     return {
       id: prismaMark.id,
       testName: prismaMark.testName,
@@ -154,7 +154,7 @@ export default function TestMarksPage() {
       comments: prismaMark.notes || undefined,
       testType: prismaMark.testType as "Quiz" | "Midterm" | "Final" | "Assignment" | "Project",
       mistakes: prismaMark.mistakes ? JSON.parse(prismaMark.mistakes) : [],
-      createdAt: prismaMark.createdAt instanceof Date 
+      createdAt: prismaMark.createdAt instanceof Date
         ? prismaMark.createdAt.toISOString()
         : typeof prismaMark.createdAt === 'string'
           ? /^\d{13}$/.test(prismaMark.createdAt)
@@ -175,7 +175,7 @@ export default function TestMarksPage() {
 
   // Convert subjects to the format expected by the component
   const localSubjects = subjects.map(convertPrismaSubject)
-  
+
   // Convert test marks to the format expected by the component
   const localTestMarks = testMarks.map(convertPrismaTestMark)
 
@@ -184,7 +184,7 @@ export default function TestMarksPage() {
   useEffect(() => {
     // Check authentication using NextAuth
     if (status === "loading") return // Wait for session to load
-    
+
     if (status === "unauthenticated") {
       router.push("/auth/login")
       return
@@ -291,7 +291,7 @@ export default function TestMarksPage() {
   const handleAddTestMark = async (newTestMark: Omit<TestMark, "id" | "percentage" | "grade" | "createdAt">) => {
     try {
       console.log('🔍 handleAddTestMark called with:', newTestMark)
-      
+
       // Extract only the fields needed for creation and map to API format
       const testData = {
         subjectId: newTestMark.subjectId,
@@ -303,9 +303,9 @@ export default function TestMarksPage() {
         notes: newTestMark.comments,
         mistakes: newTestMark.mistakes
       }
-      
+
       console.log('🔍 Sending test data to API:', testData)
-      
+
       await createTestMark(testData)
       setDialogState({ ...dialogState, add: false })
     } catch (error) {
@@ -317,8 +317,8 @@ export default function TestMarksPage() {
   const handleEditTestMark = async (updatedTestMark: TestMark) => {
     try {
       await updateTestMark(updatedTestMark.id, convertToPrismaData(updatedTestMark))
-    setDialogState({ ...dialogState, edit: false })
-    setSelectedTest(null)
+      setDialogState({ ...dialogState, edit: false })
+      setSelectedTest(null)
     } catch (error) {
       console.error('Failed to update test mark:', error)
       // Error handling is managed by the hook
@@ -328,8 +328,8 @@ export default function TestMarksPage() {
   const handleDeleteTestMark = async (testMarkId: string) => {
     try {
       await deleteTestMark(testMarkId)
-    setDialogState({ ...dialogState, delete: false })
-    setSelectedTest(null)
+      setDialogState({ ...dialogState, delete: false })
+      setSelectedTest(null)
     } catch (error) {
       console.error('Failed to delete test mark:', error)
       // Error handling is managed by the hook
@@ -349,7 +349,7 @@ export default function TestMarksPage() {
     // Fallback to test date if createdAt is not available
     const dateA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime()
     const dateB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime()
-    
+
     return dateB - dateA
   })
 
@@ -358,7 +358,7 @@ export default function TestMarksPage() {
       const newSet = new Set(prev)
       if (newSet.has(testId)) {
         newSet.delete(testId)
-    } else {
+      } else {
         newSet.add(testId)
       }
       return newSet
@@ -397,7 +397,7 @@ export default function TestMarksPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <ThemeToggle />
+
             </div>
           </div>
         </div>
@@ -411,40 +411,40 @@ export default function TestMarksPage() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
+                <Input
                   placeholder="Search test marks, subjects, or comments..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-          </div>
-          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+            </div>
+            <Select value={selectedSubject} onValueChange={setSelectedSubject}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="All Subjects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subjects</SelectItem>
                 {localSubjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id}>
-                  {subject.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedTestType} onValueChange={setSelectedTestType}>
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedTestType} onValueChange={setSelectedTestType}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="All Test Types" />
-            </SelectTrigger>
-            <SelectContent>
+              </SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">All Test Types</SelectItem>
-              <SelectItem value="Quiz">Quiz</SelectItem>
-              <SelectItem value="Midterm">Midterm</SelectItem>
-              <SelectItem value="Final">Final</SelectItem>
-              <SelectItem value="Assignment">Assignment</SelectItem>
-              <SelectItem value="Project">Project</SelectItem>
-            </SelectContent>
-          </Select>
+                <SelectItem value="Quiz">Quiz</SelectItem>
+                <SelectItem value="Midterm">Midterm</SelectItem>
+                <SelectItem value="Final">Final</SelectItem>
+                <SelectItem value="Assignment">Assignment</SelectItem>
+                <SelectItem value="Project">Project</SelectItem>
+              </SelectContent>
+            </Select>
             <Button onClick={() => setDialogState({ ...dialogState, add: true })}>
               <Plus className="h-4 w-4 mr-2" />
               Add Test
@@ -479,7 +479,7 @@ export default function TestMarksPage() {
               </Card>
 
               {/* Total Mistakes */}
-              <Card 
+              <Card
                 className="p-4 hover:shadow-md transition-shadow cursor-pointer bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800"
                 onClick={() => setShowAllMistakes(true)}
               >
@@ -541,11 +541,11 @@ export default function TestMarksPage() {
                       const recentTests = filteredTestMarks.slice(0, 5)
                       const olderTests = filteredTestMarks.slice(-5)
                       if (recentTests.length < 2 || olderTests.length < 2) return 'N/A'
-                      
+
                       const recentAvg = recentTests.reduce((sum, t) => sum + t.percentage, 0) / recentTests.length
                       const olderAvg = olderTests.reduce((sum, t) => sum + t.percentage, 0) / olderTests.length
                       const improvement = recentAvg - olderAvg
-                      
+
                       return improvement > 0 ? `+${Math.round(improvement)}%` : `${Math.round(improvement)}%`
                     })()}
                   </div>
@@ -564,196 +564,195 @@ export default function TestMarksPage() {
             <p className="text-sm text-muted-foreground">Sorted by newest first</p>
           </div>
           <div className="grid gap-6 grid-cols-1">
-          {filteredTestMarks.map((testMark) => (
-            <Card key={testMark.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-transparent hover:border-l-4 hover:border-l-blue-500">
-              <CardContent className="p-6">
-                {/* Header with subject and test info */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className={getSubjectColor(testMark.subjectName)}>
-                        {testMark.subjectName}
-                      </Badge>
-                      <Badge className={getTestTypeColor(testMark.testType)}>
-                        {testMark.testType === 'Quiz' && '📝'}
-                        {testMark.testType === 'Midterm' && '📚'}
-                        {testMark.testType === 'Final' && '🎯'}
-                        {testMark.testType === 'Assignment' && '📋'}
-                        {testMark.testType === 'Project' && '💼'}
-                        {testMark.testType}
-                      </Badge>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {testMark.testName}
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                      <span>📅 {testMark.date}</span>
-                      {testMark.mistakes && testMark.mistakes.length > 0 && (
-                        <span className="text-orange-500">⚠️ {testMark.mistakes.length} mistakes</span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <Badge className={`${getGradeColor(testMark.percentage)} text-lg px-3 py-1`}>
-                      {testMark.grade}
-                    </Badge>
-                    {/* Performance trend indicator */}
-                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      {testMark.percentage >= 90 ? '🌟 Excellent' :
-                       testMark.percentage >= 80 ? '👍 Good' :
-                       testMark.percentage >= 70 ? '📈 Fair' :
-                       testMark.percentage >= 60 ? '⚠️ Needs Work' : '🚨 Critical'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Score and percentage section */}
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {testMark.marksObtained}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Score
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-2xl font-bold ${getPercentageColor(testMark.percentage)}`}>
-                      {testMark.percentage}%
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Percentage
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {testMark.totalMarks}
-                  </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Total
-                    </div>
-                  </div>
-                        </div>
-
-                {/* Progress bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    <span>Performance</span>
-                    <span>{testMark.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        testMark.percentage >= 90 ? 'bg-emerald-500' :
-                        testMark.percentage >= 80 ? 'bg-blue-500' :
-                        testMark.percentage >= 70 ? 'bg-yellow-500' :
-                        testMark.percentage >= 60 ? 'bg-orange-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${testMark.percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Comments */}
-                {testMark.comments && (
-                  <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      {testMark.comments}
-                    </p>
-                        </div>
+            {filteredTestMarks.map((testMark) => (
+              <Card key={testMark.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-transparent hover:border-l-4 hover:border-l-blue-500">
+                <CardContent className="p-6">
+                  {/* Header with subject and test info */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className={getSubjectColor(testMark.subjectName)}>
+                          {testMark.subjectName}
+                        </Badge>
+                        <Badge className={getTestTypeColor(testMark.testType)}>
+                          {testMark.testType === 'Quiz' && '📝'}
+                          {testMark.testType === 'Midterm' && '📚'}
+                          {testMark.testType === 'Final' && '🎯'}
+                          {testMark.testType === 'Assignment' && '📋'}
+                          {testMark.testType === 'Project' && '💼'}
+                          {testMark.testType}
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {testMark.testName}
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <span>📅 {testMark.date}</span>
+                        {testMark.mistakes && testMark.mistakes.length > 0 && (
+                          <span className="text-orange-500">⚠️ {testMark.mistakes.length} mistakes</span>
                         )}
-
-                {/* Mistakes section */}
-                {testMark.mistakes && testMark.mistakes.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <AlertCircle className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Areas for Improvement ({testMark.mistakes.length})
-                      </span>
+                      </p>
                     </div>
-                    <div className="space-y-2">
-                      {testMark.mistakes.slice(0, 2).map((mistake, index) => (
-                        <div key={index} className="text-xs bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
-                          <div className="flex items-start justify-between mb-1">
-                            <span className="font-medium text-gray-800 dark:text-gray-200">
-                              {mistake.question}
-                            </span>
-                            <Badge variant="outline" className="text-xs px-2 py-0">
+                    <div className="text-right">
+                      <Badge className={`${getGradeColor(testMark.percentage)} text-lg px-3 py-1`}>
+                        {testMark.grade}
+                      </Badge>
+                      {/* Performance trend indicator */}
+                      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {testMark.percentage >= 90 ? '🌟 Excellent' :
+                          testMark.percentage >= 80 ? '👍 Good' :
+                            testMark.percentage >= 70 ? '📈 Fair' :
+                              testMark.percentage >= 60 ? '⚠️ Needs Work' : '🚨 Critical'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Score and percentage section */}
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        {testMark.marksObtained}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Score
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-2xl font-bold ${getPercentageColor(testMark.percentage)}`}>
+                        {testMark.percentage}%
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Percentage
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        {testMark.totalMarks}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Total
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      <span>Performance</span>
+                      <span>{testMark.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${testMark.percentage >= 90 ? 'bg-emerald-500' :
+                            testMark.percentage >= 80 ? 'bg-blue-500' :
+                              testMark.percentage >= 70 ? 'bg-yellow-500' :
+                                testMark.percentage >= 60 ? 'bg-orange-500' : 'bg-red-500'
+                          }`}
+                        style={{ width: `${testMark.percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Comments */}
+                  {testMark.comments && (
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        {testMark.comments}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Mistakes section */}
+                  {testMark.mistakes && testMark.mistakes.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Areas for Improvement ({testMark.mistakes.length})
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {testMark.mistakes.slice(0, 2).map((mistake, index) => (
+                          <div key={index} className="text-xs bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 p-3 rounded-lg border border-orange-200 dark:border-orange-800">
+                            <div className="flex items-start justify-between mb-1">
+                              <span className="font-medium text-gray-800 dark:text-gray-200">
+                                {mistake.question}
+                              </span>
+                              <Badge variant="outline" className="text-xs px-2 py-0">
                                 {mistake.difficulty}
                               </Badge>
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
-                              <span className="text-red-600 font-medium">Your Answer:</span>
-                              <div className="text-gray-600 dark:text-gray-400">{mistake.yourAnswer}</div>
+                                <span className="text-red-600 font-medium">Your Answer:</span>
+                                <div className="text-gray-600 dark:text-gray-400">{mistake.yourAnswer}</div>
                               </div>
                               <div>
-                              <span className="text-green-600 font-medium">Correct:</span>
-                              <div className="text-gray-600 dark:text-gray-400">{mistake.correctAnswer}</div>
+                                <span className="text-green-600 font-medium">Correct:</span>
+                                <div className="text-gray-600 dark:text-gray-400">{mistake.correctAnswer}</div>
                               </div>
                             </div>
                             {mistake.explanation && (
-                            <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800">
-                              <span className="text-orange-600 font-medium">💡 Explanation:</span>
-                              <div className="text-gray-600 dark:text-gray-400">{mistake.explanation}</div>
+                              <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800">
+                                <span className="text-orange-600 font-medium">💡 Explanation:</span>
+                                <div className="text-gray-600 dark:text-gray-400">{mistake.explanation}</div>
                               </div>
                             )}
                           </div>
                         ))}
-                      {testMark.mistakes.length > 2 && (
-                        <div className="text-center">
-                          <Button variant="ghost" size="sm" className="text-xs text-orange-600 hover:text-orange-700">
-                            +{testMark.mistakes.length - 2} more mistakes
-                          </Button>
+                        {testMark.mistakes.length > 2 && (
+                          <div className="text-center">
+                            <Button variant="ghost" size="sm" className="text-xs text-orange-600 hover:text-orange-700">
+                              +{testMark.mistakes.length - 2} more mistakes
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    )}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Action buttons */}
-                <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <Button
+                  {/* Action buttons */}
+                  <div className="flex gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <Button
                       variant="outline"
-                          size="sm"
-                          onClick={() => {
+                      size="sm"
+                      onClick={() => {
                         setSelectedTest(testMark)
-                            setDialogState({ ...dialogState, edit: true })
-                          }}
-                    className="flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
-                        >
+                        setDialogState({ ...dialogState, edit: true })
+                      }}
+                      className="flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                    >
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
-                        </Button>
-                        <Button
+                    </Button>
+                    <Button
                       variant="outline"
-                          size="sm"
-                          onClick={() => {
+                      size="sm"
+                      onClick={() => {
                         setSelectedTest(testMark)
-                            setDialogState({ ...dialogState, delete: true })
-                          }}
-                    className="flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
-                        >
+                        setDialogState({ ...dialogState, delete: true })
+                      }}
+                      className="flex-1 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
+                    >
                       <Trash2 className="h-4 w-4 mr-1" />
                       Delete
-                        </Button>
-                </div>
+                    </Button>
+                  </div>
 
-                {/* Quick stats footer */}
-                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>📊 Performance: {testMark.percentage}%</span>
-                    <span>🎯 Goal: {testMark.percentage >= 90 ? 'A+' : testMark.percentage >= 80 ? 'A' : testMark.percentage >= 70 ? 'B' : 'C'}</span>
-                    {testMark.mistakes && testMark.mistakes.length > 0 && (
-                      <span className="text-orange-500">📝 {testMark.mistakes.length} areas to improve</span>
-                    )}
-                      </div>
+                  {/* Quick stats footer */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span>📊 Performance: {testMark.percentage}%</span>
+                      <span>🎯 Goal: {testMark.percentage >= 90 ? 'A+' : testMark.percentage >= 80 ? 'A' : testMark.percentage >= 70 ? 'B' : 'C'}</span>
+                      {testMark.mistakes && testMark.mistakes.length > 0 && (
+                        <span className="text-orange-500">📝 {testMark.mistakes.length} areas to improve</span>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-        </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         {/* Empty State */}
@@ -785,19 +784,19 @@ export default function TestMarksPage() {
       />
 
       {selectedTest && (
-          <EditTestDialog
-            open={dialogState.edit}
-            onOpenChange={(open) => setDialogState({ ...dialogState, edit: open })}
+        <EditTestDialog
+          open={dialogState.edit}
+          onOpenChange={(open) => setDialogState({ ...dialogState, edit: open })}
           test={selectedTest}
-        subjects={localSubjects}
+          subjects={localSubjects}
           onEditTest={handleEditTestMark}
-          />
+        />
       )}
 
       {selectedTest && (
-          <DeleteTestDialog
-            open={dialogState.delete}
-            onOpenChange={(open) => setDialogState({ ...dialogState, delete: open })}
+        <DeleteTestDialog
+          open={dialogState.delete}
+          onOpenChange={(open) => setDialogState({ ...dialogState, delete: open })}
           test={selectedTest}
           onDeleteTest={handleDeleteTestMark}
         />
@@ -815,7 +814,7 @@ export default function TestMarksPage() {
               Review all mistakes across {filteredTestMarks.length} tests to identify areas for improvement
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="overflow-y-auto max-h-[60vh] space-y-4">
             {filteredTestMarks
               .filter(test => test.mistakes && test.mistakes.length > 0)
@@ -875,7 +874,7 @@ export default function TestMarksPage() {
                   </CardContent>
                 </Card>
               ))}
-            
+
             {filteredTestMarks.filter(test => test.mistakes && test.mistakes.length > 0).length === 0 && (
               <div className="text-center py-8">
                 <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
@@ -886,7 +885,7 @@ export default function TestMarksPage() {
               </div>
             )}
           </div>
-          
+
           <DialogFooter>
             <Button onClick={() => setShowAllMistakes(false)}>
               Close Analysis

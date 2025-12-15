@@ -1,115 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { profileService } from '@/lib/database'
-import { requireAuth } from '@/lib/auth-utils'
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const userId = await requireAuth()
-    const profile = await profileService.getUserProfile(userId)
-    
-    if (!profile) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: 404 }
-      )
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    return NextResponse.json(profile)
+    const user = await prisma.user.findUnique({
+      where: { email: session.user?.email! },
+      include: {
+        socialProfile: true,
+      }
+    });
+
+    return NextResponse.json(user);
   } catch (error) {
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-    
-    console.error('Error fetching profile:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch profile' },
-      { status: 500 }
-    )
+    console.error("[PROFILE_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function PUT(req: Request) {
   try {
-    const userId = await requireAuth()
-    const body = await request.json()
-
-    if (!body.fullName) {
-      return NextResponse.json(
-        { error: 'Full name is required' },
-        { status: 400 }
-      )
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const profile = await profileService.upsertUserProfile(userId, body)
-    return NextResponse.json(profile)
+    const { name, bio, image } = await req.json();
+
+    // Update User (name, image)
+    // Update SocialProfile (bio)
+
+    await prisma.user.update({
+      where: { email: session.user?.email! },
+      data: {
+        name,
+        image,
+        socialProfile: {
+          upsert: {
+            create: { bio },
+            update: { bio }
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-    
-    console.error('Error creating/updating profile:', error)
-    return NextResponse.json(
-      { error: 'Failed to save profile' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const userId = await requireAuth()
-    const body = await request.json()
-    
-    console.log('Updating profile for user:', userId, 'with data:', body)
-
-    const profile = await profileService.updateUserProfile(userId, body)
-    console.log('Profile updated successfully:', profile)
-    
-    return NextResponse.json(profile)
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-    
-    console.error('Error updating profile:', error)
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
-    
-    return NextResponse.json(
-      { error: 'Failed to update profile', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const userId = await requireAuth()
-    await profileService.deleteUserProfile(userId)
-    return NextResponse.json({ message: 'Profile deleted successfully' })
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-    
-    console.error('Error deleting profile:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete profile' },
-      { status: 500 }
-    )
+    console.error("[PROFILE_UPDATE]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }

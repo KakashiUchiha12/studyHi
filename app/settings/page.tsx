@@ -13,21 +13,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { TimePicker } from "@/components/ui/time-picker"
-import { 
-  ArrowLeft, 
-  Settings, 
-  Bell, 
-  Target, 
-  Database, 
-  Download, 
+import {
+  ArrowLeft,
+  Settings,
+  Bell,
+  Target,
+  Database,
+  Download,
   Upload,
   Clock,
   Calendar,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  CheckCircle2,
+  XCircle,
+  User
 } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
+
 import Link from "next/link"
 
 // Legacy interface for backward compatibility
@@ -53,17 +55,22 @@ interface LegacyUserSettings {
 }
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const router = useRouter()
-  
+
   // Use the new database-backed settings hook
-  const { 
-    settings: dbSettings, 
-    loading: settingsLoading, 
+  const {
+    settings: dbSettings,
+    loading: settingsLoading,
     error: settingsError,
-    updateSetting, 
-    saveSettings 
+    updateSetting,
+    saveSettings
   } = useUserSettings()
+
+  // State for username management
+  const [username, setUsername] = useState("")
+  const [savingUsername, setSavingUsername] = useState(false)
+  const [usernameError, setUsernameError] = useState("")
 
   // Local state for UI display
   const [localSettings, setLocalSettings] = useState<LegacyUserSettings>({
@@ -100,7 +107,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (dbSettings) {
       console.log('Database settings loaded, syncing with local format:', dbSettings)
-      
+
       // Convert database settings to local format for display
       const convertedSettings: LegacyUserSettings = {
         studyGoals: {
@@ -122,19 +129,26 @@ export default function SettingsPage() {
           exportFormat: "json" // Default value
         }
       }
-      
+
       setLocalSettings(convertedSettings)
     }
   }, [dbSettings])
+
+  // Sync username with session
+  useEffect(() => {
+    if (session?.user?.name) {
+      setUsername(session.user.name)
+    }
+  }, [session?.user?.name])
 
   // Keep weekly and monthly goals in sync when autoCalculate is enabled
   useEffect(() => {
     if (localSettings.studyGoals.autoCalculate) {
       const expectedWeekly = localSettings.studyGoals.dailyHours * 7
       const expectedMonthly = localSettings.studyGoals.dailyHours * 30
-      
-      if (localSettings.studyGoals.weeklyHours !== expectedWeekly || 
-          localSettings.studyGoals.monthlyHours !== expectedMonthly) {
+
+      if (localSettings.studyGoals.weeklyHours !== expectedWeekly ||
+        localSettings.studyGoals.monthlyHours !== expectedMonthly) {
         console.log('Auto-calculating weekly and monthly goals to match daily goal')
         saveSettingsToDatabase({
           studyGoals: {
@@ -150,44 +164,44 @@ export default function SettingsPage() {
   const saveSettingsToDatabase = async (newSettings: Partial<LegacyUserSettings>) => {
     const updatedLocalSettings = { ...localSettings, ...newSettings }
     console.log('Saving settings to database:', updatedLocalSettings)
-    
+
     // Update local state immediately for better UX
     setLocalSettings(updatedLocalSettings)
-    
+
     // Save to database
     if (dbSettings) {
       try {
         const dbUpdates: any = {}
-        
+
         // Convert local format to database format
         if (newSettings.studyGoals?.dailyHours !== undefined) {
           dbUpdates.defaultStudyGoal = newSettings.studyGoals.dailyHours * 60 // Convert hours to minutes
         }
-        
+
         if (newSettings.notifications?.taskReminders !== undefined) {
           dbUpdates.taskReminders = newSettings.notifications.taskReminders
         }
-        
+
         if (newSettings.notifications?.studySessionAlerts !== undefined) {
           dbUpdates.studySessionAlerts = newSettings.notifications.studySessionAlerts
         }
-        
+
         if (newSettings.notifications?.emailNotifications !== undefined) {
           dbUpdates.emailNotifications = newSettings.notifications.emailNotifications
         }
-        
+
         if (newSettings.notifications?.pushNotifications !== undefined) {
           dbUpdates.pushNotifications = newSettings.notifications.pushNotifications
         }
-        
+
         if (newSettings.notifications?.reminderTime !== undefined) {
           dbUpdates.reminderTime = newSettings.notifications.reminderTime
         }
-        
+
         if (newSettings.dataManagement?.autoBackup !== undefined) {
           dbUpdates.autoBackup = newSettings.dataManagement.autoBackup
         }
-        
+
         if (Object.keys(dbUpdates).length > 0) {
           console.log('Updating database with:', dbUpdates)
           await saveSettings(dbUpdates)
@@ -200,7 +214,7 @@ export default function SettingsPage() {
         throw error
       }
     }
-    
+
     console.log('Settings saved successfully to database')
   }
 
@@ -232,24 +246,93 @@ export default function SettingsPage() {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string)
-        
+
         // Import data to localStorage
         if (data.studySessions) localStorage.setItem("studySessions", JSON.stringify(data.studySessions))
         if (data.tasks) localStorage.setItem("tasks", JSON.stringify(data.tasks))
         if (data.subjects) localStorage.setItem("subjects", JSON.stringify(data.subjects))
         if (data.testMarks) localStorage.setItem("testMarks", JSON.stringify(data.testMarks))
-                 if (data.settings) {
-           setLocalSettings(data.settings)
-           // Save imported settings to database
-           saveSettingsToDatabase(data.settings)
-         }
-        
+        if (data.settings) {
+          setLocalSettings(data.settings)
+          // Save imported settings to database
+          saveSettingsToDatabase(data.settings)
+        }
+
         alert("Data imported successfully!")
       } catch (error) {
         alert("Failed to import data. Please check the file format.")
       }
     }
     reader.readAsText(file)
+  }
+
+  const saveUserName = async () => {
+    const newName = username.trim()
+    if (newName === session?.user?.name) return // No change
+
+    if (newName.length === 0) {
+      setUsernameError("Name cannot be empty")
+      return
+    }
+
+    if (newName.length > 50) {
+      setUsernameError("Name must be 50 characters or less")
+      return
+    }
+
+    setSavingUsername(true)
+    setUsernameError("")
+
+    try {
+      console.log('Saving username:', newName)
+
+      const response = await fetch('/api/user', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update username')
+      }
+
+      console.log('Username updated successfully:', result)
+
+      // Update session to reflect the change immediately
+      if (updateSession) {
+        await updateSession({
+          ...session,
+          user: {
+            ...session?.user,
+            name: newName
+          }
+        })
+      }
+
+      // Since we updated the session, the useEffect will update the username state
+      // But let's also update it directly for immediate UI feedback
+      setUsername(newName)
+
+      // Clear any previous error
+      setUsernameError("")
+      setUsername(newName) // Update local state for immediate UI feedback
+      alert("Username updated successfully!")
+
+      // Force a page refresh to ensure all components pick up the session change
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
+
+    } catch (error) {
+      console.error('Failed to update username:', error)
+      setUsernameError(error instanceof Error ? error.message : 'Failed to update username')
+    } finally {
+      setSavingUsername(false)
+    }
   }
 
   if (status === "loading" || settingsLoading) {
@@ -294,7 +377,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <ThemeToggle />
+
             </div>
           </div>
         </div>
@@ -306,6 +389,56 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold">Settings & Preferences</h1>
           <p className="text-muted-foreground">Customize your study planner experience</p>
         </div>
+
+        {/* Account Information Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Account Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Display Name</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="Enter your display name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                maxLength={50}
+              />
+              <p className="text-sm text-muted-foreground">
+                This name will be displayed on your dashboard and throughout the app.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={session?.user?.email || ""}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-sm text-muted-foreground">
+                Email address cannot be changed. Contact support if you need to update it.
+              </p>
+            </div>
+
+            <div className="pt-4 border-t">
+              {usernameError && (
+                <p className="text-sm text-destructive mb-2">{usernameError}</p>
+              )}
+              <Button onClick={saveUserName} disabled={savingUsername}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {savingUsername ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Study Goals Section */}
         <Card>
@@ -324,7 +457,7 @@ export default function SettingsPage() {
                   type="number"
                   min="0"
                   step="0.5"
-                                     value={localSettings.studyGoals.dailyHours}
+                  value={localSettings.studyGoals.dailyHours}
                   onChange={(e) => {
                     const newDailyHours = parseFloat(e.target.value) || 0
                     const newSettings = {
@@ -333,19 +466,19 @@ export default function SettingsPage() {
                         dailyHours: newDailyHours
                       }
                     }
-                    
+
                     // If autoCalculate is enabled, also update weekly and monthly
                     if (localSettings.studyGoals.autoCalculate) {
                       newSettings.studyGoals.weeklyHours = newDailyHours * 7
                       newSettings.studyGoals.monthlyHours = newDailyHours * 30
                     }
-                    
+
                     saveSettingsToDatabase(newSettings)
                   }}
                   disabled={localSettings.studyGoals.autoCalculate}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="weeklyHours">Weekly Goal (hours)</Label>
                 <Input
@@ -363,7 +496,7 @@ export default function SettingsPage() {
                   disabled={localSettings.studyGoals.autoCalculate}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="monthlyHours">Monthly Goal (hours)</Label>
                 <Input
@@ -382,7 +515,7 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Switch
                 id="autoCalculate"
@@ -394,19 +527,19 @@ export default function SettingsPage() {
                       autoCalculate: checked
                     }
                   }
-                  
+
                   // If enabling autoCalculate, update weekly and monthly values
                   if (checked) {
                     newSettings.studyGoals.weeklyHours = localSettings.studyGoals.dailyHours * 7
                     newSettings.studyGoals.monthlyHours = localSettings.studyGoals.dailyHours * 30
                   }
-                  
+
                   saveSettingsToDatabase(newSettings)
                 }}
               />
               <Label htmlFor="autoCalculate">Auto-calculate from daily goal</Label>
             </div>
-            
+
             {localSettings.studyGoals.autoCalculate && (
               <div className="text-sm text-muted-foreground">
                 Weekly: {localSettings.studyGoals.dailyHours * 7}h | Monthly: {localSettings.studyGoals.dailyHours * 30}h
@@ -432,54 +565,54 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">Get notified about upcoming deadlines</p>
                 </div>
                 <Switch
-                                  checked={localSettings.notifications.taskReminders}
-                onCheckedChange={(checked) => saveSettingsToDatabase({
-                  notifications: {
-                    ...localSettings.notifications,
-                    taskReminders: checked
-                  }
-                })}
+                  checked={localSettings.notifications.taskReminders}
+                  onCheckedChange={(checked) => saveSettingsToDatabase({
+                    notifications: {
+                      ...localSettings.notifications,
+                      taskReminders: checked
+                    }
+                  })}
                 />
               </div>
-              
-                             {localSettings.notifications.taskReminders && (
+
+              {localSettings.notifications.taskReminders && (
                 <div className="ml-6 space-y-3">
                   <div className="flex items-center space-x-2">
                     <Switch
-                                             checked={localSettings.notifications.emailNotifications}
-                                              onCheckedChange={(checked) => saveSettingsToDatabase({
-                          notifications: {
-                            ...localSettings.notifications,
-                            emailNotifications: checked
-                          }
-                        })}
+                      checked={localSettings.notifications.emailNotifications}
+                      onCheckedChange={(checked) => saveSettingsToDatabase({
+                        notifications: {
+                          ...localSettings.notifications,
+                          emailNotifications: checked
+                        }
+                      })}
                     />
                     <Label>Email notifications</Label>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Switch
-                                             checked={localSettings.notifications.pushNotifications}
-                                              onCheckedChange={(checked) => saveSettingsToDatabase({
-                          notifications: {
-                            ...localSettings.notifications,
-                            pushNotifications: checked
-                          }
-                        })}
+                      checked={localSettings.notifications.pushNotifications}
+                      onCheckedChange={(checked) => saveSettingsToDatabase({
+                        notifications: {
+                          ...localSettings.notifications,
+                          pushNotifications: checked
+                        }
+                      })}
                     />
                     <Label>Push notifications</Label>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>Reminder time</Label>
                     <TimePicker
-                                             value={localSettings.notifications.reminderTime}
-                                              onChange={(time) => saveSettingsToDatabase({
-                          notifications: {
-                            ...localSettings.notifications,
-                            reminderTime: time
-                          }
-                        })}
+                      value={localSettings.notifications.reminderTime}
+                      onChange={(time) => saveSettingsToDatabase({
+                        notifications: {
+                          ...localSettings.notifications,
+                          reminderTime: time
+                        }
+                      })}
                       className="w-32"
                     />
                   </div>
@@ -497,8 +630,8 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">Reminders to start study sessions</p>
                 </div>
                 <Switch
-                                   checked={localSettings.notifications.studySessionAlerts}
-                                    onCheckedChange={(checked) => saveSettingsToDatabase({
+                  checked={localSettings.notifications.studySessionAlerts}
+                  onCheckedChange={(checked) => saveSettingsToDatabase({
                     notifications: {
                       ...localSettings.notifications,
                       studySessionAlerts: checked
@@ -563,28 +696,28 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">Automatically backup your data</p>
                 </div>
                 <Switch
-                                   checked={localSettings.dataManagement.autoBackup}
-                                    onCheckedChange={(checked) => saveSettingsToDatabase({
-                  dataManagement: {
-                    ...localSettings.dataManagement,
-                    autoBackup: checked
-                  }
-                })}
+                  checked={localSettings.dataManagement.autoBackup}
+                  onCheckedChange={(checked) => saveSettingsToDatabase({
+                    dataManagement: {
+                      ...localSettings.dataManagement,
+                      autoBackup: checked
+                    }
+                  })}
                 />
               </div>
-              
-                             {localSettings.dataManagement.autoBackup && (
+
+              {localSettings.dataManagement.autoBackup && (
                 <div className="ml-6 space-y-3">
                   <div className="space-y-2">
                     <Label>Backup frequency</Label>
                     <Select
-                                             value={localSettings.dataManagement.backupFrequency}
-                                              onValueChange={(value) => saveSettingsToDatabase({
-                          dataManagement: {
-                            ...localSettings.dataManagement,
-                            backupFrequency: value
-                          }
-                        })}
+                      value={localSettings.dataManagement.backupFrequency}
+                      onValueChange={(value) => saveSettingsToDatabase({
+                        dataManagement: {
+                          ...localSettings.dataManagement,
+                          backupFrequency: value
+                        }
+                      })}
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue />

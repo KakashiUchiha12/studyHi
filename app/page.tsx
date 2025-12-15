@@ -1,157 +1,301 @@
+"use client"
+
+import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Target, TrendingUp, Clock } from "lucide-react"
+import { BookOpen, Target, TrendingUp, Clock, ChevronRight, Users, Calendar, CheckCircle2 } from "lucide-react"
+import { StudyHiLogo } from "@/components/ui/studyhi-logo"
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6 pb-32 pt-16 sm:pt-24 lg:px-8 lg:pt-32">
-          <div className="mx-auto max-w-2xl gap-x-14 lg:mx-0 lg:flex lg:max-w-none lg:items-center">
-            <div className="w-full max-w-xl lg:shrink-0 xl:max-w-2xl">
-              <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
-                Master Your Studies with <span className="text-primary">StudyPlanner</span>
-              </h1>
-              <p className="relative mt-6 text-lg leading-8 text-muted-foreground sm:max-w-md lg:max-w-none">
-                Organize your academic journey with our comprehensive study planner. Track subjects, monitor progress,
-                log study sessions, and analyze your performance to achieve academic excellence.
-              </p>
-              <div className="mt-10 flex items-center gap-x-6">
-                <Link href="/auth/signup">
-                  <Button size="lg" className="px-8">
-                    Get Started Free
-                  </Button>
-                </Link>
-                <Link href="/auth/login">
-                  <Button variant="outline" size="lg">
-                    Sign In
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="mt-14 flex justify-end gap-8 sm:-mt-44 sm:justify-start sm:pl-20 lg:mt-0 lg:pl-0">
-              <div className="ml-auto w-44 flex-none space-y-8 pt-32 sm:ml-0 sm:pt-80 lg:order-last lg:pt-36 xl:order-none xl:pt-80">
-                <div className="relative">
-                  <img
-                    src="/student-studying.png"
-                    alt="Student studying"
-                    className="aspect-[2/3] w-full rounded-xl bg-muted object-cover shadow-lg"
-                  />
-                </div>
-              </div>
-              <div className="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
-                <div className="relative">
-                  <img
-                    src="/academic-progress-charts.png"
-                    alt="Progress tracking"
-                    className="aspect-[2/3] w-full rounded-xl bg-muted object-cover shadow-lg"
-                  />
-                </div>
-                <div className="relative">
-                  <img
-                    src="/organized-study-materials.png"
-                    alt="Study organization"
-                    className="aspect-[2/3] w-full rounded-xl bg-muted object-cover shadow-lg"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden">
 
-      {/* Features Section */}
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl lg:text-center">
-          <h2 className="text-base font-semibold leading-7 text-primary">Everything you need</h2>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Comprehensive Study Management
-          </p>
-          <p className="mt-6 text-lg leading-8 text-muted-foreground">
-            From subject organization to progress analytics, StudyPlanner provides all the tools you need to excel in
-            your academic journey.
-          </p>
-        </div>
-        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-4">
-            <div className="flex flex-col">
-              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-foreground">
-                <BookOpen className="h-5 w-5 flex-none text-primary" />
-                Subject Management
-              </dt>
-              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
-                <p className="flex-auto">
-                  Organize all your subjects in one place. Add descriptions, study materials, and track your progress
-                  through each course.
-                </p>
-              </dd>
-            </div>
-            <div className="flex flex-col">
-              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-foreground">
-                <Target className="h-5 w-5 flex-none text-primary" />
-                Syllabus Tracking
-              </dt>
-              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
-                <p className="flex-auto">
-                  Break down your syllabus into manageable chapters and modules. Mark completed sections and visualize
-                  your progress.
-                </p>
-              </dd>
-            </div>
-            <div className="flex flex-col">
-              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-foreground">
-                <TrendingUp className="h-5 w-5 flex-none text-primary" />
-                Performance Analytics
-              </dt>
-              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
-                <p className="flex-auto">
-                  Track test scores, analyze performance trends, and identify areas for improvement with detailed charts
-                  and reports.
-                </p>
-              </dd>
-            </div>
-            <div className="flex flex-col">
-              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-foreground">
-                <Clock className="h-5 w-5 flex-none text-primary" />
-                Study Sessions
-              </dt>
-              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
-                <p className="flex-auto">
-                  Log study sessions, set goals, and track time spent on each subject. Build consistent study habits
-                  with session reminders.
-                </p>
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="mx-auto mt-32 max-w-7xl px-6 sm:mt-40 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Ready to transform your study routine?
-          </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-            Join thousands of students who have improved their academic performance with StudyPlanner.
-          </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
+      {/* Navbar Placeholder - assuming Navbar is in layout or we build a simple one here for the landing */}
+      <header className="py-6 px-4 sm:px-6 lg:px-8 border-b border-border bg-white sticky top-0 z-50">
+        <div className="container mx-auto flex items-center justify-between">
+          <StudyHiLogo size="md" />
+          <div className="flex items-center gap-4">
+            <Link href="/auth/login" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+              Log in
+            </Link>
             <Link href="/auth/signup">
-              <Button size="lg" className="px-8">
-                Start Your Journey
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white rounded-md px-6">
+                Get Started
               </Button>
             </Link>
           </div>
         </div>
-      </div>
+      </header>
+
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="py-20 lg:py-32 bg-white">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-5xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
+                Organize Your Studies.<br />
+                <span className="text-primary">Master Your Future.</span>
+              </h1>
+              <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+                The professional platform for students who take their education seriously. Track subjects, manage syllabi, and analyze your performance with enterprise-grade tools.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href="/auth/signup">
+                  <Button size="lg" className="w-full sm:w-auto px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20">
+                    Start Free Trial
+                    <ChevronRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link href="#features">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 h-12 text-base border-slate-300 text-slate-700 hover:bg-slate-50">
+                    View Features
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+
+            {/* Hero Image / Dashboard Mockup */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.7 }}
+              className="mt-16 rounded-xl border border-slate-200 shadow-2xl overflow-hidden bg-slate-50"
+            >
+              <img
+                src="/dashboard-preview.png"
+                alt="StudyHi Dashboard"
+                className="w-full h-auto object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "https://placehold.co/1200x600/f1f5f9/3b82f6?text=Professional+Dashboard+Preview";
+                }}
+              />
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Social Proof / Trust Banner */}
+        <section className="py-10 bg-slate-50 border-y border-slate-100">
+          <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 text-slate-500">
+            <p className="font-semibold text-sm uppercase tracking-wider text-slate-400">Trusted by students from</p>
+            <div className="flex items-center gap-8 opacity-70 grayscale hover:grayscale-0 transition-all">
+              <span className="text-xl font-bold font-serif">Harvard</span>
+              <span className="text-xl font-bold font-serif">MIT</span>
+              <span className="text-xl font-bold font-serif">Stanford</span>
+              <span className="text-xl font-bold font-serif">Oxford</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Grid */}
+        <section id="features" className="py-24 bg-white">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">Everything You Need to Excel</h2>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                Comprehensive tools designed to streamline your academic workflow and boost productivity.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {/* Feature 1 */}
+              <div className="p-8 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow group">
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Subject Management</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Keep all your courses organized in one place. Track attendance, manage resources, and stay on top of your schedule.
+                </p>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="p-8 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow group">
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                  <Target className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Syllabus Tracking</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Break down complex syllabi into manageable topics. Track completion status and visual progress bars.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="p-8 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow group">
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                  <TrendingUp className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Performance Analytics</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Gain insights into your study habits. Visualize grades, study hours, and efficiency with professional charts.
+                </p>
+              </div>
+
+              {/* Feature 4 */}
+              <div className="p-8 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow group">
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                  <Clock className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Session Logging</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Log your study sessions with precision. Tag subjects, add notes, and reflect on your productivity.
+                </p>
+              </div>
+
+              {/* Feature 5 */}
+              <div className="p-8 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow group">
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                  <Calendar className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Smart Scheduling</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Plan your week with an intelligent calendar. Set reminders for exams, assignments, and study blocks.
+                </p>
+              </div>
+
+              {/* Feature 6 */}
+              <div className="p-8 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow group">
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Collaboration Ready</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Share resources and study plans. Built for individual focus but ready for team collaboration.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Value Proposition */}
+        <section className="py-24 bg-slate-900 text-white">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold mb-6">Why Top Students Choose StudyHi</h2>
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-lg mb-1">Distraction-Free Environment</h4>
+                      <p className="text-slate-400">Clean, professional interface composed to minimize cognitive load and maximize focus.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-lg mb-1">Data-Driven Insights</h4>
+                      <p className="text-slate-400">Make informed decisions about your study strategy based on real performance metrics, not guesses.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-lg mb-1">Universal Compatibility</h4>
+                      <p className="text-slate-400">Seamless Experience across all your devices. Your academic life, synchronized everywhere.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"></div>
+                <div className="relative bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
+                  {/* Mockup Stat Card */}
+                  <div className="flex items-center justify-between mb-6 border-b border-slate-700 pb-4">
+                    <h3 className="font-bold">Weekly Performance</h3>
+                    <span className="text-green-400 font-mono text-sm">↑ 12% vs last week</span>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1 text-slate-300">
+                        <span>Mathematics</span>
+                        <span>85%</span>
+                      </div>
+                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 w-[85%]"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1 text-slate-300">
+                        <span>Computer Science</span>
+                        <span>92%</span>
+                      </div>
+                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-purple-500 w-[92%]"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1 text-slate-300">
+                        <span>Physics</span>
+                        <span>78%</span>
+                      </div>
+                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 w-[78%]"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="py-24 bg-white text-center">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <h2 className="text-4xl font-bold text-slate-900 mb-6">Ready to Transform Your Academic Journey?</h2>
+            <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+              Join thousands of students who have elevated their study game with StudyHi's professional planner.
+            </p>
+            <Link href="/auth/signup">
+              <Button size="lg" className="px-10 h-14 text-lg font-bold shadow-xl shadow-primary/20">
+                Get Started for Free
+              </Button>
+            </Link>
+            <p className="mt-6 text-sm text-slate-500">
+              No credit card required. 14-day free trial on Pro plan.
+            </p>
+          </div>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer className="mx-auto mt-32 max-w-7xl px-6 lg:px-8">
-        <div className="border-t border-border pt-16 pb-8">
-          <p className="text-center text-sm leading-5 text-muted-foreground">
-            &copy; 2024 StudyPlanner. Built with passion for student success.
-          </p>
+      <footer className="bg-slate-50 border-t border-slate-200 py-12">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8 mb-12">
+            <div className="col-span-2">
+              <StudyHiLogo size="sm" />
+              <p className="mt-4 text-slate-500 max-w-xs leading-relaxed">
+                Empowering students with professional tools to achieve academic excellence.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 mb-4">Product</h4>
+              <ul className="space-y-3 text-sm text-slate-600">
+                <li><Link href="#" className="hover:text-primary">Features</Link></li>
+                <li><Link href="#" className="hover:text-primary">Pricing</Link></li>
+                <li><Link href="#" className="hover:text-primary">Download</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 mb-4">Company</h4>
+              <ul className="space-y-3 text-sm text-slate-600">
+                <li><Link href="#" className="hover:text-primary">About</Link></li>
+                <li><Link href="#" className="hover:text-primary">Blog</Link></li>
+                <li><Link href="#" className="hover:text-primary">Careers</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+            <p>© {new Date().getFullYear()} StudyHi. All rights reserved.</p>
+            <div className="flex gap-6">
+              <Link href="#" className="hover:text-primary">Privacy Policy</Link>
+              <Link href="#" className="hover:text-primary">Terms of Service</Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

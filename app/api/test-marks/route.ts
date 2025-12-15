@@ -5,9 +5,6 @@ import { testMarkService } from '@/lib/database/test-mark-service'
 
 export async function GET(request: NextRequest) {
   try {
-    // Ensure the mistakes column exists
-    await testMarkService.ensureMistakesColumnExists()
-    
     const session = await getServerSession(authOptions)
     let userId = (session?.user as any)?.id
 

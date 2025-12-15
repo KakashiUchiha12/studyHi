@@ -53,6 +53,11 @@ export default function Calendar() {
     // Set loading to false after a short delay
     const timer = setTimeout(() => setIsLoading(false), 100);
     
+    // Check for mobile viewport and switch to agenda view
+    if (window.innerWidth < 768) {
+      setView('agenda');
+    }
+
     return () => {
       window.removeEventListener('error', handleError);
       clearTimeout(timer);

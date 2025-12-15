@@ -66,6 +66,19 @@ model User {
   image             String?
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
+  
+  // Social Relations
+  socialProfile     SocialProfile?
+  followers         Follows[]          @relation("following")
+  following         Follows[]          @relation("follower")
+  ownedCommunities  Community[]        @relation("CommunityOwner")
+  memberships       CommunityMember[]
+  posts             Post[]
+  comments          Comment[]
+  likes             Like[]
+  sentMessages      Message[]          @relation("MessageSender")
+  receivedMessages  Message[]          @relation("MessageReceiver")
+  
   calendarEvents    CalendarEvent[]
   dashboardSections DashboardSection[]
   documents         Document[]
@@ -373,4 +386,173 @@ model CalendarEvent {
   @@index([start])
   @@index([type])
   @@index([completed])
+}
+
+// Social Media Models
+
+model SocialProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  bio            String?
+  website        String?
+  location       String?
+  banner         String?
+  githubUrl      String?  @map("github_url")
+  linkedinUrl    String?  @map("linkedin_url")
+  twitterUrl     String?  @map("twitter_url")
+  instagramUrl   String?  @map("instagram_url")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Follows {
+  followerId  String    @map("follower_id")
+  followingId String    @map("following_id")
+  follower    User      @relation("follower", fields: [followerId], references: [id])
+  following   User      @relation("following", fields: [followingId], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Community {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  description String?
+  ownerId     String            @map("owner_id")
+  icon        String?
+  coverImage  String?           @map("cover_image")
+  isPrivate   Boolean           @default(false) @map("is_private")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  
+  owner       User              @relation("CommunityOwner", fields: [ownerId], references: [id])
+  members     CommunityMember[]
+  channels    Channel[]
+  posts       Post[]
+
+  @@index([ownerId])
+}
+
+model CommunityMember {
+  id          String    @id @default(cuid())
+  communityId String    @map("community_id")
+  userId      String    @map("user_id")
+  role        String    @default("member") // member, moderator, admin
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+  
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([communityId])
+  @@index([userId])
+}
+
+model Channel {
+  id          String    @id @default(cuid())
+  communityId String    @map("community_id")
+  name        String
+  type        String    @default("text") // text, voice, announcement
+  description String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  messages    Message[]
+
+  @@index([communityId])
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  content     String
+  userId      String    @map("user_id")
+  communityId String?   @map("community_id")
+  image       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community   Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  likes       Like[]
+  attachments Attachment[]
+
+  @@index([userId])
+  @@index([communityId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  url       String
+  name      String?
+  type      String   // IMAGE, VIDEO, FILE
+  size      Int?
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade) // No, cascade might be tricky with self routing but let's try
+  replies   Comment[] @relation("CommentToComment")
+  likes     Like[]
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String?  @map("post_id")
+  commentId String?  @map("comment_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@unique([commentId, userId]) // Ensure distinctness
+  @@index([postId])
+  @@index([commentId])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  senderId    String   @map("sender_id")
+  channelId   String?  @map("channel_id") // For community channels
+  receiverId  String?  @map("receiver_id") // For DMs
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  sender      User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User?    @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  channel     Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([channelId])
 }

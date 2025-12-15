@@ -25,7 +25,8 @@
 }
 
 .rbc-today {
-  background-color: #e3f2fd;
+  background-color: #f8f9fa;
+  border: 2px solid #dee2e6;
 }
 
 .rbc-event {
@@ -45,7 +46,7 @@
 }
 
 .rbc-current-time-indicator {
-  background-color: #1976d2;
+  background-color: #6b7280;
   height: 2px;
 }
 
@@ -55,7 +56,8 @@
 }
 
 .rbc-event.rbc-selected {
-  background-color: #1976d2 !important;
+  background-color: #374151 !important;
+  border: 1px solid #6b7280;
 }
 
 /* Time grid styling */
@@ -132,7 +134,7 @@
 }
 
 .rbc-day-slot.rbc-addons-dnd-over {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(107, 114, 128, 0.1);
 }
 
 /* External drag indicator */

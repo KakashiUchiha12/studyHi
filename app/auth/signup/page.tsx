@@ -53,8 +53,28 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-      // For now, we'll automatically sign in the user after "creating" an account
-      // In a real app, you'd create the account in a database first
+      // First, register the user
+      const registerResponse = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      const registerData = await registerResponse.json()
+
+      if (!registerResponse.ok) {
+        setError(registerData.error || "Registration failed")
+        toast.error("Registration failed")
+        return
+      }
+
+      // Registration successful, now sign in the user
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
@@ -62,13 +82,14 @@ export default function SignUpPage() {
       })
 
       if (result?.error) {
-        setError("Account creation failed. Please try again.")
-        toast.error("Signup failed")
+        setError("Account created but login failed. Please try logging in manually.")
+        toast.error("Login failed after registration")
       } else {
         toast.success("Account created successfully!")
         router.push("/dashboard")
       }
     } catch (err) {
+      console.error('Signup error:', err)
       setError("An error occurred. Please try again.")
       toast.error("An error occurred")
     } finally {
@@ -202,7 +223,24 @@ export default function SignUpPage() {
               </Button>
             </form>
 
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-muted-foreground/20" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
 
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Sign up with Google
+            </Button>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Already have an account?{" "}

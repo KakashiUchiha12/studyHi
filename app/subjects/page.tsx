@@ -14,7 +14,7 @@ import { AddSubjectDialog } from "@/components/subjects/add-subject-dialog"
 import { EditSubjectDialog } from "@/components/subjects/edit-subject-dialog"
 import { DeleteSubjectDialog } from "@/components/subjects/delete-subject-dialog"
 import { SubjectDetailDialog } from "@/components/subjects/subject-detail-dialog"
-import { ThemeToggle } from "@/components/theme-toggle"
+
 import Link from "next/link"
 import { useSubjects, useMigration } from "@/hooks"
 import { Subject } from "@prisma/client"
@@ -42,22 +42,22 @@ export default function SubjectsPage() {
   const router = useRouter()
 
   // Use database hooks
-  const { 
-    subjects, 
-    loading: subjectsLoading, 
+  const {
+    subjects,
+    loading: subjectsLoading,
     error: subjectsError,
-    createSubject, 
-    updateSubject, 
+    createSubject,
+    updateSubject,
     deleteSubject,
-    refreshSubjects 
+    refreshSubjects
   } = useSubjects()
-  
+
   const { autoMigrateIfNeeded } = useMigration()
 
   useEffect(() => {
     // Check authentication using NextAuth
     if (status === "loading") return // Wait for session to load
-    
+
     if (status === "unauthenticated") {
       router.push("/auth/login")
       return
@@ -76,7 +76,7 @@ export default function SubjectsPage() {
     }
 
     window.addEventListener('subject-updated', handleSubjectUpdate)
-    
+
     return () => {
       window.removeEventListener('subject-updated', handleSubjectUpdate)
     }
@@ -142,10 +142,10 @@ export default function SubjectsPage() {
         nextExam: newSubject.nextExam || undefined,
         assignmentsDue: newSubject.assignmentsDue || 0
       })
-      
+
       // Notify other pages to refresh their data
       notifyDataUpdate.subject()
-      
+
       setDialogState({ ...dialogState, add: false })
     } catch (error) {
       console.error('Failed to create subject:', error)
@@ -168,10 +168,10 @@ export default function SubjectsPage() {
         nextExam: updatedSubject.nextExam || undefined,
         assignmentsDue: updatedSubject.assignmentsDue || 0
       })
-      
+
       // Notify other pages to refresh their data
       notifyDataUpdate.subject()
-      
+
       setDialogState({ ...dialogState, edit: false })
       setSelectedSubject(null)
     } catch (error) {
@@ -183,10 +183,10 @@ export default function SubjectsPage() {
   const handleDeleteSubject = async (subjectId: string) => {
     try {
       await deleteSubject(subjectId)
-      
+
       // Notify other pages to refresh their data
       notifyDataUpdate.subject()
-      
+
       setDialogState({ ...dialogState, delete: false })
       setSelectedSubject(null)
     } catch (error) {
@@ -215,12 +215,12 @@ export default function SubjectsPage() {
     e.preventDefault()
     console.log('Drop event triggered at index:', dropIndex)
     console.log('Dragged subject:', draggedSubject)
-    
+
     if (!draggedSubject) return
 
     const draggedIndex = filteredSubjects.findIndex((subject) => subject.id === draggedSubject)
     console.log('Dragged index:', draggedIndex, 'Drop index:', dropIndex)
-    
+
     if (draggedIndex === -1 || draggedIndex === dropIndex) {
       console.log('Invalid drop - same position or subject not found')
       setDraggedSubject(null)
@@ -246,7 +246,7 @@ export default function SubjectsPage() {
       console.log('Waiting for all updates to complete...')
       await Promise.all(updatePromises)
       console.log('All updates completed successfully')
-      
+
       // Refresh subjects to show the new order
       refreshSubjects()
     } catch (error) {
@@ -291,7 +291,7 @@ export default function SubjectsPage() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <ThemeToggle />
+
               <Button onClick={() => setDialogState({ ...dialogState, add: true })}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Subject
@@ -348,9 +348,8 @@ export default function SubjectsPage() {
             {filteredSubjects.map((subject, index) => (
               <Card
                 key={subject.id}
-                className={`hover:shadow-md transition-all ${
-                  draggedSubject === subject.id ? "opacity-50 scale-95" : ""
-                } ${dragOverIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                className={`hover:shadow-md transition-all ${draggedSubject === subject.id ? "opacity-50 scale-95" : ""
+                  } ${dragOverIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, subject.id)}
                 onDragOver={(e) => handleDragOver(e, index)}
@@ -364,7 +363,7 @@ export default function SubjectsPage() {
                       <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
                         <GripVertical className="h-4 w-4 text-muted-foreground transition-opacity" />
                       </div>
-                      <div 
+                      <div
                         className="h-3 w-3 rounded-full border border-border"
                         style={{ backgroundColor: getColorHex(subject.color) }}
                         title={subject.color}
@@ -425,7 +424,7 @@ export default function SubjectsPage() {
                         <span className="font-medium">{Math.round(subject.progress || 0)}%</span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
-                        <div 
+                        <div
                           className="bg-primary h-2 rounded-full transition-all duration-300"
                           style={{ width: `${subject.progress || 0}%` }}
                         />

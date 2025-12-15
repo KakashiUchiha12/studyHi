@@ -105,7 +105,7 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Subject</DialogTitle>
           <DialogDescription>Create a new subject to track your academic progress</DialogDescription>
@@ -134,7 +134,7 @@ export function AddSubjectDialog({ open, onOpenChange, onAddSubject }: AddSubjec
 
 
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="code">Subject Code</Label>
               <Input

@@ -11,7 +11,7 @@ import { BookOpen, Search, Plus, ArrowLeft, CheckCircle, Circle, Edit, Trash2 } 
 import { AddSyllabusDialog } from "@/components/syllabus/add-syllabus-dialog"
 import { EditSyllabusDialog } from "@/components/syllabus/edit-syllabus-dialog"
 import { DeleteSyllabusDialog } from "@/components/syllabus/delete-syllabus-dialog"
-import { ThemeToggle } from "@/components/theme-toggle"
+
 import Link from "next/link"
 
 interface SyllabusItem {
@@ -66,13 +66,13 @@ export default function SyllabusPage() {
     if (savedSubjects) {
       try {
         const parsedSubjects = JSON.parse(savedSubjects)
-      // Initialize syllabus if not exists
-      const subjectsWithSyllabus = parsedSubjects.map((subject: Subject) => ({
-        ...subject,
-        syllabus: subject.syllabus || getSampleSyllabus(subject.name),
-      }))
-      setSubjects(subjectsWithSyllabus)
-      localStorage.setItem("subjects", JSON.stringify(subjectsWithSyllabus))
+        // Initialize syllabus if not exists
+        const subjectsWithSyllabus = parsedSubjects.map((subject: Subject) => ({
+          ...subject,
+          syllabus: subject.syllabus || getSampleSyllabus(subject.name),
+        }))
+        setSubjects(subjectsWithSyllabus)
+        localStorage.setItem("subjects", JSON.stringify(subjectsWithSyllabus))
       } catch (error) {
         console.error('Failed to parse saved subjects:', error)
         localStorage.removeItem("subjects")
@@ -324,7 +324,7 @@ export default function SyllabusPage() {
                   className="w-64 pl-10"
                 />
               </div>
-              <ThemeToggle />
+
             </div>
           </div>
         </div>
@@ -391,9 +391,8 @@ export default function SyllabusPage() {
                       {subject.syllabus.map((item) => (
                         <div
                           key={item.id}
-                          className={`flex items-center justify-between rounded-lg border p-4 transition-colors ${
-                            item.completed ? "bg-accent/10 border-accent/20" : "bg-card hover:bg-muted/50"
-                          }`}
+                          className={`flex items-center justify-between rounded-lg border p-4 transition-colors ${item.completed ? "bg-accent/10 border-accent/20" : "bg-card hover:bg-muted/50"
+                            }`}
                         >
                           <div className="flex items-center space-x-3">
                             <button

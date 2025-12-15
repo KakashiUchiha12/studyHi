@@ -34,6 +34,13 @@ This application follows a **Clean Architecture** pattern with clear separation 
 - **Dark/Light Theme**: User preference-based theming
 - **Search & Filtering**: Advanced search across all data types
 
+### Social Features (New!)
+- **Global & Community Feeds**: Share updates, ask questions, and engage with peers.
+- **Direct Messaging**: Real-time private chat with other users.
+- **Media Support**: Post images, PDFs, and documents with rich previews.
+- **Interactions**: Like posts, reply to comments (threaded), and follow users.
+- **Communities**: Create and join study groups focused on specific topics.
+
 ### User Experience
 - **Progressive Web App**: Offline capabilities and app-like experience
 - **Drag & Drop**: Intuitive interface for task and file management
