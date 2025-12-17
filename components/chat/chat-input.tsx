@@ -26,13 +26,16 @@ const formSchema = z.object({
     content: z.string().min(1),
 });
 
+import { useSocket } from "@/components/providers/socket-provider";
+
 export const ChatInput = ({
     socket,
     apiUrl,
     query,
     name,
-    type
-}: ChatInputProps) => {
+    type,
+    member
+}: ChatInputProps & { member: any }) => {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -40,31 +43,27 @@ export const ChatInput = ({
         },
     });
 
+    const { isConnected } = useSocket(); // Get connection status
+
     const isLoading = form.formState.isSubmitting;
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            const url = `${apiUrl}`; // e.g. /api/socket/messages or /api/messages
-
-            // We chose to bypass the complex socket-only emit and use API to persist first.
-            // But we need to ensure the API we call exists.
-            // For now, I'll stick to the fetch call as I planned.
-
-            // Wait, I need two different API endpoints or one generic "post message" endpoint?
-            // "api/messages" seems best.
+            const payload = {
+                content: values.content,
+                ...query // Contains channelId or receiverId
+            };
 
             await fetch("/api/messages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    content: values.content,
-                    ...query // Contains channelId or receiverId
-                })
+                body: JSON.stringify(payload)
             });
 
             form.reset();
         } catch (error) {
-            console.log(error);
+            console.error("ChatInput Error", error);
+            alert("Failed to send message");
         }
     }
 

@@ -6,17 +6,18 @@ import { UpdateChapterData } from '@/lib/database'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const chapterId = (await params).id
+    const chapterId = params.id
     const chapter = await chapterService.getChapterById(chapterId)
-    
+
     if (!chapter) {
       return NextResponse.json({ error: 'Chapter not found' }, { status: 404 })
     }
@@ -33,17 +34,18 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const chapterId = (await params).id
+    const chapterId = params.id
     const data: UpdateChapterData = await request.json()
-    
+
     const chapter = await chapterService.updateChapter(chapterId, data)
     return NextResponse.json(chapter)
   } catch (error) {
@@ -57,17 +59,18 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const chapterId = (await params).id
+    const chapterId = params.id
     await chapterService.deleteChapter(chapterId)
-    
+
     return NextResponse.json({ message: 'Chapter deleted successfully' })
   } catch (error) {
     console.error('Failed to delete chapter:', error)

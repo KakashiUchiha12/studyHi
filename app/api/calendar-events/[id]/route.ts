@@ -5,15 +5,16 @@ import { calendarEventService } from '@/lib/database'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const eventId = (await params).id
+    const eventId = params.id
     const event = await calendarEventService.getCalendarEventById(eventId)
 
     if (!event) {
@@ -37,15 +38,16 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const eventId = (await params).id
+    const eventId = params.id
     const updateData = await request.json()
 
     // Check if the event exists and belongs to the user
@@ -66,10 +68,10 @@ export async function PUT(
       recurringEndDate: updateData.recurringEndDate ? new Date(updateData.recurringEndDate) : undefined
     })
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       event: updatedEvent,
-      message: 'Calendar event updated successfully' 
+      message: 'Calendar event updated successfully'
     })
   } catch (error) {
     console.error('Error updating calendar event:', error)
@@ -82,38 +84,30 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || !(session.user as any).id) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
-
     const eventId = (await params).id
 
     // Check if the event exists and belongs to the user
     const existingEvent = await calendarEventService.getCalendarEventById(eventId)
     if (!existingEvent) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 })
-    }
+  return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+}
 
-    if (existingEvent.userId !== (session.user as any).id) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
-    }
+if (existingEvent.userId !== (session.user as any).id) {
+  return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+}
 
-    // Delete the event
-    await calendarEventService.deleteCalendarEvent(eventId)
+// Delete the event
+await calendarEventService.deleteCalendarEvent(eventId)
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'Calendar event deleted successfully' 
-    })
+return NextResponse.json({
+  success: true,
+  message: 'Calendar event deleted successfully'
+})
   } catch (error) {
-    console.error('Error deleting calendar event:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete calendar event' },
-      { status: 500 }
-    )
-  }
+  console.error('Error deleting calendar event:', error)
+  return NextResponse.json(
+    { error: 'Failed to delete calendar event' },
+    { status: 500 }
+  )
+}
 }

@@ -19,6 +19,8 @@ interface Conversation {
 }
 
 import { SocialSidebar } from "@/components/social/social-sidebar";
+import { MobileNavMenu } from "@/components/mobile-nav-menu";
+import { StudyHiLogo } from "@/components/ui/studyhi-logo";
 
 export default function MessagesPage() {
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -90,16 +92,29 @@ export default function MessagesPage() {
     );
 
     return (
-        <div className="container max-w-6xl py-8">
-            <div className="flex flex-col md:flex-row gap-8">
-                <aside className="w-full md:w-64 lg:w-72 shrink-0">
-                    <SocialSidebar />
-                </aside>
-                <main className="flex-1 min-w-0">
-                    <h1 className="text-3xl font-bold mb-6">Messages</h1>
-                    {content}
-                </main>
+        <>
+            {/* Mobile Header */}
+            <header className="md:hidden border-b border-border bg-white px-4 py-3 sticky top-0 z-10">
+                <div className="flex items-center justify-between">
+                    <Link href="/dashboard">
+                        <StudyHiLogo size="sm" />
+                    </Link>
+                    {/* Mobile nav menu */}
+                    <MobileNavMenu />
+                </div>
+            </header>
+
+            <div className="container max-w-6xl py-8">
+                <div className="flex flex-col md:flex-row gap-8">
+                    <aside className="w-full md:w-64 lg:w-72 shrink-0">
+                        <SocialSidebar />
+                    </aside>
+                    <main className="flex-1 min-w-0">
+                        <h1 className="text-3xl font-bold mb-6">Messages</h1>
+                        {content}
+                    </main>
+                </div>
             </div>
-        </div>
+        </>
     );
 }

@@ -29,16 +29,25 @@ export const ChatMessages = ({
     const [messages, setMessages] = useState<any[]>([]);
     const bottomRef = useRef<HTMLDivElement>(null);
 
-    // Initial Fetch
+    // Initial Fetch & Polling
     useEffect(() => {
         const fetchMessages = async () => {
             const res = await fetch(`${apiUrl}?${paramKey}=${paramValue}`);
             if (res.ok) {
                 const data = await res.json();
-                setMessages(data);
+                if (data.items) {
+                    setMessages(data.items.reverse());
+                } else if (Array.isArray(data)) {
+                    setMessages(data.reverse());
+                }
             }
         };
         fetchMessages();
+
+        // Poll every 2 seconds
+        const intervalId = setInterval(fetchMessages, 2000);
+
+        return () => clearInterval(intervalId);
     }, [apiUrl, paramKey, paramValue]);
 
     // Real-time listener
@@ -66,18 +75,29 @@ export const ChatMessages = ({
                 {/* Messages are displayed here. Flex-col-reverse means validation needed or I map normally */}
                 {/* Let's render normally for now */}
                 <div className="flex flex-col gap-4 px-4">
-                    {messages.map((msg, i) => (
-                        <div key={msg.id || i} className="flex gap-2 items-start group">
-                            <div className="w-8 h-8 rounded-full bg-slate-300 flex-shrink-0" />
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-sm">{msg.sender?.name || "User"}</span>
-                                    <span className="text-xs text-muted-foreground">{format(new Date(msg.createdAt || Date.now()), "HH:mm")}</span>
+                    {messages.map((msg, i) => {
+                        const isMe = member?.id === msg.senderId;
+                        return (
+                            <div key={msg.id || i} className={`flex gap-2 items-start group ${isMe ? "flex-row-reverse" : ""}`}>
+                                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border">
+                                    <img
+                                        src={msg.sender?.image || "/placeholder-user.jpg"}
+                                        alt={msg.sender?.name || "User"}
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
-                                <p className="text-sm text-foreground">{msg.content}</p>
+                                <div className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-sm">{msg.sender?.name || "User"}</span>
+                                        <span className="text-xs text-muted-foreground">{format(new Date(msg.createdAt || Date.now()), "HH:mm")}</span>
+                                    </div>
+                                    <div className={`px-3 py-2 rounded-lg max-w-xs break-words ${isMe ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                                        <p className="text-sm">{msg.content}</p>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     <div ref={bottomRef} />
                 </div>
             </div>

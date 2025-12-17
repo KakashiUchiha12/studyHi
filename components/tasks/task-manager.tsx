@@ -9,10 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Edit, Trash2, Search, Calendar, Clock, CheckCircle, Circle, AlertCircle, Filter, SortAsc, Flag } from 'lucide-react'
+import { Plus, Edit, Trash2, Search, Calendar, Clock, CheckCircle, Circle, AlertCircle, Filter, SortAsc, Flag, Copy, ClipboardPaste } from 'lucide-react'
 import { useTasks } from '@/hooks/useTasks'
 import { isPast, isToday } from "date-fns"
 import { TaskItem } from "./task-item"
+import { CSVImportDialog } from "./csv-import-dialog"
+import { copyAIPromptToClipboard } from "@/lib/utils/ai-prompt"
+import { type ParsedTask } from "@/lib/utils/csv-parser"
+import toast from "react-hot-toast"
 
 interface Task {
   id: string
@@ -42,6 +46,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
   const [sortBy, setSortBy] = useState("dueDate") // dueDate, priority, createdAt, title
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [showImportDialog, setShowImportDialog] = useState(false)
 
   // Filter and sort tasks
   const filteredAndSortedTasks = useMemo(() => {
@@ -49,7 +54,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
 
     // Apply search filter
     if (searchQuery) {
-      filtered = filtered.filter(task => 
+      filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         task.category.toLowerCase().includes(searchQuery.toLowerCase())
@@ -62,7 +67,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
     } else if (filterStatus === "completed") {
       filtered = filtered.filter(task => task.completed)
     } else if (filterStatus === "overdue") {
-      filtered = filtered.filter(task => 
+      filtered = filtered.filter(task =>
         !task.completed && task.dueDate && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate))
       )
     }
@@ -75,17 +80,17 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
           if (!a.dueDate) return 1
           if (!b.dueDate) return -1
           return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-        
+
         case "priority":
           const priorityOrder = { high: 3, medium: 2, low: 1 }
           return priorityOrder[b.priority] - priorityOrder[a.priority]
-        
+
         case "createdAt":
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        
+
         case "title":
           return a.title.localeCompare(b.title)
-        
+
         default:
           return 0
       }
@@ -141,9 +146,9 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
-    
+
     console.log('🔍 Drop event at index:', dropIndex, 'draggedIndex:', draggedIndex)
-    
+
     if (draggedIndex === null || draggedIndex === dropIndex) {
       console.log('🔍 Drop ignored - invalid indices')
       return
@@ -153,14 +158,14 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
     const result = Array.from(tasks)
     const [removed] = result.splice(draggedIndex, 1)
     result.splice(dropIndex, 0, removed)
-    
+
     console.log('🔍 Tasks reordered:', {
       originalOrder: tasks.map(t => ({ id: t.id, title: t.title })),
       newOrder: result.map(t => ({ id: t.id, title: t.title })),
       draggedTask: removed.title,
       dropIndex: dropIndex
     })
-    
+
     console.log('🔍 Calling onTasksChange with reordered tasks')
     onTasksChange(result)
     setDraggedIndex(null)
@@ -177,6 +182,80 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
     setSearchQuery("")
     setFilterStatus("all")
     setSortBy("dueDate")
+  }
+
+  const handleCopyPrompt = async () => {
+    const success = await copyAIPromptToClipboard()
+    if (success) {
+      toast.success("AI prompt copied to clipboard! Paste it into ChatGPT or Claude.")
+    } else {
+      toast.error("Failed to copy. Please try again.")
+    }
+  }
+
+  const handleImportTasks = async (parsedTasks: ParsedTask[]) => {
+    try {
+      console.log('🔵 Starting CSV import for', parsedTasks.length, 'tasks')
+
+      // Convert parsed tasks to API format and create them
+      const newTasks: Task[] = []
+      let successCount = 0
+      let failCount = 0
+
+      for (const parsedTask of parsedTasks) {
+        const taskData = {
+          title: parsedTask.title,
+          description: parsedTask.description || '',
+          dueDate: parsedTask.dueDate ? parsedTask.dueDate.toISOString() : null,
+          priority: parsedTask.priority || 'medium',
+          status: parsedTask.status || 'pending',
+          category: 'general',
+        }
+
+        console.log('🔵 Creating task:', taskData.title)
+
+        try {
+          const response = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskData),
+          })
+
+          console.log('🔵 Response status:', response.status)
+
+          if (response.ok) {
+            const task = await response.json()
+            newTasks.push(task)
+            successCount++
+            console.log('✅ Task created:', task.id)
+          } else {
+            failCount++
+            console.error('❌ Failed to create task:', taskData.title, 'Status:', response.status)
+            const errorText = await response.text()
+            console.error('❌ Error response:', errorText)
+          }
+        } catch (fetchError) {
+          failCount++
+          console.error('❌ Fetch error for task:', taskData.title, fetchError)
+        }
+      }
+
+      console.log('🔵 Import complete:', successCount, 'success,', failCount, 'failed')
+
+      if (successCount > 0) {
+        toast.success(`Successfully imported ${successCount} task${successCount > 1 ? 's' : ''}!`)
+        // Wait a moment for toast to show, then reload
+        setTimeout(() => {
+          window.location.reload()
+        }, 1500)
+      } else {
+        toast.error('Failed to import any tasks. Check console for details.')
+      }
+    } catch (error) {
+      console.error("❌ Import failed with error:", error)
+      toast.error("Failed to import tasks. Please try again.")
+      throw error
+    }
   }
 
   const displayedTasks = filteredAndSortedTasks
@@ -213,25 +292,50 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFilters}
-              className="h-8 px-2 text-xs"
-            >
-              <Filter className="h-3 w-3 mr-1" />
-              Clear
-            </Button>
-          </div>
-          
-          <Button onClick={onOpenCreateDialog}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyPrompt}
+            className="h-8 text-xs"
+          >
+            <Copy className="h-3 w-3 mr-1.5" />
+            Copy AI Prompt
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImportDialog(true)}
+            className="h-8 text-xs"
+          >
+            <ClipboardPaste className="h-3 w-3 mr-1.5" />
+            Paste Tasks
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearFilters}
+            className="h-8 px-2 text-xs"
+          >
+            <Filter className="h-3 w-3 mr-1" />
+            Clear
+          </Button>
+
+          <Button onClick={onOpenCreateDialog} size="sm" className="h-8">
             <Plus className="h-4 w-4 mr-2" />
             Add Task
           </Button>
         </div>
       </div>
+
+      {/* CSV Import Dialog */}
+      <CSVImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onImport={handleImportTasks}
+      />
 
       {/* Search and Filters - Mobile Optimized */}
       <Card>
@@ -248,7 +352,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-32" aria-label="Filter tasks by status">
@@ -261,7 +365,7 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
                   <SelectItem value="overdue">Overdue</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-full sm:w-28" aria-label="Sort tasks by">
                   <SelectValue placeholder="Sort by" />
@@ -273,10 +377,10 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
                   <SelectItem value="title">Title</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               {(searchQuery || filterStatus !== "all" || sortBy !== "dueDate") && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={clearFilters}
                   className="text-xs"
@@ -289,9 +393,9 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
         </CardContent>
       </Card>
 
-             {/* Task List - Mobile Optimized */}
-       <div className="space-y-2 sm:space-y-3 min-h-0">
-         {displayedTasks.length > 0 && (
+      {/* Task List - Mobile Optimized */}
+      <div className="space-y-2 sm:space-y-3 min-h-0">
+        {displayedTasks.length > 0 && (
           <div className="text-center p-2 sm:p-3 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
             <p className="text-xs text-muted-foreground">
               {(searchQuery || filterStatus !== "all" || sortBy !== "dueDate") ? (
@@ -315,8 +419,8 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
                   <div>
                     <Search className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
                     <p className="text-sm sm:text-base">No tasks found matching your criteria.</p>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       onClick={() => {
                         setSearchQuery("")
                         setFilterStatus("all")
@@ -336,62 +440,62 @@ export function TaskManager({ tasks, onTasksChange, onOpenCreateDialog }: TaskMa
             </CardContent>
           </Card>
         ) : (
-                     displayedTasks.map((task, displayIndex) => {
-                       // Find the actual index in the original tasks array
-                       const actualIndex = tasks.findIndex(t => t.id === task.id)
-                       return (
-                                                   <div
-                            key={task.id}
-                            data-task-index={actualIndex}
-                            onDragEnter={() => handleDragEnter(actualIndex)}
-                            onDragOver={handleDragOver}
-                          >
-                           <TaskItem
-                             task={task}
-                             index={actualIndex}
-                             onToggle={handleToggleTask}
-                             onUpdate={handleUpdateTask}
-                             onDelete={handleDeleteTask}
-                             onDragStart={handleDragStart}
-                             onDragEnd={handleDragEnd}
-                             onDragOver={handleDragOver}
-                             onDrop={handleDrop}
-                             onDragEnter={handleDragEnter}
-                             isDragging={draggedIndex === actualIndex}
-                             dragOverIndex={dragOverIndex === actualIndex ? actualIndex : null}
-                           />
-                         </div>
-                       )
-                     })
+          displayedTasks.map((task, displayIndex) => {
+            // Find the actual index in the original tasks array
+            const actualIndex = tasks.findIndex(t => t.id === task.id)
+            return (
+              <div
+                key={task.id}
+                data-task-index={actualIndex}
+                onDragEnter={() => handleDragEnter(actualIndex)}
+                onDragOver={handleDragOver}
+              >
+                <TaskItem
+                  task={task}
+                  index={actualIndex}
+                  onToggle={handleToggleTask}
+                  onUpdate={handleUpdateTask}
+                  onDelete={handleDeleteTask}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragEnter={handleDragEnter}
+                  isDragging={draggedIndex === actualIndex}
+                  dragOverIndex={dragOverIndex === actualIndex ? actualIndex : null}
+                />
+              </div>
+            )
+          })
         )}
       </div>
 
-             {/* Quick Stats Footer - Mobile Optimized */}
-       {displayedTasks.length > 0 && (
-         <Card className="bg-muted/50 border-t-2 border-primary/20">
-           <CardContent className="p-3 sm:p-4">
-             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 text-xs sm:text-sm text-muted-foreground">
-               <span>
-                 Showing {displayedTasks.length} of {tasks.length} tasks
-               </span>
-               <div className="flex items-center space-x-2 sm:space-x-4">
-                 <span>
-                   {Math.round((taskStats.completed / taskStats.total) * 100) || 0}% completed
-                 </span>
-                 <div className="w-16 sm:w-20 h-2 bg-muted rounded-full overflow-hidden">
-                   <div 
-                     className="h-full bg-green-600 transition-all duration-300"
-                     style={{ width: `${(taskStats.completed / taskStats.total) * 100}%` }}
-                   />
-                 </div>
-               </div>
-             </div>
-           </CardContent>
-         </Card>
-       )}
-       
-       {/* Bottom Spacing Indicator */}
-       <div className="h-2 bg-gradient-to-t from-muted/30 to-transparent rounded-b-lg"></div>
+      {/* Quick Stats Footer - Mobile Optimized */}
+      {displayedTasks.length > 0 && (
+        <Card className="bg-muted/50 border-t-2 border-primary/20">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 text-xs sm:text-sm text-muted-foreground">
+              <span>
+                Showing {displayedTasks.length} of {tasks.length} tasks
+              </span>
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                <span>
+                  {Math.round((taskStats.completed / taskStats.total) * 100) || 0}% completed
+                </span>
+                <div className="w-16 sm:w-20 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-600 transition-all duration-300"
+                    style={{ width: `${(taskStats.completed / taskStats.total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bottom Spacing Indicator */}
+      <div className="h-2 bg-gradient-to-t from-muted/30 to-transparent rounded-b-lg"></div>
     </div>
   )
 }

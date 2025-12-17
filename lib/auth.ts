@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import { generateUsername } from "@/lib/username-generator"
 
 const prisma = new PrismaClient()
 
@@ -99,72 +100,102 @@ export const authOptions: NextAuthOptions = {
               id: true,
               name: true,
               email: true,
-              image: true
+              image: true,
+              // @ts-ignore
+              username: true
             }
           })
 
           // If user doesn't exist (for OAuth users), create them
+          // If user doesn't exist by ID, try to find by email (to handle OAuth/Credentials merging)
           if (!freshUser && token.email) {
-            try {
-              console.log('Creating new OAuth user:', { userId, email: token.email })
-              freshUser = await prisma.user.create({
-                data: {
-                  id: userId, // Use the OAuth provider's user ID
-                  email: token.email as string,
-                  name: token.name as string || token.email?.split('@')[0] || 'OAuth User',
-                  image: token.image as string || '/placeholder-user.jpg',
-                  passwordHash: '', // OAuth users don't need password hash
-                },
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  image: true
-                }
-              })
-              console.log('Successfully created OAuth user:', freshUser.id)
-            } catch (createError) {
-              console.error('Error creating OAuth user:', createError)
-              // If creation fails due to unique constraint (email already exists),
-              // try to find the existing user by email
-              if ((createError as any).code === 'P2002') {
-                console.log('User with this email already exists, fetching by email...')
-                const existingUser = await prisma.user.findUnique({
-                  where: { email: token.email as string },
+            freshUser = await prisma.user.findUnique({
+              where: { email: token.email as string },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                // @ts-ignore
+                username: true
+              }
+            })
+
+            // If still no user, create one
+            if (!freshUser) {
+              try {
+                console.log('Creating new OAuth user:', { userId, email: token.email })
+                freshUser = await prisma.user.create({
+                  data: {
+                    id: userId, // Note: This uses the OAuth ID as the Primary Key. Ideally we should generate a CUID and link account, but maintaining current behavior.
+                    email: token.email as string,
+                    name: token.name as string || token.email?.split('@')[0] || 'OAuth User',
+                    image: token.image as string || '/placeholder-user.jpg',
+                    passwordHash: '',
+                  },
                   select: {
                     id: true,
                     name: true,
                     email: true,
-                    image: true
+                    image: true,
+                    // @ts-ignore
+                    username: true // Select username here too to avoid issues later
                   }
                 })
-                if (existingUser) {
-                  freshUser = existingUser
-                  console.log('Found existing user by email:', existingUser.id)
-                } else {
-                  console.error('Could not find user by email either')
-                }
+                console.log('Successfully created OAuth user:', freshUser.id)
+              } catch (createError) {
+                console.error('Error creating OAuth user:', createError)
+                // If race condition occurred, try to find one last time (rare)
+                freshUser = await prisma.user.findUnique({
+                  where: { email: token.email as string },
+                  select: { id: true, name: true, email: true, image: true, username: true } as any
+                })
               }
+            } else {
+              console.log('Found existing user by email (OAuth link):', freshUser.id)
             }
           }
 
           if (freshUser) {
-            ;(session.user as any).id = freshUser.id
+            // Check if username is missing and generate one
+            // @ts-ignore
+            if (!freshUser.username) {
+              const newUsername = generateUsername(freshUser.name);
+
+              try {
+                freshUser = await prisma.user.update({
+                  where: { id: freshUser.id },
+                  data: { username: newUsername },
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    image: true,
+                    username: true
+                  }
+                });
+              } catch (e) {
+                console.error("Failed to auto-generate username", e);
+              }
+            }
+
+            (session.user as any).id = freshUser.id
             session.user.email = freshUser.email
             session.user.name = freshUser.name
-            session.user.image = freshUser.image
+            session.user.image = freshUser.image;
+            (session.user as any).username = (freshUser as any).username;
           } else {
             // Last resort fallback to JWT data
             console.warn('Could not load user from database, using JWT data')
-            ;(session.user as any).id = token.id as string
+              ; (session.user as any).id = token.id as string
             session.user.email = token.email as string
             session.user.name = token.name as string
             session.user.image = token.image as string
           }
         } catch (error) {
           console.error('Error in session callback:', error)
-          // Last resort fallback
-          (session.user as any).id = token.id as string
+            // Last resort fallback
+            (session.user as any).id = token.id as string
           (session.user as any).email = token.email as string
           (session.user as any).name = token.name as string
           (session.user as any).image = token.image as string

@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
 
-export async function PUT(
+export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     let userId = session?.user?.id
@@ -16,7 +17,7 @@ export async function PUT(
       userId = 'demo-user-1'
     }
 
-    const { id: notificationId } = await params
+    const { id: notificationId } = params
     const body = await request.json()
 
     // Verify the notification belongs to the user
@@ -50,8 +51,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     let userId = session?.user?.id
@@ -61,7 +63,7 @@ export async function DELETE(
       userId = 'demo-user-1'
     }
 
-    const { id: notificationId } = await params
+    const { id: notificationId } = params
 
     // Verify the notification belongs to the user
     const existingNotification = await dbService.getPrisma().notification.findFirst({

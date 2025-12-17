@@ -5,7 +5,9 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Hash, ArrowLeft, Settings, LogOut, Info, BookOpen } from "lucide-react";
+import { Hash, ArrowLeft, Settings, LogOut, Info, BookOpen, Users } from "lucide-react";
+import { JoinButton } from "@/components/community/join-button";
+import { ChannelList } from "@/components/community/channel-list";
 import ReactMarkdown from "react-markdown";
 
 export default async function CommunityLayout({
@@ -34,11 +36,22 @@ export default async function CommunityLayout({
         notFound();
     }
 
+    const membership = await prisma.communityMember.findUnique({
+        where: {
+            communityId_userId: {
+                communityId: params.id,
+                userId: (session.user as any).id
+            }
+        }
+    });
+
+    const isAdmin = membership?.role === "admin";
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
             {/* Community Header */}
             {community.coverImage && (
-                <div className="w-full h-48 md:h-64 relative">
+                <div className="w-full h-64 md:h-96 relative">
                     <img
                         src={community.coverImage}
                         alt="Cover"
@@ -63,16 +76,27 @@ export default async function CommunityLayout({
                                 )}
                             </div>
                             <div>
-                                <h1 className="text-lg font-bold leading-tight">{community.name}</h1>
+                                <Link href={`/community/${community.id}`} className="hover:underline">
+                                    <h1 className="text-lg font-bold leading-tight">{community.name}</h1>
+                                </Link>
                                 <div className="text-xs text-muted-foreground">{community._count.members} members</div>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon">
-                            <Settings className="w-5 h-5 text-muted-foreground" />
-                        </Button>
+                        <JoinButton
+                            communityId={community.id}
+                            isMember={!!membership}
+                            description=""
+                        />
+                        {isAdmin && (
+                            <Link href={`/community/${community.id}/settings`}>
+                                <Button variant="ghost" size="icon">
+                                    <Settings className="w-5 h-5 text-muted-foreground" />
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </header>
@@ -80,27 +104,28 @@ export default async function CommunityLayout({
             <div className="flex-1 container mx-auto max-w-7xl p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Persistent Sidebar */}
                 <aside className="hidden lg:block lg:col-span-3 space-y-6">
-                    <Card className="h-fit">
+                    <ChannelList
+                        communityId={community.id}
+                        initialChannels={community.channels}
+                        isAdmin={isAdmin}
+                    />
+
+                    <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                                Channels
+                            <CardTitle className="text-xs font-semibold uppercase text-muted-foreground tracking-wider flex items-center gap-2">
+                                <Users className="w-4 h-4" /> Directory
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-1 p-2">
-                            <Link href={`/community/${community.id}`}>
-                                <Button variant="ghost" className="w-full justify-start font-medium text-foreground">
-                                    <Hash className="w-4 h-4 mr-2" />
-                                    Home
+                            <Link href={`/community/${community.id}/members`}>
+                                <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
+                                    <Users className="w-4 h-4 mr-2" />
+                                    Members
+                                    <span className="ml-auto text-xs bg-muted px-2 py-0.5 rounded-full">
+                                        {community._count.members}
+                                    </span>
                                 </Button>
                             </Link>
-                            {community.channels.map((channel: { id: string; name: string }) => (
-                                <Link key={channel.id} href={`/community/${community.id}/channel/${channel.id}`}>
-                                    <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50">
-                                        <Hash className="w-4 h-4 mr-2 opacity-70" />
-                                        {channel.name}
-                                    </Button>
-                                </Link>
-                            ))}
                         </CardContent>
                     </Card>
 
@@ -112,7 +137,7 @@ export default async function CommunityLayout({
                         </CardHeader>
                         <CardContent className="text-sm prose prose-sm max-w-none dark:prose-invert">
                             {community.description ? (
-                                <ReactMarkdown>{community.description}</ReactMarkdown>
+                                <div dangerouslySetInnerHTML={{ __html: community.description }} />
                             ) : (
                                 <span className="text-muted-foreground italic">No description.</span>
                             )}
@@ -127,7 +152,7 @@ export default async function CommunityLayout({
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="text-sm prose prose-sm max-w-none dark:prose-invert">
-                                <ReactMarkdown>{community.rules}</ReactMarkdown>
+                                <div dangerouslySetInnerHTML={{ __html: community.rules }} />
                             </CardContent>
                         </Card>
                     )}

@@ -5,11 +5,16 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
     req: Request,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const session = await getServerSession(authOptions);
         const currentUserId = (session?.user as any)?.id;
+
+        // Get cursor from query params
+        const { searchParams } = new URL(req.url);
+        const cursor = searchParams.get("cursor");
 
         const comments = await prisma.comment.findMany({
             where: { postId: params.id },
@@ -25,7 +30,10 @@ export async function GET(
                     select: { userId: true }
                 } : false
             },
-            orderBy: { createdAt: "asc" }
+            orderBy: { createdAt: "asc" },
+            take: 50, // Reduced to 50 for pagination
+            skip: cursor ? 1 : 0,
+            cursor: cursor ? { id: cursor } : undefined,
         });
         return NextResponse.json(comments);
     } catch (error) {
@@ -36,8 +44,9 @@ export async function GET(
 
 export async function POST(
     req: Request,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const session = await getServerSession(authOptions);
         if (!session) {

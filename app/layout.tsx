@@ -3,6 +3,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthSessionProvider } from "@/components/providers/session-provider"
+import { SocketProvider } from "@/components/providers/socket-provider"
+import { ReactQueryProvider } from "@/components/providers/react-query-provider"
 import { Toaster } from "react-hot-toast"
 import { Analytics } from "@vercel/analytics/next"
 import ErrorBoundary from "@/components/error-boundary"
@@ -33,14 +35,18 @@ export default function RootLayout({
       <head>
         {/* PDF.js will be loaded dynamically when needed */}
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <ErrorBoundary>
           <AuthSessionProvider>
-            <ThemeProvider defaultTheme="light">
-              {children}
-              <Toaster position="top-right" />
-              <Analytics />
-            </ThemeProvider>
+            <ReactQueryProvider>
+              <SocketProvider>
+                <ThemeProvider defaultTheme="light">
+                  {children}
+                  <Toaster position="top-right" />
+                  <Analytics />
+                </ThemeProvider>
+              </SocketProvider>
+            </ReactQueryProvider>
           </AuthSessionProvider>
         </ErrorBoundary>
       </body>

@@ -5,10 +5,12 @@ import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Heart, MessageSquare, Share2, MoreHorizontal, FileText, Download, X } from "lucide-react";
+import { Heart, MessageSquare, Share2, MoreHorizontal, FileText, Download, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { CommentItem } from "./comment-item";
+import { ImageViewer } from "@/components/ui/image-viewer";
 
 interface PostCardProps {
     post: any;
@@ -22,6 +24,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     const [comments, setComments] = useState<any[]>([]);
     const [commentText, setCommentText] = useState("");
     const [loadingComments, setLoadingComments] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [isViewerOpen, setIsViewerOpen] = useState(false);
 
     const toggleLike = async () => {
         // Optimistic update
@@ -108,21 +112,61 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
             <CardContent className="p-4 py-2 space-y-3">
                 <p className="whitespace-pre-wrap">{post.content}</p>
 
+
+
                 {/* Image Gallery */}
                 {mediaAttachments.length > 0 && (
-                    <div className={cn("grid gap-2",
-                        mediaAttachments.length === 1 ? "grid-cols-1" :
-                            mediaAttachments.length === 2 ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"
-                    )}>
-                        {mediaAttachments.map((att: any) => (
-                            <div key={att.id} className="relative aspect-square">
-                                <img
-                                    src={att.url}
-                                    alt="Post image"
-                                    className="absolute inset-0 w-full h-full object-cover rounded-md border"
-                                />
-                            </div>
-                        ))}
+                    <div className="relative group overflow-hidden rounded-md bg-black/5 border aspect-video flex items-center justify-center">
+                        {/* Image */}
+                        <div
+                            className="w-full h-full flex transition-transform duration-300 ease-out cursor-pointer"
+                            style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
+                            onClick={() => setIsViewerOpen(true)}
+                        >
+                            {mediaAttachments.map((att: any, index: number) => (
+                                <div key={att.id || index} className="min-w-full h-full relative flex items-center justify-center bg-black">
+                                    <img
+                                        src={att.url}
+                                        alt={`Post image ${index + 1}`}
+                                        className="max-h-[500px] w-auto h-full object-contain"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Navigation Arrows */}
+                        {mediaAttachments.length > 1 && (
+                            <>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setCurrentImageIndex(prev => prev === 0 ? mediaAttachments.length - 1 : prev - 1);
+                                    }}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setCurrentImageIndex(prev => prev === mediaAttachments.length - 1 ? 0 : prev + 1);
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+
+                                {/* Indicators */}
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                    {mediaAttachments.map((_: any, i: number) => (
+                                        <div
+                                            key={i}
+                                            className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                                        />
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -172,19 +216,50 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
 
                 {commentsOpen && (
                     <div className="w-full mt-4 space-y-4">
-                        <div className="space-y-4 max-h-60 overflow-y-auto">
+                        <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
                             {loadingComments && <p className="text-center text-xs text-muted-foreground">Loading...</p>}
-                            {comments.map((comment) => (
-                                <div key={comment.id} className="flex gap-3 text-sm">
-                                    <Avatar className="w-8 h-8">
-                                        <AvatarImage src={comment.user.image} />
-                                        <AvatarFallback>{comment.user.name[0]}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="bg-muted p-2 rounded-lg flex-1">
-                                        <div className="font-semibold text-xs mb-1">{comment.user.name}</div>
-                                        <p>{comment.content}</p>
-                                    </div>
-                                </div>
+
+                            {comments.filter(c => !c.parentId).map((comment) => (
+                                <CommentItem
+                                    key={comment.id}
+                                    comment={comment}
+                                    currentUserId={currentUserId}
+                                    replies={comments.filter(c => c.parentId === comment.id)}
+                                    onReply={async (parentId, content) => {
+                                        try {
+                                            const res = await fetch(`/api/posts/${post.id}/comments`, {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ content, parentId })
+                                            });
+                                            if (res.ok) {
+                                                const newComment = await res.json();
+                                                // Mutate local state
+                                                setComments([...comments, newComment]);
+                                            }
+                                        } catch (e) { }
+                                    }}
+                                    onDelete={async (commentId) => {
+                                        if (!confirm("Are you sure?")) return;
+                                        try {
+                                            await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
+                                            setComments(comments.filter(c => c.id !== commentId));
+                                        } catch (e) { }
+                                    }}
+                                    onUpdate={async (commentId, content) => {
+                                        try {
+                                            const res = await fetch(`/api/comments/${commentId}`, {
+                                                method: "PATCH",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ content })
+                                            });
+                                            if (res.ok) {
+                                                const updated = await res.json();
+                                                setComments(comments.map(c => c.id === commentId ? updated : c));
+                                            }
+                                        } catch (e) { }
+                                    }}
+                                />
                             ))}
                         </div>
                         <form onSubmit={submitComment} className="flex gap-2">
@@ -199,6 +274,13 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                     </div>
                 )}
             </CardFooter>
+
+            <ImageViewer
+                images={mediaAttachments}
+                initialIndex={currentImageIndex}
+                isOpen={isViewerOpen}
+                onClose={() => setIsViewerOpen(false)}
+            />
         </Card>
     );
 }

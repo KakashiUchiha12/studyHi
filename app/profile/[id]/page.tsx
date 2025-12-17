@@ -7,6 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Users, FileText } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { ProfilePostGrid } from "@/components/profile/profile-post-grid";
+
+import { UserListDialog } from "@/components/profile/user-list-dialog";
 
 export default function UserProfilePage() {
     const params = useParams();
@@ -16,6 +19,10 @@ export default function UserProfilePage() {
     const [loading, setLoading] = useState(true);
     const [following, setFollowing] = useState(false);
     const [loadingFollow, setLoadingFollow] = useState(false);
+
+    // Dialog States
+    const [followersOpen, setFollowersOpen] = useState(false);
+    const [followingOpen, setFollowingOpen] = useState(false);
 
     useEffect(() => {
         if (params.id) {
@@ -91,11 +98,11 @@ export default function UserProfilePage() {
                                 <div className="font-bold text-lg">{profile._count.posts}</div>
                                 <div className="text-xs text-muted-foreground uppercase">Posts</div>
                             </div>
-                            <div className="text-center">
+                            <div className="text-center cursor-pointer hover:bg-slate-50 p-1 rounded transition-colors" onClick={() => setFollowersOpen(true)}>
                                 <div className="font-bold text-lg">{profile._count.followers}</div>
                                 <div className="text-xs text-muted-foreground uppercase">Followers</div>
                             </div>
-                            <div className="text-center">
+                            <div className="text-center cursor-pointer hover:bg-slate-50 p-1 rounded transition-colors" onClick={() => setFollowingOpen(true)}>
                                 <div className="font-bold text-lg">{profile._count.following}</div>
                                 <div className="text-xs text-muted-foreground uppercase">Following</div>
                             </div>
@@ -127,12 +134,23 @@ export default function UserProfilePage() {
 
                 {/* Content Side */}
                 <div className="w-full md:w-2/3 space-y-6">
-                    <div className="bg-slate-50 rounded-lg p-8 text-center border text-muted-foreground border-dashed">
-                        <FileText className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                        <p>No posts yet.</p>
-                    </div>
+                    <ProfilePostGrid userId={profile.id} currentUserId={(session?.user as any)?.id} />
                 </div>
             </div>
+
+            {/* Dialogs */}
+            <UserListDialog
+                open={followersOpen}
+                onOpenChange={setFollowersOpen}
+                userId={profile.id}
+                type="followers"
+            />
+            <UserListDialog
+                open={followingOpen}
+                onOpenChange={setFollowingOpen}
+                userId={profile.id}
+                type="following"
+            />
         </div>
     );
 }

@@ -8,13 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ImageCropper } from "@/components/profile/image-cropper";
-import { useUploadThing } from "@/lib/uploadthing"; // Need to create this helper or use standard generateReactHelpers
-import { generateReactHelpers } from "@uploadthing/react";
-import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { Loader2, Camera } from "lucide-react";
-
-// Standard UploadThing Helper
-const { useUploadThing: useUT } = generateReactHelpers<OurFileRouter>();
 
 export default function ProfileEditPage() {
     const router = useRouter();
@@ -23,15 +17,14 @@ export default function ProfileEditPage() {
 
     // Form State
     const [name, setName] = useState("");
+    const [username, setUsername] = useState("");
     const [bio, setBio] = useState("");
     const [image, setImage] = useState("");
 
     // Cropper State
-    const [imageFile, setImageFile] = useState<File | null>(null); // Original file selected
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [cropperOpen, setCropperOpen] = useState(false);
-    const [previewSrc, setPreviewSrc] = useState<string | null>(null); // For cropper
-
-    const { startUpload } = useUT("profileImage");
+    const [previewSrc, setPreviewSrc] = useState<string | null>(null);
 
     useEffect(() => {
         fetchProfile();
@@ -43,6 +36,7 @@ export default function ProfileEditPage() {
             if (res.ok) {
                 const data = await res.json();
                 setName(data.name || "");
+                setUsername(data.username || "");
                 setImage(data.image || "");
                 if (data.socialProfile) {
                     setBio(data.socialProfile.bio || "");
@@ -67,25 +61,27 @@ export default function ProfileEditPage() {
     };
 
     const onCropComplete = async (croppedBlob: Blob) => {
-        // Convert blob to File
         const file = new File([croppedBlob], "profile.jpg", { type: "image/jpeg" });
 
-        // Upload immediately or wait for save?
-        // Let's upload immediately to get URL, then show new preview
-        // Actually, UX wise, better to show preview of blob, and upload on "Save Profile"
-        // BUT UploadThing hook `startUpload` usually takes files array.
-
-        // I'll upload valid file immediately to simplify logic, then update state.
         setSaving(true);
         try {
-            const res = await startUpload([file]);
-            if (res && res[0]) {
-                setImage(res[0].url); // Update local state URL
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setImage(data.url);
             }
         } catch (e) {
             console.error(e);
         } finally {
             setSaving(false);
+            setCropperOpen(false);
         }
     };
 
@@ -96,12 +92,15 @@ export default function ProfileEditPage() {
             const res = await fetch("/api/profile", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, bio, image })
+                body: JSON.stringify({ name, username, bio, image })
             });
 
             if (res.ok) {
                 router.refresh();
-                router.push("/dashboard");
+                router.push("/profile/" + (await res.json()).id);
+            } else {
+                const err = await res.text();
+                alert("Failed to update: " + err);
             }
         } catch (e) {
             console.error(e);
@@ -141,6 +140,15 @@ export default function ProfileEditPage() {
                         <div className="space-y-2">
                             <Label htmlFor="name">Display Name</Label>
                             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="username">Username</Label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 text-muted-foreground">@</span>
+                                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value.trim())} className="pl-8" />
+                            </div>
+                            <p className="text-xs text-muted-foreground">Unique identifier for your profile url.</p>
                         </div>
 
                         <div className="space-y-2">

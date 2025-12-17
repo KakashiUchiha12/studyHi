@@ -1,12 +1,14 @@
+```typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
 
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  req: Request,
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     const userId = (session?.user as any)?.id
@@ -19,8 +21,8 @@ export async function PUT(
       )
     }
 
-    const { id: subjectId } = await params
-    const body = await request.json()
+    const { id: subjectId } = params
+    const body = await req.json()
 
     // Verify the subject belongs to the user
     const existingSubject = await dbService.getPrisma().subject.findFirst({
@@ -61,9 +63,10 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  req: Request,
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     const userId = (session?.user as any)?.id

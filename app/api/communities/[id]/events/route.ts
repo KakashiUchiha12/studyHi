@@ -9,6 +9,9 @@ export async function GET(
 ) {
     const params = await props.params;
     try {
+        const session = await getServerSession(authOptions);
+        const userId = (session?.user as any)?.id;
+
         const events = await (prisma as any).communityEvent.findMany({
             where: {
                 communityId: params.id,
@@ -28,20 +31,21 @@ export async function GET(
                         attendees: true
                     }
                 },
-                attendees: {
+                // Only fetch current user's attendance status, not all attendees
+                attendees: userId ? {
                     where: {
-                        // We can fetch current user's status if needed, but for listing maybe just count is enough?
-                        // Actually, let's fetch all attendees for now or optimize later.
+                        userId: userId
                     },
                     select: {
                         userId: true,
                         status: true
                     }
-                }
+                } : false
             },
             orderBy: {
                 startDate: 'asc'
-            }
+            },
+            take: 50 // Limit for memory optimization
         });
 
         return NextResponse.json(events);

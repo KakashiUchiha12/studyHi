@@ -20,7 +20,7 @@ export async function GET(req: Request) {
         if (communityId) {
             whereClause.communityId = communityId;
         } else if (userId) {
-            whereClause.authorId = userId;
+            whereClause.userId = userId;
         } else if (session) {
             // Global Feed: Posts from communities user follows OR people user follows?
             // Simple v1: All posts from joined communities + global public posts?
@@ -43,7 +43,12 @@ export async function GET(req: Request) {
                 skip: 1,
                 cursor: { id: cursor },
                 where: whereClause,
-                include: {
+                select: {
+                    id: true,
+                    content: true,
+                    isAnnouncement: true,
+                    createdAt: true,
+                    updatedAt: true,
                     user: {
                         select: { name: true, image: true, id: true }
                     },
@@ -56,7 +61,16 @@ export async function GET(req: Request) {
                     likes: session ? {
                         where: { userId: (session.user as any).id },
                         select: { userId: true }
-                    } : false
+                    } : false,
+                    attachments: {
+                        select: {
+                            id: true,
+                            url: true,
+                            name: true,
+                            type: true,
+                            size: true
+                        }
+                    }
                 },
                 orderBy: { createdAt: "desc" }
             });
@@ -64,7 +78,12 @@ export async function GET(req: Request) {
             posts = await prisma.post.findMany({
                 take: POSTS_BATCH,
                 where: whereClause,
-                include: {
+                select: {
+                    id: true,
+                    content: true,
+                    isAnnouncement: true,
+                    createdAt: true,
+                    updatedAt: true,
                     user: {
                         select: { name: true, image: true, id: true }
                     },
@@ -77,13 +96,26 @@ export async function GET(req: Request) {
                     likes: session ? {
                         where: { userId: (session.user as any).id },
                         select: { userId: true }
-                    } : false
+                    } : false,
+                    attachments: {
+                        select: {
+                            id: true,
+                            url: true,
+                            name: true,
+                            type: true,
+                            size: true
+                        }
+                    }
                 },
                 orderBy: { createdAt: "desc" }
             });
         }
 
-        return NextResponse.json(posts);
+        return NextResponse.json(posts, {
+            headers: {
+                'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
+            }
+        });
     } catch (error) {
         console.error("[POSTS_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });

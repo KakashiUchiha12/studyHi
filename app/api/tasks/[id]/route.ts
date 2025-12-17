@@ -5,8 +5,9 @@ import { dbService } from '@/lib/database'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     let userId = session?.user?.id
@@ -16,7 +17,7 @@ export async function PUT(
       userId = 'demo-user-1'
     }
 
-    const { id: taskId } = await params
+    const { id: taskId } = params
     const body = await request.json()
 
     // Verify the task belongs to the user
@@ -61,38 +62,30 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    let userId = session?.user?.id
-
-    // If no session, use demo user ID
-    if (!userId) {
-      userId = 'demo-user-1'
+  userId = 'demo-user-1'
     }
 
     const { id: taskId } = await params
 
     // Verify the task belongs to the user
     const existingTask = await dbService.getPrisma().task.findFirst({
-      where: { id: taskId, userId: userId }
-    })
+    where: { id: taskId, userId: userId }
+  })
 
     if (!existingTask) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
-    }
+  return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+}
 
-    await dbService.getPrisma().task.delete({
-      where: { id: taskId }
-    })
+await dbService.getPrisma().task.delete({
+  where: { id: taskId }
+})
 
-    return NextResponse.json({ success: true })
+return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Failed to delete task:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete task' },
-      { status: 500 }
-    )
-  }
+  console.error('Failed to delete task:', error)
+  return NextResponse.json(
+    { error: 'Failed to delete task' },
+    { status: 500 }
+  )
+}
 }

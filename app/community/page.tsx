@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Plus, Users, Search, Globe, Lock } from "lucide-react";
 import { StudyHiLogo } from "@/components/ui/studyhi-logo";
-import ReactMarkdown from "react-markdown";
+import { JoinButton } from "@/components/community/join-button";
+import { MobileNavMenu } from "@/components/mobile-nav-menu";
+
 
 interface Community {
     id: string;
@@ -62,11 +64,12 @@ export default function CommunityPage() {
                     <Link href="/dashboard">
                         <StudyHiLogo size="sm" />
                     </Link>
-                    <div className="flex items-center gap-4">
-                        <Link href="/dashboard">
+                    <div className="flex items-center gap-2">
+                        <MobileNavMenu />
+                        <Link href="/dashboard" className="hidden md:block">
                             <Button variant="ghost">Dashboard</Button>
                         </Link>
-                        <Link href="/community/create">
+                        <Link href="/community/create" className="hidden md:block">
                             <Button className="bg-primary text-white">
                                 <Plus className="w-4 h-4 mr-2" />
                                 Create Community
@@ -106,58 +109,66 @@ export default function CommunityPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {communities.map((community) => (
-                            <Link href={`/community/${community.id}`} key={community.id} className="block group">
+                            <div key={community.id} className="block group">
                                 <Card className="h-full hover:shadow-lg transition-all border-border hover:border-primary/50 overflow-hidden flex flex-col p-0 border">
-                                    <div className="h-32 bg-gray-100 relative w-full">
-                                        {community.coverImage ? (
-                                            <img
-                                                src={community.coverImage}
-                                                alt={community.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
-                                                <div className="text-4xl font-bold text-primary/20">
-                                                    {community.name[0]?.toUpperCase()}
+                                    <Link href={`/community/${community.id}`} className="flex-1 flex flex-col">
+                                        <div className="h-48 bg-gray-100 relative w-full">
+                                            {community.coverImage ? (
+                                                <img
+                                                    src={community.coverImage}
+                                                    alt={community.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center">
+                                                    <div className="text-4xl font-bold text-primary/20">
+                                                        {community.name[0]?.toUpperCase()}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {community.isPrivate && (
+                                                <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full">
+                                                    <Lock className="w-3 h-3" />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <CardHeader className="pb-2 flex-1">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <div className="flex-1">
+                                                    <CardTitle className="text-xl line-clamp-1 text-foreground" title={community.name}>
+                                                        {community.name}
+                                                    </CardTitle>
                                                 </div>
                                             </div>
-                                        )}
-                                        {community.isPrivate && (
-                                            <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full">
-                                                <Lock className="w-3 h-3" />
+                                            <div className="text-sm text-muted-foreground line-clamp-2 h-[40px] prose prose-sm max-w-none">
+                                                {community.description ? (
+                                                    <p className="mb-0">
+                                                        {community.description.replace(/<[^>]*>?/gm, '').substring(0, 150)}
+                                                        {community.description.replace(/<[^>]*>?/gm, '').length > 150 ? "..." : ""}
+                                                    </p>
+                                                ) : (
+                                                    "No description provided."
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <CardHeader className="pb-2">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <div className="flex-1">
-                                                <CardTitle className="text-xl line-clamp-1" title={community.name}>
-                                                    {community.name}
-                                                </CardTitle>
+                                        </CardHeader>
+                                    </Link>
+                                    <CardContent className="mt-auto p-4 border-t bg-gray-50/50">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center text-sm font-medium text-muted-foreground">
+                                                <Users className="w-4 h-4 mr-2" />
+                                                {community._count.members} members
                                             </div>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground line-clamp-2 h-[40px] prose prose-sm max-w-none">
-                                            <ReactMarkdown
-                                                components={{
-                                                    p: ({ node, ...props }) => <p className="mb-0" {...props} />,
-                                                    h1: ({ node, ...props }) => <span className="font-bold" {...props} />,
-                                                    h2: ({ node, ...props }) => <span className="font-bold" {...props} />,
-                                                    ul: ({ node, ...props }) => <span {...props} />,
-                                                    li: ({ node, ...props }) => <span className="mr-1" {...props} />,
-                                                }}
-                                            >
-                                                {community.description || "No description provided."}
-                                            </ReactMarkdown>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="mt-auto pt-0">
-                                        <div className="flex items-center text-sm text-muted-foreground pt-4 border-t">
-                                            <Users className="w-4 h-4 mr-2" />
-                                            {community._count.members} members
+                                            <div className="flex items-center gap-3">
+                                                <JoinButton
+                                                    communityId={community.id}
+                                                    isMember={(community as any).members?.length > 0}
+                                                    description=""
+                                                />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
-                            </Link>
+                            </div>
                         ))}
 
                         {communities.length === 0 && (

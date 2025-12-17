@@ -1,3 +1,4 @@
+```typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -5,8 +6,9 @@ import { calendarEventService } from '@/lib/database'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || !(session.user as any).id) {
@@ -31,7 +33,7 @@ export async function PUT(
     return NextResponse.json({ 
       success: true, 
       event: updatedEvent,
-      message: `Event ${updatedEvent.completed ? 'marked as completed' : 'marked as incomplete'}` 
+      message: `Event ${ updatedEvent.completed ? 'marked as completed' : 'marked as incomplete' } ` 
     })
   } catch (error) {
     console.error('Error toggling calendar event completion:', error)

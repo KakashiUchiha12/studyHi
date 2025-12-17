@@ -1,12 +1,88 @@
+```typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
 
+export async function GET(
+  request: NextRequest,
+  props: { params: Promise<{ id: string }> }
+) {
+  const params = await props.params;
+  let sessionId: string = ''
+  let userId: string = ''
+  
+  try {
+    // Test database connection first
+    const dbTest = await dbService.testConnection()
+    if (!dbTest.success) {
+      console.error('🔍 API Study Sessions GET: Database connection failed:', dbTest.error)
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      )
+    }
+
+    const session = await getServerSession(authOptions)
+    userId = (session?.user as any)?.id
+
+    // If no session, use demo user ID
+    if (!userId) {
+      userId = 'demo-user-1'
+    }
+
+    const { id: idParam } = params
+    sessionId = idParam
+
+    console.log('🔍 API: GET request received for session:', sessionId)
+    console.log('🔍 API: User ID:', userId)
+
+    // Verify the study session belongs to the user
+    const existingSession = await dbService.getPrisma().studySession.findFirst({
+      where: { id: sessionId, userId: userId }
+    })
+
+    if (!existingSession) {
+      console.log('🔍 API: Session not found')
+      return NextResponse.json({ error: 'Study session not found' }, { status: 404 })
+    }
+
+    console.log('🔍 API: Existing session found:', {
+      id: existingSession.id,
+      efficiency: existingSession.efficiency,
+      topics: existingSession.topicsCovered,
+      materials: existingSession.materialsUsed
+    })
+
+    // Serialize the response to prevent any potential serialization issues
+    const serializedSession = {
+      ...existingSession,
+      startTime: existingSession.startTime.toISOString(),
+      endTime: existingSession.endTime.toISOString(),
+      createdAt: existingSession.createdAt.toISOString()
+    }
+
+    return NextResponse.json(serializedSession)
+  } catch (error) {
+    console.error('🔍 API: Detailed error in GET:', {
+      error: error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      sessionId: sessionId,
+      userId: userId
+    })
+    return NextResponse.json(
+      { error: 'Failed to retrieve study session' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   let sessionId: string = ''
   let body: any = {}
   let userId: string = ''
@@ -30,7 +106,7 @@ export async function PUT(
       userId = 'demo-user-1'
     }
 
-    const { id: idParam } = await params
+    const { id: idParam } = params
     sessionId = idParam
     body = await request.json()
 
@@ -109,8 +185,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions)
     let userId = (session?.user as any)?.id

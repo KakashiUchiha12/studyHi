@@ -5,10 +5,11 @@ import { prisma } from "@/lib/prisma";
 
 const MESSAGES_BATCH = 20;
 
-export async function GET(
+export async function POST(
     req: Request,
-    { params }: { params: { userId: string } }
+    props: { params: Promise<{ userId: string }> }
 ) {
+    const params = await props.params;
     const session = await getServerSession(authOptions);
 
     if (!session?.user) {
@@ -21,6 +22,18 @@ export async function GET(
 
     try {
         const myId = (session.user as any).id;
+
+        // Mark messages as read
+        await prisma.message.updateMany({
+            where: {
+                senderId: otherUserId,
+                receiverId: myId,
+                isRead: false
+            },
+            data: {
+                isRead: true
+            }
+        });
 
         const whereClause = {
             OR: [

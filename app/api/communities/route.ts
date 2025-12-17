@@ -42,17 +42,23 @@ export async function GET(req: Request) {
                     _count: {
                         select: { members: true },
                     },
+                    members: session?.user ? {
+                        where: { userId: (session.user as any).id },
+                        select: { role: true }
+                    } : false
                 },
                 take: 20,
                 orderBy: {
-                    members: {
-                        _count: 'desc'
-                    }
+                    createdAt: 'desc'
                 }
             });
         }
 
-        return NextResponse.json(communities);
+        return NextResponse.json(communities, {
+            headers: {
+                'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60'
+            }
+        });
     } catch (error) {
         console.error("[COMMUNITIES_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });

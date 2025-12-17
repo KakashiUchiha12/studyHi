@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
+// Restart trigger
 const nextConfig = {
   // Production optimizations
   reactStrictMode: true,
   poweredByHeader: false,
-  
+
   // Image optimization
   images: {
     formats: ['image/webp', 'image/avif'],
@@ -11,18 +12,18 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
   },
-  
+
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  
+
   // Performance optimizations
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
-  
+
   // Security headers
   async headers() {
     return [
@@ -49,17 +50,28 @@ const nextConfig = {
       },
     ];
   },
-  
-  // Bundle analyzer (optional - uncomment for production analysis)
-  // webpack: (config, { isServer }) => {
-  //   if (!isServer) {
-  //     config.resolve.fallback = {
-  //       ...config.resolve.fallback,
-  //       fs: false,
-  //     };
-  //   }
-  //   return config;
-  // },
+
+  // Webpack configuration
+  webpack: (config, { isServer }) => {
+    // Ignore Windows system directories in file watching
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        '**/node_modules',
+        '**/.git',
+        '**/.next',
+        '**/System Volume Information', // Fix for Windows EINVAL error
+      ],
+    };
+
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

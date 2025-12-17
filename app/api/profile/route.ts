@@ -31,16 +31,27 @@ export async function PUT(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { name, bio, image } = await req.json();
+    const { name, username, bio, image } = await req.json();
 
-    // Update User (name, image)
+    // Update User (name, image, username)
     // Update SocialProfile (bio)
 
-    await prisma.user.update({
+    // Check username uniqueness if changed
+    if (username) {
+      const existing = await prisma.user.findUnique({
+        where: { username }
+      });
+      if (existing && existing.email !== session.user?.email) {
+        return new NextResponse("Username already taken", { status: 400 });
+      }
+    }
+
+    const updatedUser = await prisma.user.update({
       where: { email: session.user?.email! },
       data: {
         name,
         image,
+        username,
         socialProfile: {
           upsert: {
             create: { bio },
@@ -50,7 +61,7 @@ export async function PUT(req: Request) {
       }
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id: updatedUser.id });
   } catch (error) {
     console.error("[PROFILE_UPDATE]", error);
     return new NextResponse("Internal Error", { status: 500 });
