@@ -3,7 +3,7 @@ export interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  type: 'study' | 'assignment' | 'exam' | 'break' | 'personal';
+  type: 'study' | 'assignment' | 'exam' | 'break' | 'personal' | 'other';
   description?: string;
   location?: string;
   priority: 'low' | 'medium' | 'high';

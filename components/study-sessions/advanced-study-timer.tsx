@@ -12,7 +12,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { useUploadThing } from "@/lib/uploadthing"
+
 import {
   Play,
   Pause,
@@ -193,22 +193,53 @@ export function AdvancedStudyTimer({
   const [showProgress, setShowProgress] = useState(true)
   const [customBackgrounds, setCustomBackgrounds] = useState<BackgroundImage[]>([])
 
-  // UploadThing hook for background images
-  const { startUpload, isUploading } = useUploadThing("backgroundImageUploader", {
-    onClientUploadComplete: (res) => {
-      console.log("Upload completed:", res)
-      const newBackgrounds = res.map((file, index) => ({
-        id: `custom-${Date.now()}-${index}`,
-        url: file.url,
-        name: `Custom Background ${customBackgrounds.length + index + 1}`,
-        category: "Custom"
-      }))
-      setCustomBackgrounds(prev => [...prev, ...newBackgrounds])
-    },
-    onUploadError: (error) => {
-      console.error("Upload error:", error)
+  // Load custom backgrounds from localStorage on mount (Client-side only)
+  useEffect(() => {
+    const savedBackgrounds = localStorage.getItem("study-timer-custom-backgrounds")
+    if (savedBackgrounds) {
+      try {
+        setCustomBackgrounds(JSON.parse(savedBackgrounds))
+      } catch (e) {
+        console.error("Failed to parse saved backgrounds", e)
+      }
     }
-  })
+  }, [])
+
+  // Save custom backgrounds to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("study-timer-custom-backgrounds", JSON.stringify(customBackgrounds))
+  }, [customBackgrounds])
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Limit file size to 2MB to prevent LocalStorage quota exceeded errors
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File is too large. Please select an image under 2MB.")
+      e.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64String = reader.result as string
+      const newBackground = {
+        id: `custom-${Date.now()}`,
+        url: base64String,
+        name: file.name.split('.')[0] || "Custom Background",
+        category: "Custom"
+      }
+
+      setCustomBackgrounds(prev => [...prev, newBackground])
+
+      // Auto-select the new background
+      setSelectedBackground(newBackground)
+    }
+
+    reader.readAsDataURL(file)
+    e.target.value = '' // Reset input
+  }
 
   // YouTube Integration State
   const [youtubePlaylist, setYoutubePlaylist] = useState("")
@@ -243,10 +274,10 @@ export function AdvancedStudyTimer({
       const firstScriptTag = document.getElementsByTagName('script')[0]
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag)
 
-      // Make YT available globally
-      ;(window as any).onYouTubeIframeAPIReady = () => {
-        console.log('YouTube IFrame API loaded')
-      }
+        // Make YT available globally
+        ; (window as any).onYouTubeIframeAPIReady = () => {
+          console.log('YouTube IFrame API loaded')
+        }
     }
   }, [isMusicEnabled])
 
@@ -555,14 +586,15 @@ export function AdvancedStudyTimer({
 
   const renderClock = () => {
     const timeString = formatTime(timeLeft)
+    const textShadow = '0 2px 10px rgba(0,0,0,0.5)'
 
     switch (selectedClockStyle.id) {
       case "digital":
         return (
           <div className="text-center">
             <div
-              className="text-8xl font-mono font-bold mb-4"
-              style={{ color: clockColor }}
+              className="text-6xl md:text-8xl font-mono font-bold mb-4"
+              style={{ color: clockColor, textShadow }}
             >
               {timeString}
             </div>
@@ -575,11 +607,11 @@ export function AdvancedStudyTimer({
       case "analog":
         return (
           <div className="text-center">
-            <div className="relative w-64 h-64 mx-auto mb-4">
+            <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-4">
               {/* Analog clock implementation would go here */}
               <div
-                className="text-6xl font-mono font-bold absolute inset-0 flex items-center justify-center"
-                style={{ color: clockColor }}
+                className="text-4xl md:text-6xl font-mono font-bold absolute inset-0 flex items-center justify-center"
+                style={{ color: clockColor, textShadow }}
               >
                 {timeString}
               </div>
@@ -594,8 +626,8 @@ export function AdvancedStudyTimer({
         return (
           <div className="text-center">
             <div
-              className="text-9xl font-light mb-4"
-              style={{ color: clockColor }}
+              className="text-7xl md:text-9xl font-light mb-4"
+              style={{ color: clockColor, textShadow }}
             >
               {timeString}
             </div>
@@ -607,17 +639,17 @@ export function AdvancedStudyTimer({
           <div className="text-center">
             <div className="relative">
               <div
-                className="text-7xl font-bold mb-4 relative z-10"
-                style={{ color: clockColor }}
+                className="text-5xl md:text-7xl font-bold mb-4 relative z-10"
+                style={{ color: clockColor, textShadow }}
               >
                 {timeString}
               </div>
-              <div className="absolute inset-0 text-7xl font-bold text-black/10 transform translate-x-1 translate-y-1">
+              <div className="absolute inset-0 text-5xl md:text-7xl font-bold text-black/10 transform translate-x-1 translate-y-1">
                 {timeString}
               </div>
             </div>
             {showProgress && (
-              <div className="w-80 mx-auto">
+              <div className="w-64 md:w-80 mx-auto">
                 <Progress value={getProgress()} className="h-3" />
               </div>
             )}
@@ -628,8 +660,8 @@ export function AdvancedStudyTimer({
         return (
           <div className="text-center">
             <div
-              className="text-8xl font-mono font-bold mb-4"
-              style={{ color: clockColor }}
+              className="text-6xl md:text-8xl font-mono font-bold mb-4"
+              style={{ color: clockColor, textShadow }}
             >
               {timeString}
             </div>
@@ -639,9 +671,9 @@ export function AdvancedStudyTimer({
   }
 
   const timerContent = (
-    <div className="space-y-6">
+    <div className="flex flex-col justify-between h-full w-full max-w-md mx-auto sm:max-w-none sm:block sm:space-y-6 sm:h-auto">
       {/* Header with controls */}
-      <div className="flex justify-between items-center">
+      <div className="relative flex justify-center items-center w-full min-h-[40px]">
         <div className="flex items-center space-x-2">
           <Badge variant={isWorkSession ? "default" : "secondary"}>
             {isWorkSession ? "Focus Time" : "Break Time"}
@@ -650,132 +682,144 @@ export function AdvancedStudyTimer({
             Session {currentSession}
           </span>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" onClick={toggleFullscreen}>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleFullscreen}
+            className="bg-black/50 text-white hover:bg-black/70 hover:text-white transition-colors"
+          >
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </Button>
         </div>
       </div>
 
       {/* Main Timer Display */}
-      <div className="text-center">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[200px] text-center">
         {renderClock()}
         <div className="text-sm text-muted-foreground mt-2">
           {isWorkSession ? "Time to focus!" : "Take a break"}
         </div>
       </div>
 
-      {/* Control Buttons */}
-      <div className="flex justify-center space-x-3">
-        {!isRunning ? (
-          <Button onClick={handleStart} disabled={!selectedSubject} size="lg" className="px-8">
-            <Play className="h-5 w-5 mr-2" />
-            Start
-          </Button>
-        ) : (
-          <Button onClick={handlePause} variant="outline" size="lg" className="px-8">
-            <Pause className="h-5 w-5 mr-2" />
-            Pause
-          </Button>
+      {/* Bottom Controls Container */}
+      <div className={isFullscreen ? "space-y-6 w-full" : "space-y-6"}>
+        {/* Control Buttons */}
+        <div className="flex flex-wrap justify-center gap-3 w-full px-2">
+          {!isRunning ? (
+            <Button onClick={handleStart} disabled={!selectedSubject} size="lg" className="px-8 w-full sm:w-auto order-1 sm:order-none mb-2 sm:mb-0">
+              <Play className="h-5 w-5 mr-2" />
+              Start
+            </Button>
+          ) : (
+            <Button onClick={handlePause} variant="outline" size="lg" className="px-8 w-full sm:w-auto order-1 sm:order-none mb-2 sm:mb-0">
+              <Pause className="h-5 w-5 mr-2" />
+              Pause
+            </Button>
+          )}
+
+          <div className="flex gap-2 w-full sm:w-auto justify-center order-2 sm:order-none">
+            <Button onClick={handleReset} variant="outline" size="lg" className="px-4 flex-1 sm:flex-none">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+
+            <Button onClick={handleSkip} variant="outline" size="lg" className="px-4 flex-1 sm:flex-none">
+              <SkipForward className="h-4 w-4" />
+            </Button>
+
+            <Button onClick={handleStop} variant="destructive" size="lg" className="px-4 flex-1 sm:flex-none">
+              <Square className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Session Notes */}
+        {isRunning && (
+          <div className="space-y-2">
+            <Label>Session Notes</Label>
+            <Input
+              placeholder="What are you working on?"
+              value={sessionNotes}
+              onChange={(e) => setSessionNotes(e.target.value)}
+            />
+          </div>
         )}
 
-        <Button onClick={handleReset} variant="outline" size="lg">
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Reset
-        </Button>
-
-        <Button onClick={handleSkip} variant="outline" size="lg">
-          <SkipForward className="h-4 w-4 mr-2" />
-          Skip
-        </Button>
-
-        <Button onClick={handleStop} variant="destructive" size="lg">
-          <Square className="h-4 w-4 mr-2" />
-          Stop
-        </Button>
-      </div>
-
-      {/* Session Notes */}
-      {isRunning && (
-        <div className="space-y-2">
-          <Label>Session Notes</Label>
-          <Input
-            placeholder="What are you working on?"
-            value={sessionNotes}
-            onChange={(e) => setSessionNotes(e.target.value)}
-          />
-        </div>
-      )}
-
-      {/* Music Controls */}
-      {isMusicEnabled && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Music className="h-4 w-4" />
-                  <span className="text-sm font-medium">Background Music</span>
-                  {playerError && (
-                    <Badge variant="destructive" className="text-xs">
-                      Error
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm" onClick={previousTrack} disabled={!isPlayerReady}>
-                    <SkipBack className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setIsMuted(!isMuted)}>
-                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={nextTrack} disabled={!isPlayerReady}>
-                    <SkipForward className="h-4 w-4" />
-                  </Button>
-                  <div className="w-20">
-                    <Slider
-                      value={[isMuted ? 0 : musicVolume]}
-                      onValueChange={(value) => setMusicVolume(value[0])}
-                      max={100}
-                      step={1}
-                    />
+        {/* Music Controls */}
+        {isMusicEnabled && (
+          <Card className={isFullscreen ? "border-0 shadow-none bg-transparent" : ""}>
+            <CardContent className={isFullscreen ? "p-0" : "p-4"}>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Music className="h-4 w-4" />
+                    <span className="text-sm font-medium">Background Music</span>
+                    {playerError && (
+                      <Badge variant="destructive" className="text-xs">
+                        Error
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="sm" onClick={previousTrack} disabled={!isPlayerReady}>
+                      <SkipBack className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setIsMuted(!isMuted)}>
+                      {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={nextTrack} disabled={!isPlayerReady}>
+                      <SkipForward className="h-4 w-4" />
+                    </Button>
+                    <div className="w-24 sm:w-32">
+                      <Slider
+                        value={[isMuted ? 0 : musicVolume]}
+                        onValueChange={(value) => setMusicVolume(value[0])}
+                        max={100}
+                        step={1}
+                        className="cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {playerError && (
+                  <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
+                    {playerError}
+                  </div>
+                )}
+
+                {!isPlayerReady && youtubePlaylist && (
+                  <div className="text-xs text-muted-foreground">
+                    Loading YouTube player...
+                  </div>
+                )}
               </div>
-
-              {playerError && (
-                <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
-                  {playerError}
-                </div>
-              )}
-
-              {!isPlayerReady && youtubePlaylist && (
-                <div className="text-xs text-muted-foreground">
-                  Loading YouTube player...
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 
   if (isFullscreen) {
     return (
       <div
-        className="fixed inset-0 z-50 bg-black"
+        className="fixed inset-0 z-50 bg-black bg-cover bg-center bg-no-repeat"
         style={{
-          background: selectedBackground ? selectedBackground.url : undefined
+          backgroundImage: selectedBackground
+            ? (selectedBackground.id === 'custom' || selectedBackground.id.startsWith('custom-')
+              ? `url(${selectedBackground.url})`
+              : selectedBackground.url)
+            : undefined
         }}
       >
         <div
           className="absolute inset-0 bg-black"
           style={{ opacity: selectedBackground ? backgroundOpacity : 1 }}
         />
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 sm:p-8">
           {timerContent}
-          <div className="absolute bottom-4 left-4 text-white/50 text-xs">
+          <div className="absolute bottom-8 sm:bottom-4 left-1/2 transform -translate-x-1/2 sm:left-4 sm:translate-x-0 text-white/50 text-xs text-center w-full">
             Press ESC or click minimize to exit fullscreen
           </div>
         </div>
@@ -794,31 +838,31 @@ export function AdvancedStudyTimer({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 w-[95vw] rounded-lg">
           <DialogHeader>
-            <DialogTitle>Advanced Study Timer</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Advanced Study Timer</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Customizable Pomodoro timer with backgrounds, music, and more
             </DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="timer" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="timer">
-                <Timer className="h-4 w-4 mr-2" />
-                Timer
+            <TabsList className="grid w-full grid-cols-4 h-auto py-2">
+              <TabsTrigger value="timer" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Timer className="h-4 w-4" />
+                <span className="hidden sm:inline">Timer</span>
               </TabsTrigger>
-              <TabsTrigger value="background">
-                <Image className="h-4 w-4 mr-2" />
-                Background
+              <TabsTrigger value="background" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Image className="h-4 w-4" />
+                <span className="hidden sm:inline">Background</span>
               </TabsTrigger>
-              <TabsTrigger value="style">
-                <Palette className="h-4 w-4 mr-2" />
-                Style
+              <TabsTrigger value="style" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Palette className="h-4 w-4" />
+                <span className="hidden sm:inline">Style</span>
               </TabsTrigger>
-              <TabsTrigger value="music">
-                <Youtube className="h-4 w-4 mr-2" />
-                Music
+              <TabsTrigger value="music" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Youtube className="h-4 w-4" />
+                <span className="hidden sm:inline">Music</span>
               </TabsTrigger>
             </TabsList>
 
@@ -896,8 +940,24 @@ export function AdvancedStudyTimer({
               )}
 
               {/* Main Timer Display */}
-              <Card>
-                <CardContent className="p-8">
+              <Card className="relative overflow-hidden min-h-[500px] sm:min-h-[400px] aspect-[3/4] sm:aspect-auto flex flex-col">
+                {selectedBackground && (
+                  <>
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-opacity duration-300"
+                      style={{
+                        backgroundImage: selectedBackground.id === 'custom' || selectedBackground.id.startsWith('custom-')
+                          ? `url(${selectedBackground.url})`
+                          : selectedBackground.url
+                      }}
+                    />
+                    <div
+                      className="absolute inset-0 bg-black transition-opacity duration-300"
+                      style={{ opacity: backgroundOpacity }}
+                    />
+                  </>
+                )}
+                <CardContent className="p-4 sm:p-8 relative z-10 w-full flex-1 flex flex-col">
                   {timerContent}
                 </CardContent>
               </Card>
@@ -930,19 +990,7 @@ export function AdvancedStudyTimer({
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          try {
-                            await startUpload([file])
-                          } catch (error) {
-                            console.error("Upload failed:", error)
-                          }
-                        }
-                        // Reset the input so the same file can be selected again
-                        e.target.value = ''
-                      }}
-                      disabled={isUploading}
+                      onChange={handleFileUpload}
                       className="hidden"
                       id="background-upload"
                     />
@@ -950,18 +998,17 @@ export function AdvancedStudyTimer({
                       <Button
                         variant="outline"
                         className="w-full cursor-pointer"
-                        disabled={isUploading}
                         asChild
                       >
                         <span>
                           <Upload className="h-4 w-4 mr-2" />
-                          {isUploading ? "Uploading..." : "Choose Image"}
+                          Choose Image (Max 2MB)
                         </span>
                       </Button>
                     </label>
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Max 8MB, supports JPG, PNG, GIF, WebP
+                    Max 2MB, supports JPG, PNG, GIF, WebP
                   </div>
                 </div>
 
@@ -972,9 +1019,8 @@ export function AdvancedStudyTimer({
                     {BACKGROUND_IMAGES.map((bg) => (
                       <div
                         key={bg.id}
-                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                          selectedBackground?.id === bg.id ? 'border-primary' : 'border-border'
-                        }`}
+                        className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedBackground?.id === bg.id ? 'border-primary' : 'border-border'
+                          }`}
                         onClick={() => setSelectedBackground(bg)}
                       >
                         <div
@@ -998,9 +1044,8 @@ export function AdvancedStudyTimer({
                       {customBackgrounds.map((bg) => (
                         <div
                           key={bg.id}
-                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
-                            selectedBackground?.id === bg.id ? 'border-primary' : 'border-border'
-                          }`}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${selectedBackground?.id === bg.id ? 'border-primary' : 'border-border'
+                            }`}
                           onClick={() => setSelectedBackground(bg)}
                         >
                           <div

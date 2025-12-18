@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Target, TrendingUp, Clock, ChevronRight, Users, Calendar, CheckCircle2 } from "lucide-react"
+import { BookOpen, Target, TrendingUp, Clock, ChevronRight, Users, Calendar, CheckCircle2, LogIn, Rocket } from "lucide-react"
 import { StudyHiLogo } from "@/components/ui/studyhi-logo"
 
 export default function HomePage() {
@@ -13,14 +13,18 @@ export default function HomePage() {
       {/* Navbar Placeholder - assuming Navbar is in layout or we build a simple one here for the landing */}
       <header className="py-6 px-4 sm:px-6 lg:px-8 border-b border-border bg-white sticky top-0 z-50">
         <div className="container mx-auto flex items-center justify-between">
-          <StudyHiLogo size="md" />
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-              Log in
+          <StudyHiLogo size="default" />
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/auth/login">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary transition-colors">
+                <LogIn className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Log in</span>
+              </Button>
             </Link>
             <Link href="/auth/signup">
-              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white rounded-md px-6">
-                Get Started
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white rounded-md px-3 sm:px-6">
+                <Rocket className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Get Started</span>
               </Button>
             </Link>
           </div>
@@ -29,28 +33,28 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="py-20 lg:py-32 bg-white">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-5xl">
+        <section className="py-12 sm:py-20 lg:py-32 bg-white">
+          <div className="container mx-auto px-6 sm:px-6 lg:px-8 text-center max-w-5xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-6 leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-4 sm:mb-6 leading-tight px-2">
                 Organize Your Studies.<br />
                 <span className="text-primary">Master Your Future.</span>
               </h1>
-              <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-base sm:text-xl text-slate-600 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-2">
                 The professional platform for students who take their education seriously. Track subjects, manage syllabi, and analyze your performance with enterprise-grade tools.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/auth/signup">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 sm:px-0">
+                <Link href="/auth/signup" className="w-full sm:w-auto">
                   <Button size="lg" className="w-full sm:w-auto px-8 h-12 text-base font-semibold shadow-lg shadow-primary/20">
                     Start Free Trial
                     <ChevronRight className="ml-2 w-4 h-4" />
                   </Button>
                 </Link>
-                <Link href="#features">
+                <Link href="#features" className="w-full sm:w-auto">
                   <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 h-12 text-base border-slate-300 text-slate-700 hover:bg-slate-50">
                     View Features
                   </Button>
@@ -63,8 +67,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.7 }}
-              className="mt-16 rounded-xl border border-slate-200 shadow-2xl overflow-hidden bg-slate-50"
-            >
+              className="mt-10 sm:mt-16 rounded-lg sm:rounded-xl border border-slate-200 shadow-xl sm:shadow-2xl overflow-hidden bg-slate-50 mx-2 sm:mx-0">
               <img
                 src="/dashboard-preview.png"
                 alt="StudyHi Dashboard"
@@ -78,29 +81,29 @@ export default function HomePage() {
         </section>
 
         {/* Social Proof / Trust Banner */}
-        <section className="py-10 bg-slate-50 border-y border-slate-100">
-          <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 text-slate-500">
-            <p className="font-semibold text-sm uppercase tracking-wider text-slate-400">Trusted by students from</p>
-            <div className="flex items-center gap-8 opacity-70 grayscale hover:grayscale-0 transition-all">
-              <span className="text-xl font-bold font-serif">Harvard</span>
-              <span className="text-xl font-bold font-serif">MIT</span>
-              <span className="text-xl font-bold font-serif">Stanford</span>
-              <span className="text-xl font-bold font-serif">Oxford</span>
+        <section className="py-8 sm:py-10 bg-slate-50 border-y border-slate-100">
+          <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-4 sm:gap-8 md:gap-16 text-slate-500">
+            <p className="font-semibold text-xs sm:text-sm uppercase tracking-wider text-slate-400 text-center">Trusted by students from</p>
+            <div className="flex items-center gap-4 sm:gap-6 md:gap-8 opacity-70 grayscale hover:grayscale-0 transition-all flex-wrap justify-center">
+              <span className="text-base sm:text-xl font-bold font-serif">Harvard</span>
+              <span className="text-base sm:text-xl font-bold font-serif">MIT</span>
+              <span className="text-base sm:text-xl font-bold font-serif">Stanford</span>
+              <span className="text-base sm:text-xl font-bold font-serif">Oxford</span>
             </div>
           </div>
         </section>
 
         {/* Features Grid */}
-        <section id="features" className="py-24 bg-white">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-slate-900 mb-4">Everything You Need to Excel</h2>
-              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+        <section id="features" className="py-16 sm:py-24 bg-white">
+          <div className="container mx-auto px-6 sm:px-6 lg:px-8">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3 sm:mb-4 px-4">Everything You Need to Excel</h2>
+              <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto px-4">
                 Comprehensive tools designed to streamline your academic workflow and boost productivity.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {/* Feature 1 */}
               <div className="p-8 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow group">
                 <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
@@ -171,46 +174,46 @@ export default function HomePage() {
         </section>
 
         {/* Value Proposition */}
-        <section className="py-24 bg-slate-900 text-white">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <section className="py-16 sm:py-24 bg-slate-900 text-white">
+          <div className="container mx-auto px-6 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 sm:gap-16 items-center">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-6">Why Top Students Choose StudyHi</h2>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 px-2 sm:px-0">Why Top Students Choose StudyHi</h2>
                 <div className="space-y-6">
                   <div className="flex gap-4">
-                    <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h4 className="font-bold text-lg mb-1">Distraction-Free Environment</h4>
-                      <p className="text-slate-400">Clean, professional interface composed to minimize cognitive load and maximize focus.</p>
+                      <h4 className="font-bold text-base sm:text-lg mb-1">Distraction-Free Environment</h4>
+                      <p className="text-sm sm:text-base text-slate-400">Clean, professional interface composed to minimize cognitive load and maximize focus.</p>
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h4 className="font-bold text-lg mb-1">Data-Driven Insights</h4>
-                      <p className="text-slate-400">Make informed decisions about your study strategy based on real performance metrics, not guesses.</p>
+                      <h4 className="font-bold text-base sm:text-lg mb-1">Data-Driven Insights</h4>
+                      <p className="text-sm sm:text-base text-slate-400">Make informed decisions about your study strategy based on real performance metrics, not guesses.</p>
                     </div>
                   </div>
                   <div className="flex gap-4">
-                    <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
-                      <h4 className="font-bold text-lg mb-1">Universal Compatibility</h4>
-                      <p className="text-slate-400">Seamless Experience across all your devices. Your academic life, synchronized everywhere.</p>
+                      <h4 className="font-bold text-base sm:text-lg mb-1">Universal Compatibility</h4>
+                      <p className="text-sm sm:text-base text-slate-400">Seamless Experience across all your devices. Your academic life, synchronized everywhere.</p>
                     </div>
                   </div>
                 </div>
               </div>
               <div className="relative">
                 <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"></div>
-                <div className="relative bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
+                <div className="relative bg-slate-800 border border-slate-700 rounded-xl sm:rounded-2xl p-6 sm:p-8 shadow-2xl">
                   {/* Mockup Stat Card */}
-                  <div className="flex items-center justify-between mb-6 border-b border-slate-700 pb-4">
-                    <h3 className="font-bold">Weekly Performance</h3>
-                    <span className="text-green-400 font-mono text-sm">↑ 12% vs last week</span>
+                  <div className="flex items-center justify-between mb-4 sm:mb-6 border-b border-slate-700 pb-3 sm:pb-4">
+                    <h3 className="font-bold text-sm sm:text-base">Weekly Performance</h3>
+                    <span className="text-green-400 font-mono text-xs sm:text-sm">↑ 12% vs last week</span>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <div className="flex justify-between text-sm mb-1 text-slate-300">
+                      <div className="flex justify-between text-xs sm:text-sm mb-1 text-slate-300">
                         <span>Mathematics</span>
                         <span>85%</span>
                       </div>
@@ -219,7 +222,7 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-sm mb-1 text-slate-300">
+                      <div className="flex justify-between text-xs sm:text-sm mb-1 text-slate-300">
                         <span>Computer Science</span>
                         <span>92%</span>
                       </div>
@@ -228,7 +231,7 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-sm mb-1 text-slate-300">
+                      <div className="flex justify-between text-xs sm:text-sm mb-1 text-slate-300">
                         <span>Physics</span>
                         <span>78%</span>
                       </div>
@@ -244,18 +247,18 @@ export default function HomePage() {
         </section>
 
         {/* CTA */}
-        <section className="py-24 bg-white text-center">
-          <div className="container mx-auto px-4 max-w-4xl">
-            <h2 className="text-4xl font-bold text-slate-900 mb-6">Ready to Transform Your Academic Journey?</h2>
-            <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+        <section className="py-16 sm:py-24 bg-white text-center">
+          <div className="container mx-auto px-6 sm:px-4 max-w-4xl">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 px-2">Ready to Transform Your Academic Journey?</h2>
+            <p className="text-base sm:text-xl text-slate-600 mb-8 sm:mb-10 max-w-2xl mx-auto px-2">
               Join thousands of students who have elevated their study game with StudyHi's professional planner.
             </p>
             <Link href="/auth/signup">
-              <Button size="lg" className="px-10 h-14 text-lg font-bold shadow-xl shadow-primary/20">
+              <Button size="lg" className="px-8 sm:px-10 h-12 sm:h-14 text-base sm:text-lg font-bold shadow-xl shadow-primary/20">
                 Get Started for Free
               </Button>
             </Link>
-            <p className="mt-6 text-sm text-slate-500">
+            <p className="mt-4 sm:mt-6 text-xs sm:text-sm text-slate-500">
               No credit card required. 14-day free trial on Pro plan.
             </p>
           </div>

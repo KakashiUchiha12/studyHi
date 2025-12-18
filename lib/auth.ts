@@ -148,8 +148,8 @@ export const authOptions: NextAuthOptions = {
                 // If race condition occurred, try to find one last time (rare)
                 freshUser = await prisma.user.findUnique({
                   where: { email: token.email as string },
-                  select: { id: true, name: true, email: true, image: true, username: true } as any
-                })
+                  select: { id: true, name: true, email: true, image: true }
+                }) as any
               }
             } else {
               console.log('Found existing user by email (OAuth link):', freshUser.id)
@@ -186,8 +186,8 @@ export const authOptions: NextAuthOptions = {
             (session.user as any).username = (freshUser as any).username;
           } else {
             // Last resort fallback to JWT data
-            console.warn('Could not load user from database, using JWT data')
-              ; (session.user as any).id = token.id as string
+            console.warn('Could not load user from database, using JWT data');
+            (session.user as any).id = token.id as string
             session.user.email = token.email as string
             session.user.name = token.name as string
             session.user.image = token.image as string

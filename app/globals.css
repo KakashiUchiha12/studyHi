@@ -1,3 +1,4 @@
+/* stylelint-disable at-rule-no-unknown */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,7 +7,7 @@
   :root {
     /* Professional Corporate Color Palette */
     /* Primary: Trustworthy Topaz Blue */
-    --primary: 215 100% 45%; 
+    --primary: 215 100% 45%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: Clean Slate / Soft Gray Blue */
@@ -18,9 +19,12 @@
     --accent-foreground: 0 0% 100%;
 
     /* Backgrounds */
-    --background: 0 0% 100%;       /* Pure White */
-    --surface: 210 40% 98%;        /* Very light off-white for sections */
-    --foreground: 222 47% 11%;     /* Dark Blue-Gray text for high contrast */
+    --background: 0 0% 100%;
+    /* Pure White */
+    --surface: 210 40% 98%;
+    /* Very light off-white for sections */
+    --foreground: 222 47% 11%;
+    /* Dark Blue-Gray text for high contrast */
 
     /* Cards & popovers */
     --card: 0 0% 100%;
@@ -31,7 +35,7 @@
     /* UI Elements */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    
+
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 215 100% 45%;
@@ -39,30 +43,31 @@
     /* Status Colors - Professional Tones */
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
-    
+
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    
+
     --info: 215 100% 50%;
     --info-foreground: 0 0% 100%;
 
     /* Radius & Spacing */
     --radius: 0.5rem;
-    
+
     /* Corporate Shadows - Clean and Subtle */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    
+
     /* Typography */
     --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
   }
 
-  html, body {
+  html,
+  body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: var(--font-sans);
@@ -72,16 +77,17 @@
 }
 
 @layer components {
+
   /* Corporate Card */
   .card-corporate {
     @apply bg-card border border-border rounded-lg shadow-sm;
     @apply transition-all duration-200;
   }
-  
+
   .card-corporate:hover {
     @apply shadow-md border-primary/20;
   }
-  
+
   /* Primary Button */
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
@@ -90,7 +96,7 @@
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
     @apply disabled:pointer-events-none disabled:opacity-50;
   }
-  
+
   /* Inputs */
   .input-corporate {
     @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm;
@@ -103,12 +109,15 @@
   .text-h1 {
     @apply text-4xl font-extrabold tracking-tight lg:text-5xl text-foreground;
   }
+
   .text-h2 {
     @apply text-3xl font-bold tracking-tight text-foreground;
   }
+
   .text-h3 {
     @apply text-2xl font-bold tracking-tight text-foreground;
   }
+
   .text-body {
     @apply text-base text-muted-foreground leading-relaxed;
   }

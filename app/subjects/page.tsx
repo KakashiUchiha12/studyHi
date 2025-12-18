@@ -139,7 +139,7 @@ export default function SubjectsPage() {
         totalChapters: newSubject.totalChapters || 0,
         completedChapters: newSubject.completedChapters || 0,
         progress: newSubject.progress || 0,
-        nextExam: newSubject.nextExam || undefined,
+        nextExam: newSubject.nextExam || null,
         assignmentsDue: newSubject.assignmentsDue || 0
       })
 

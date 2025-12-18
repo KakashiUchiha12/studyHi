@@ -298,7 +298,7 @@ export default function CommunitySettingsPage() {
 
                             <div className="space-y-2">
                                 <Label>Description</Label>
-                                <RichTextEditor content={description} onChange={setDescription} />
+                                <RichTextEditor value={description} onChange={setDescription} />
                                 <p className="text-xs text-muted-foreground">
                                     Describe your community, its purpose, and what members can expect.
                                 </p>
@@ -306,7 +306,7 @@ export default function CommunitySettingsPage() {
 
                             <div className="space-y-2">
                                 <Label>Community Rules</Label>
-                                <RichTextEditor content={rules} onChange={setRules} />
+                                <RichTextEditor value={rules} onChange={setRules} />
                             </div>
                         </CardContent>
                     </Card>
@@ -405,7 +405,6 @@ export default function CommunitySettingsPage() {
                         imageSrc={selectedImageSrc}
                         onCropComplete={(blob) => handleCropComplete(blob, 'icon')}
                         aspectRatio={1}
-                        title="Crop Icon"
                     />
                     <ImageCropper
                         open={coverCropperOpen}
@@ -413,7 +412,6 @@ export default function CommunitySettingsPage() {
                         imageSrc={selectedImageSrc}
                         onCropComplete={(blob) => handleCropComplete(blob, 'cover')}
                         aspectRatio={16 / 9}
-                        title="Crop Cover Image"
                     />
                 </>
             )}

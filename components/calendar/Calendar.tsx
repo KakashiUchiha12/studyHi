@@ -10,6 +10,9 @@ import { CalendarView } from '@/types/calendar';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import CalendarToolbar from './CalendarToolbar';
 import EventModal from './EventModal';
+import { CalendarCSVImportDialog } from './CalendarCSVImportDialog';
+import { ParsedCalendarEvent } from '@/lib/utils/calendar-csv-parser';
+import { copyCalendarAIPromptToClipboard } from '@/lib/utils/calendar-ai-prompt';
 import toast from 'react-hot-toast';
 
 // Import styles
@@ -37,6 +40,7 @@ export default function Calendar() {
   const [view, setView] = useState<CalendarView>('month');
   const [date, setDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,10 +53,10 @@ export default function Calendar() {
     };
 
     window.addEventListener('error', handleError);
-    
+
     // Set loading to false after a short delay
     const timer = setTimeout(() => setIsLoading(false), 100);
-    
+
     // Check for mobile viewport and switch to agenda view
     if (window.innerWidth < 768) {
       setView('agenda');
@@ -89,7 +93,7 @@ export default function Calendar() {
       };
 
       updateEvent(event.id, updatedEvent);
-      
+
       toast.success(`"${event.title}" moved successfully!`, {
         duration: 2000,
         position: 'top-right',
@@ -109,7 +113,7 @@ export default function Calendar() {
       };
 
       updateEvent(event.id, updatedEvent);
-      
+
       toast.success(`"${event.title}" resized successfully!`, {
         duration: 2000,
         position: 'top-right',
@@ -125,17 +129,17 @@ export default function Calendar() {
       const draggedEvent = JSON.parse(
         localStorage.getItem('draggedEvent') || '{}'
       );
-      
+
       if (draggedEvent.title) {
         const newEvent = {
           ...draggedEvent,
           start: new Date(start),
           end: allDay ? new Date(end) : new Date(new Date(start).getTime() + draggedEvent.duration * 60 * 1000),
         };
-        
+
         addEvent(newEvent);
         localStorage.removeItem('draggedEvent');
-        
+
         toast.success(`"${newEvent.title}" added to calendar!`, {
           duration: 2000,
           position: 'top-right',
@@ -160,36 +164,30 @@ export default function Calendar() {
       if (!slotInfo || !slotInfo.start || !slotInfo.end) {
         return;
       }
-      
+
       // Check if this is a valid selection action
       if (slotInfo.action !== 'select') {
         return;
       }
-      
-      // Disable event creation on mobile devices
-      if (window.innerWidth < 768) {
-        toast('Event creation is disabled on mobile. Use desktop to create new events.', {
-          duration: 3000,
-          position: 'top-center',
-          icon: '📱',
-        });
-        return;
-      }
-      
+
+
+      // Event creation is now enabled on all devices (mobile and desktop)
+
+
       // Create new Date objects to avoid mutation
       const start = new Date(slotInfo.start);
       const end = new Date(slotInfo.end);
-      
+
       // Calculate time difference in minutes
       const timeDiff = Math.abs(end.getTime() - start.getTime()) / (1000 * 60);
-      
+
       // Determine if this is a single click or drag selection
       // Single clicks typically have very small time differences (less than 2 minutes)
       // or the same time, while drags have larger differences
       const isSingleClick = timeDiff < 2 || start.getTime() === end.getTime();
-      
+
       let finalStart, finalEnd;
-      
+
       if (isSingleClick) {
         // Single click - use the clicked time and extend by 30 minutes
         finalStart = new Date(start);
@@ -200,15 +198,15 @@ export default function Calendar() {
         finalStart = new Date(start);
         finalEnd = new Date(end);
       }
-      
+
       // Create the final slot data
       const slotData = { start: finalStart, end: finalEnd };
-      
+
       // Reset any existing selections and open modal
       setSelectedEvent(null);
       setSelectedSlot(slotData);
       setShowEventModal(true);
-      
+
     } catch (error) {
       setError('Failed to handle slot selection');
     }
@@ -220,10 +218,10 @@ export default function Calendar() {
       if (!event || !event.id) {
         return;
       }
-      
+
       // Find the original event from our events array
       const originalEvent = events.find(e => e.id === event.id);
-      
+
       if (originalEvent) {
         setSelectedEvent(originalEvent);
         setSelectedSlot(null);
@@ -250,10 +248,10 @@ export default function Calendar() {
       } else {
         addEvent(eventData);
       }
-      
+
       // Close modal after successful save
       handleCloseModal();
-      
+
     } catch (error) {
       setError('Failed to save event');
     }
@@ -262,7 +260,7 @@ export default function Calendar() {
   const handleDeleteEvent = useCallback(() => {
     if (selectedEvent) {
       deleteEvent(selectedEvent.id);
-      
+
       // Close modal after successful delete
       handleCloseModal();
     }
@@ -273,12 +271,71 @@ export default function Calendar() {
     // Set current date/time for new event
     const now = new Date();
     const endTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes later
-    
+
     // Reset any existing selections
     setSelectedEvent(null);
     setSelectedSlot({ start: now, end: endTime });
     setShowEventModal(true);
   }, []);
+
+  const handleCopyPrompt = async () => {
+    const success = await copyCalendarAIPromptToClipboard();
+    if (success) {
+      toast.success('AI Prompt copied to clipboard!', {
+        icon: '🤖',
+        duration: 3000,
+      });
+    } else {
+      toast.error('Failed to copy prompt');
+    }
+  };
+
+  const handleImportEvents = async (parsedEvents: ParsedCalendarEvent[]) => {
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const event of parsedEvents) {
+        try {
+          // Format event for API
+          const newEvent = {
+            title: event.title,
+            description: event.description || '',
+            start: event.start,
+            end: event.end,
+            type: event.type || 'study',
+            color: event.color || getEventColor(event.type || 'study'),
+            // Default fields
+            priority: 'medium',
+            completed: false,
+            notificationEnabled: true,
+            notificationTime: 15,
+          };
+
+          addEvent(newEvent as any);
+          successCount++;
+        } catch (err) {
+          console.error('Failed to create event:', event.title, err);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Successfully imported ${successCount} events!`, {
+          duration: 4000,
+        });
+      }
+
+      if (failCount > 0) {
+        toast.error(`Failed to import ${failCount} events`, {
+          duration: 4000,
+        });
+      }
+    } catch (error) {
+      console.error('Import process failed:', error);
+      toast.error('Failed to process import');
+    }
+  };
 
   const eventStyleGetter = useCallback((event: any) => {
     const backgroundColor = event.color || getEventColor(event.type);
@@ -313,7 +370,7 @@ export default function Calendar() {
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <strong>Error:</strong> {error}
-          <button 
+          <button
             onClick={() => setError(null)}
             className="float-right font-bold text-red-700 hover:text-red-900"
           >
@@ -328,15 +385,17 @@ export default function Calendar() {
         date={date}
         onNavigate={setDate}
         onAddEvent={handleAddEvent}
+        onImportClick={() => setShowImportDialog(true)}
+        onCopyPromptClick={handleCopyPrompt}
       />
-      
+
       <div className="flex-1 p-4">
         {error ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center text-red-600">
               <p className="text-lg font-semibold mb-2">Calendar Error</p>
               <p className="text-sm">{error}</p>
-              <button 
+              <button
                 onClick={() => setError(null)}
                 className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
@@ -350,7 +409,7 @@ export default function Calendar() {
             events={calendarEvents}
             startAccessor={(event: any) => new Date(event.start)}
             endAccessor={(event: any) => new Date(event.end)}
-            style={{ 
+            style={{
               height: '100%',
               fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
               backgroundColor: 'white',
@@ -412,6 +471,12 @@ export default function Calendar() {
           onClose={handleCloseModal}
         />
       )}
+
+      <CalendarCSVImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onImport={handleImportEvents}
+      />
     </div>
   );
 }
@@ -423,6 +488,7 @@ function getEventColor(type: CalendarEvent['type']): string {
     exam: '#ef4444',       // Red
     break: '#10b981',      // Emerald
     personal: '#8b5cf6',   // Violet
+    other: '#6b7280',      // Gray
   };
   return colors[type] || '#6b7280';
 }
