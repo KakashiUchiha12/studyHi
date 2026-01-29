@@ -5,7 +5,9 @@ import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { generateUsername } from "@/lib/username-generator"
 
-const prisma = new PrismaClient()
+import { dbService } from "@/lib/database/database-service"
+
+const prisma = dbService.getPrisma()
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -193,9 +195,9 @@ export const authOptions: NextAuthOptions = {
             session.user.image = token.image as string
           }
         } catch (error) {
-          console.error('Error in session callback:', error)
-            // Last resort fallback
-            (session.user as any).id = token.id as string
+          console.error('Error in session callback:', error);
+          // Last resort fallback
+          (session.user as any).id = token.id as string
           (session.user as any).email = token.email as string
           (session.user as any).name = token.name as string
           (session.user as any).image = token.image as string

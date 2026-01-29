@@ -5,8 +5,11 @@
   "scripts": {
     "build": "next build",
     "dev": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" server.ts",
-    "lint": "next lint",
     "start": "next start",
+    "build:server": "tsc --project tsconfig.server.json",
+    "start:cpanel": "NODE_ENV=production node dist/server.js",
+    "prepare:cpanel": "npm run build && npm run build:server",
+    "lint": "next lint",
     "start:production": "set NODE_ENV=production && next start",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -122,7 +125,9 @@
     "uuid": "^10.0.0",
     "vaul": "^0.9.9",
     "yup": "^1.7.0",
-    "zod": "3.25.67"
+    "zod": "3.25.67",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
@@ -146,9 +151,7 @@
     "jsdom": "^26.1.0",
     "msw": "^2.10.5",
     "postcss": "^8.5.6",
-    "prisma": "^5.22.0",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
+    "prisma": "^6.14.0",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "ts-node": "^10.9.2",

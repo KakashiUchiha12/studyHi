@@ -15,6 +15,9 @@ import { ProfileHeader } from "@/components/profile/profile-header"
 import { ProfileSummary } from "@/components/profile/profile-summary"
 import { OverviewTab } from "@/components/profile/overview-tab"
 import { GoalsTab } from "@/components/profile/goals-tab"
+import { EditProfileModal } from "@/components/profile/edit-profile-modal"
+import { GoalModal } from "@/components/profile/goal-modal"
+import { GoalTaskModal } from "@/components/profile/goal-task-modal"
 
 interface GoalTask {
   id: string
@@ -57,59 +60,59 @@ interface ProfileData {
 export default function ProfilePage() {
   // ALL HOOKS MUST BE CALLED FIRST - before any conditional logic
   const { data: session, status } = useSession()
-  
+
   // Database hooks
-  const { 
-    profile, 
-    loading: profileLoading, 
-    error: profileError, 
-    createProfile, 
-    updateProfile, 
-    refreshProfile 
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+    createProfile,
+    updateProfile,
+    refreshProfile
   } = useProfile()
 
-  const { 
-    goals, 
-    loading: goalsLoading, 
-    error: goalsError, 
-    createGoal, 
-    updateGoal, 
-    deleteGoal, 
-    addGoalTask, 
-    updateGoalTask, 
-    toggleGoalTask, 
-    deleteGoalTask, 
-    reorderGoals, 
-    reorderGoalTasks, 
-    refreshGoals 
+  const {
+    goals,
+    loading: goalsLoading,
+    error: goalsError,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    addGoalTask,
+    updateGoalTask,
+    toggleGoalTask,
+    deleteGoalTask,
+    reorderGoals,
+    reorderGoalTasks,
+    refreshGoals
   } = useGoals()
 
-  const { 
-    skills, 
-    loading: skillsLoading, 
-    error: skillsError, 
-    createSkill, 
-    updateSkill, 
-    deleteSkill, 
-    addSkillObjective, 
-    updateSkillObjective, 
-    toggleSkillObjective, 
-    deleteSkillObjective, 
-    reorderSkills, 
-    reorderSkillObjectives, 
-    refreshSkills 
+  const {
+    skills,
+    loading: skillsLoading,
+    error: skillsError,
+    createSkill,
+    updateSkill,
+    deleteSkill,
+    addSkillObjective,
+    updateSkillObjective,
+    toggleSkillObjective,
+    deleteSkillObjective,
+    reorderSkills,
+    reorderSkillObjectives,
+    refreshSkills
   } = useSkills()
 
-  const { 
-    documents, 
-    loading: documentsLoading, 
-    error: documentsError, 
-    uploadDocument, 
-    updateDocument, 
-    deleteDocument, 
-    toggleDocumentPin, 
-    reorderDocuments, 
-    refreshDocuments 
+  const {
+    documents,
+    loading: documentsLoading,
+    error: documentsError,
+    uploadDocument,
+    updateDocument,
+    deleteDocument,
+    toggleDocumentPin,
+    reorderDocuments,
+    refreshDocuments
   } = useDocuments()
 
   // Local UI state hooks
@@ -241,6 +244,75 @@ export default function ProfilePage() {
     }
   }
 
+  // Handle saving profile changes
+  const handleSaveProfile = async (data: ProfileData) => {
+    try {
+      await updateProfile(data)
+      // Update local state to reflect changes immediately
+      setProfileData(data)
+      setEditingProfile(false)
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+    }
+  }
+
+  // Handle saving goal changes (create or update)
+  const handleSaveGoal = async (goalData: Partial<Goal>) => {
+    try {
+      if (editingGoal) {
+        // Update existing goal
+        await updateGoal(editingGoal.id, {
+          title: goalData.title,
+          description: goalData.description,
+          category: goalData.category as any,
+          status: goalData.status as any,
+          targetDate: goalData.targetDate ? new Date(goalData.targetDate) : undefined
+        })
+        setEditingGoal(null)
+      } else {
+        // Create new goal
+        await createGoal({
+          title: goalData.title || "New Goal",
+          description: goalData.description || "",
+          category: (goalData.category || "Academic") as any,
+          status: (goalData.status || "In Progress") as any,
+          targetDate: goalData.targetDate ? new Date(goalData.targetDate) : new Date() // Provide default date if required
+        })
+      }
+      setShowAddGoal(false)
+      setShowEditGoal(false)
+    } catch (error) {
+      console.error('Failed to save goal:', error)
+    }
+  }
+
+  // Handle saving task changes (create or update)
+  const handleSaveTask = async (taskData: Partial<GoalTask>) => {
+    try {
+      if (editingTask && editingTask.id) {
+        // Update existing task
+        await updateGoalTask(editingTask.id, {
+          title: taskData.title,
+          priority: taskData.priority as any,
+          dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
+          completed: taskData.completed
+        })
+        setEditingTask(null)
+      } else if (selectedGoalId) {
+        // Create new task
+        await addGoalTask(selectedGoalId, {
+          title: taskData.title || "New Task",
+          priority: (taskData.priority || "Medium") as any,
+          dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined
+        })
+      }
+      setShowAddTaskModal(false)
+      setShowEditTaskModal(false)
+    } catch (error) {
+      console.error('Failed to save task:', error)
+    }
+  }
+
   // NOW we can have conditional logic and early returns
   // Check authentication
   if (status === "loading") {
@@ -251,7 +323,7 @@ export default function ProfilePage() {
       </div>
     </div>
   }
-  
+
   if (status === "unauthenticated") {
     return <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6 flex items-center justify-center">
       <div className="text-center">
@@ -271,7 +343,7 @@ export default function ProfilePage() {
         <ProfileHeader onBackToDashboard={handleBackToDashboard} />
 
         {/* Profile Summary */}
-        <ProfileSummary 
+        <ProfileSummary
           profileData={profileData}
           activeGoalsCount={goals.filter(g => g.status === 'active').length}
           onEditProfile={() => setEditingProfile(true)}
@@ -305,8 +377,8 @@ export default function ProfilePage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview">
-            <OverviewTab 
-              goals={goals}
+            <OverviewTab
+              goals={goals as any}
               onViewAllActivity={handleViewAllActivity}
             />
           </TabsContent>
@@ -314,7 +386,7 @@ export default function ProfilePage() {
           {/* Goals Tab */}
           <TabsContent value="goals">
             <GoalsTab
-              goals={goals}
+              goals={goals as any}
               onAddGoal={handleAddGoal}
               onEditGoal={handleEditGoal}
               onDeleteGoal={handleDeleteGoal}
@@ -345,8 +417,37 @@ export default function ProfilePage() {
           </TabsContent>
         </Tabs>
 
-        {/* TODO: Add modals for editing profile, goals, tasks, etc. */}
-        {/* These will be implemented as separate components */}
+        {/* Modals */}
+        <EditProfileModal
+          isOpen={editingProfile}
+          onClose={() => setEditingProfile(false)}
+          onSave={handleSaveProfile}
+          initialData={profileData}
+        />
+
+        <GoalModal
+          isOpen={showAddGoal || showEditGoal}
+          onClose={() => {
+            setShowAddGoal(false)
+            setShowEditGoal(false)
+            setEditingGoal(null)
+          }}
+          onSave={handleSaveGoal}
+          initialData={editingGoal}
+          mode={editingGoal ? "edit" : "create"}
+        />
+
+        <GoalTaskModal
+          isOpen={showAddTaskModal || showEditTaskModal}
+          onClose={() => {
+            setShowAddTaskModal(false)
+            setShowEditTaskModal(false)
+            setEditingTask(null)
+          }}
+          onSave={handleSaveTask}
+          initialData={editingTask}
+          mode={editingTask ? "edit" : "create"}
+        />
       </div>
     </div>
   )

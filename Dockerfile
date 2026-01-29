@@ -1,13 +1,20 @@
 # Multi-stage build for production
 FROM node:18-alpine AS deps
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat 
+# Install dependencies for canvas
+RUN apk add --no-cache build-base g++ cairo-dev jpeg-dev pango-dev giflib-dev
+
 WORKDIR /app
 
 # Install dependencies only when needed
 COPY package*.json ./
-RUN npm ci --only=production --ignore-scripts
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM node:18-alpine AS builder
+# Install dependencies for canvas
+RUN apk add --no-cache build-base g++ cairo-dev jpeg-dev pango-dev giflib-dev
 WORKDIR /app
 COPY . .
 
@@ -19,6 +26,8 @@ RUN npm run build:production
 
 # Production image, copy all the files and run next
 FROM node:18-alpine AS runner
+# Install runtime dependencies for canvas
+RUN apk add --no-cache cairo jpeg pango giflib
 WORKDIR /app
 
 ENV NODE_ENV=production

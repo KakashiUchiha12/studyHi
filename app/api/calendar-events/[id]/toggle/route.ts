@@ -1,4 +1,3 @@
-```typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -30,10 +29,10 @@ export async function PUT(
     // Toggle the completion status
     const updatedEvent = await calendarEventService.toggleEventCompletion(eventId)
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       event: updatedEvent,
-      message: `Event ${ updatedEvent.completed ? 'marked as completed' : 'marked as incomplete' } ` 
+      message: `Event ${updatedEvent.completed ? 'marked as completed' : 'marked as incomplete'} `
     })
   } catch (error) {
     console.error('Error toggling calendar event completion:', error)

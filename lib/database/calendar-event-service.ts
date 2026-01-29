@@ -63,11 +63,21 @@ export class CalendarEventService {
     try {
       return await prisma.calendarEvent.create({
         data: {
-          ...data,
+          title: data.title,
+          start: data.start,
+          end: data.end,
+          type: data.type,
+          description: data.description,
+          location: data.location,
+          priority: data.priority,
+          color: data.color,
           userId,
           completed: data.completed ?? false,
           notificationEnabled: data.notificationEnabled ?? false,
-          notificationTime: data.notificationTime ?? 15
+          notificationTime: data.notificationTime ?? 15,
+          recurringType: data.recurringType,
+          recurringInterval: data.recurringInterval,
+          recurringEndDate: data.recurringEndDate
         }
       })
     } catch (error) {
@@ -157,7 +167,7 @@ export class CalendarEventService {
       const event = await prisma.calendarEvent.findUnique({
         where: { id: eventId }
       })
-      
+
       if (!event) {
         throw new Error('Event not found')
       }

@@ -35,8 +35,9 @@ app.prepare().then(() => {
         });
 
         socket.on("send-message", async (message) => {
-            const { PrismaClient } = require("@prisma/client");
-            const prisma = new PrismaClient();
+            // Use the singleton instance to prevent multiple connections
+            const { dbService } = require("./lib/database/database-service");
+            const prisma = dbService.getPrisma();
 
             try {
                 if (message.channelId && message.senderId && message.content) {
@@ -78,9 +79,8 @@ app.prepare().then(() => {
                 }
             } catch (error) {
                 console.error("Error saving message:", error);
-            } finally {
-                await prisma.$disconnect();
             }
+            // Do not disconnect, keep the pool alive
         });
 
         socket.on("disconnect", () => {
@@ -90,8 +90,7 @@ app.prepare().then(() => {
 
     httpServer.listen(port, () => {
         console.log(
-            `> Ready on http://localhost:${port} as ${dev ? "development" : "production"
-            }`
+            `> Ready on http://localhost:${port} as ${dev ? "development" : "production"}`
         );
     });
 });

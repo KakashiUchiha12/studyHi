@@ -29,6 +29,7 @@ import { TaskManager } from '@/components/tasks/task-manager'
 import { ClientOnly } from '@/components/client-only'
 import { NotificationCenter } from '@/components/notifications/notification-center'
 import { AdvancedStudyTimer } from '@/components/study-sessions/advanced-study-timer'
+import { StudyHeatmap } from '@/components/dashboard/StudyHeatmap'
 import TimeTableButton from '@/components/dashboard/TimeTableButton'
 import { StudyHiLogoCompact } from '@/components/ui/studyhi-logo'
 import Link from 'next/link'
@@ -1870,78 +1871,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Daily Study Hours by Subject - Monthly View */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-foreground">Study Hours by Day (This Month)</h4>
-                <div className="bg-muted/20 rounded-lg p-4">
-                  {/* Subject Legend */}
-                  <div className="flex flex-wrap gap-3 mb-4">
-                    {subjects.map((subject, index) => (
-                      <div key={subject.id} className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: subject.color || `hsl(${index * 137.5 % 360}, 70%, 60%)` }}
-                        ></div>
-                        <span className="text-xs text-muted-foreground">{subject.name}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Daily Grid - Mobile Optimized with Horizontal Scroll */}
-                  <div className="overflow-x-auto -mx-4 px-4 sm:overflow-visible sm:-mx-0 sm:px-0">
-                    <div className="min-w-[700px] sm:min-w-full">
-                      <div className="grid grid-cols-7 gap-1">
-                        {/* Day headers */}
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
-                          <div key={i} className="text-center text-xs font-medium text-muted-foreground py-1">
-                            {day.substring(0, 2)} {/* Short day names for mobile */}
-                          </div>
-                        ))}
-
-                        {/* Daily data */}
-                        {Array.from({ length: 31 }, (_, i) => {
-                          const day = i + 1
-                          const currentDate = new Date()
-                          const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-                          const isCurrentMonth = dayDate.getMonth() === currentDate.getMonth()
-
-                          const dayData = dailyStudyHoursBySubject[day] || {}
-                          const totalHours = Object.values(dayData).reduce((sum, hours) => sum + hours, 0)
-
-                          return (
-                            <div
-                              key={i}
-                              className="min-h-[50px] sm:min-h-[60px] p-1 border border-border/20 rounded bg-muted/10 hover:bg-muted/20 transition-colors active:bg-muted/30 active:scale-95 cursor-pointer"
-                              title={`Day ${day}: ${totalHours > 0 ? `${Math.round(totalHours * 10) / 10}h` : '0h'}`}
-                            >
-                              <div className="text-center text-xs text-muted-foreground mb-1">
-                                {day}
-                              </div>
-                              {isCurrentMonth && totalHours > 0 ? (
-                                <div className="space-y-0.5">
-                                  <div className="text-sm sm:text-lg font-bold text-foreground text-center">
-                                    {Math.round(totalHours * 10) / 10}h
-                                  </div>
-                                  {/* Limit showing subject breakdown to prevent overcrowding */}
-                                  {/* Mobile-optimized: Don't show detailed subject breakdown */}
-                                  {Object.entries(dayData).filter(([_, hours]) => hours > 0).length > 1 && (
-                                    <div className="text-[8px] text-muted-foreground text-center">
-                                      multiple
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="text-center text-muted-foreground text-xs">
-                                  {isCurrentMonth ? '0' : '-'}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <StudyHeatmap studySessions={studySessions} />
 
               {/* View Full Analytics Button */}
               <div className="pt-4 border-t border-border/30">
