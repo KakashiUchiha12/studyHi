@@ -118,6 +118,8 @@
     "react-resizable-panels": "^2.1.7",
     "recharts": "latest",
     "sharp": "^0.34.3",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "sonner": "^1.7.4",
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^2.6.0",
@@ -125,9 +127,7 @@
     "uuid": "^10.0.0",
     "vaul": "^0.9.9",
     "yup": "^1.7.0",
-    "zod": "3.24.1",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
