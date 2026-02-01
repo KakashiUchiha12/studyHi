@@ -1,0 +1,64 @@
+
+/*
+ * 🛡️ STUDENT WATERMARK FOR VIDEO
+ * Add this to your child theme's functions.php OR use the "Code Snippets" plugin.
+ */
+
+add_action('wp_footer', function() {
+    // Only run if user is logged in
+    if (!is_user_logged_in()) return;
+
+    // Get current user email
+    $current_user = wp_get_current_user();
+    $user_email = $current_user->user_email;
+    ?>
+    <script>
+    jQuery(document).ready(function($) {
+        // Find the VideoJS player (HLS Player uses this)
+        var player = $('.video-js');
+        
+        if (player.length) {
+            // Create the watermark element
+            var watermarkHtml = '<div class="studyhi-watermark"><?php echo esc_html($user_email); ?></div>';
+            
+            // Append it to every player found
+            player.append(watermarkHtml);
+            
+            // Optional: Move it around every 5 seconds to prevent cropping
+            setInterval(function() {
+                $('.studyhi-watermark').each(function() {
+                    var top = Math.floor(Math.random() * 80) + 10; // 10% to 90%
+                    var left = Math.floor(Math.random() * 80) + 10;
+                    $(this).css({top: top + '%', left: left + '%'});
+                });
+            }, 10000); // 10 seconds
+        }
+    });
+    </script>
+
+    <style>
+    .studyhi-watermark {
+        position: absolute;
+        top: 20%;
+        left: 20%;
+        z-index: 9999;
+        font-family: Arial, sans-serif;
+        font-size: 18px;
+        color: rgba(255, 255, 255, 0.4); /* White with 40% opacity */
+        pointer-events: none; /* Let clicks pass through */
+        user-select: none;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Shadow for visibility on white video */
+        transform: rotate(-15deg); /* Slight tilt */
+        /* transition removed so it jumps instead of floating */
+    }
+    
+    /* FORCE SHOW when user is inactive (controls hidden) */
+    .video-js.vjs-user-inactive .studyhi-watermark,
+    .vjs-user-inactive .studyhi-watermark {
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: block !important;
+    }
+    </style>
+    <?php
+});

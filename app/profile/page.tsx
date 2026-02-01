@@ -10,9 +10,7 @@ import { Eye, Target, Award, FolderOpen } from "lucide-react"
 import { useProfile, useGoals, useSkills, useDocuments } from '@/hooks'
 import { Document, Goal as PrismaGoal } from '@/lib/database'
 
-// Import our new components
 import { ProfileHeader } from "@/components/profile/profile-header"
-import { uploadFiles } from "@/lib/uploadthing"
 import { ProfileSummary } from "@/components/profile/profile-summary"
 import { OverviewTab } from "@/components/profile/overview-tab"
 import { GoalsTab } from "@/components/profile/goals-tab"
