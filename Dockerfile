@@ -41,6 +41,13 @@ RUN npx prisma generate
 ENV DATABASE_URL="mysql://root:password@localhost:3306/studyhi"
 ENV NEXTAUTH_SECRET="dummy_secret_for_build_must_be_32_chars_long"
 ENV NEXTAUTH_URL="http://localhost:3000"
+
+# Pass client-side env vars for build time
+ARG NEXT_PUBLIC_PUSHER_KEY
+ARG NEXT_PUBLIC_PUSHER_CLUSTER
+ENV NEXT_PUBLIC_PUSHER_KEY=$NEXT_PUBLIC_PUSHER_KEY
+ENV NEXT_PUBLIC_PUSHER_CLUSTER=$NEXT_PUBLIC_PUSHER_CLUSTER
+
 RUN npm run build:production
 
 # Production image, copy all the files and run next
