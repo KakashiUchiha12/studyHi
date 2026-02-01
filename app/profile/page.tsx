@@ -12,6 +12,7 @@ import { Document, Goal as PrismaGoal } from '@/lib/database'
 
 // Import our new components
 import { ProfileHeader } from "@/components/profile/profile-header"
+import { uploadFiles } from "@/lib/uploadthing"
 import { ProfileSummary } from "@/components/profile/profile-summary"
 import { OverviewTab } from "@/components/profile/overview-tab"
 import { GoalsTab } from "@/components/profile/goals-tab"
@@ -178,8 +179,31 @@ export default function ProfilePage() {
 
   // Handle profile picture upload
   const handleProfilePictureUpload = async (file: File) => {
-    // TODO: Implement profile picture upload
-    console.log('Profile picture upload:', file)
+    try {
+      console.log('Starting profile picture upload...', file.name)
+
+      const res = await uploadFiles("profileImage", {
+        files: [file],
+      })
+
+      if (res && res[0]) {
+        const imageUrl = res[0].url
+        console.log('Upload successful, updating profile with:', imageUrl)
+
+        // Update database
+        await updateProfile({
+          ...profileData,
+          profilePicture: imageUrl
+        })
+
+        // Update local state immediately
+        setProfileData(prev => ({ ...prev, profilePicture: imageUrl }))
+        console.log('Profile picture updated successfully')
+      }
+    } catch (error) {
+      console.error('Failed to upload profile picture:', error)
+      alert("Failed to upload profile picture. Please try again.")
+    }
   }
 
   // Handle back to dashboard
