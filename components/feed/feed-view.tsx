@@ -5,6 +5,8 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { PostCard } from "./post-card";
 import { CreatePost } from "./create-post";
 import { Loader2 } from "lucide-react";
+import { pusherClient } from "@/lib/pusher";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FeedViewProps {
     communityId?: string;
@@ -96,6 +98,49 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
             }
         };
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+    const queryClient = useQueryClient();
+
+    // Real-time Updates with Pusher
+    useEffect(() => {
+        if (!pusherClient) return;
+
+        const channelName = communityId
+            ? `community-${communityId}`
+            : 'global-feed';
+
+        const channel = pusherClient.subscribe(channelName);
+
+        channel.bind('new-post', (newPost: any) => {
+            // Check if post already exists (prevent duplicates from own creation or double firing)
+            // But actually, we want to see other people's posts.
+
+            queryClient.setQueryData(['posts', communityId, userId, isAnnouncement], (oldData: any) => {
+                if (!oldData || !oldData.pages) return oldData;
+
+                // Create a new first page with the new post prepended
+                const firstPage = oldData.pages[0];
+
+                // Avoid duplication if the user is the one who posted (optimistic update might have handled it, 
+                // or we rely on this real-time update. If optimisitic update is used, we need to dedup by ID)
+                if (firstPage.some((p: any) => p.id === newPost.id)) {
+                    return oldData;
+                }
+
+                const newFirstPage = [newPost, ...firstPage];
+
+                return {
+                    ...oldData,
+                    pages: [newFirstPage, ...oldData.pages.slice(1)]
+                };
+            });
+        });
+
+        return () => {
+            pusherClient.unsubscribe(channelName);
+            channel.unbind_all();
+        };
+    }, [communityId, userId, isAnnouncement, queryClient]);
 
     const handleNewPost = (post: any) => {
         // Optimistically add to cache - React Query will handle this

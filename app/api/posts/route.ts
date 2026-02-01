@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher";
 
 const POSTS_BATCH = 20;
 
@@ -155,7 +156,61 @@ export async function POST(req: Request) {
             }
         });
 
-        return NextResponse.json(post);
+        // Fetch complete post data for realtime update (including user relationships)
+        const completePost = await prisma.post.findUnique({
+            where: { id: post.id },
+            select: {
+                id: true,
+                content: true,
+                isAnnouncement: true,
+                createdAt: true,
+                updatedAt: true,
+                user: {
+                    select: { name: true, image: true, id: true }
+                },
+                community: {
+                    select: { name: true, id: true }
+                },
+                _count: {
+                    select: { comments: true, likes: true }
+                },
+                attachments: {
+                    select: {
+                        id: true,
+                        url: true,
+                        name: true,
+                        type: true,
+                        size: true
+                    }
+                },
+                likes: {
+                    select: { userId: true } // Empty initially but keeps structure consistent
+                }
+            }
+        });
+
+        // Trigger Pusher Event
+        if (pusherServer) {
+            const channel = communityId
+                ? `community-${communityId}`
+                : (post.userId ? `user-${post.userId}` : 'global-feed'); // Fallback logic
+
+            // Actually, if it's a global feed post (no community), we might want a global channel.
+            // If it has communityId, it goes to that community channel.
+            // If it's a personal profile post? The current logic essentially only supports Community or "Global" (if communityId is null).
+            // Let's stick to community channel if present.
+
+            if (communityId) {
+                await pusherServer.trigger(`community-${communityId}`, 'new-post', completePost);
+            } else {
+                // For now, let's assume if no community, it's global? 
+                // Or we can just trigger 'global-feed' for everything if we want a global firehose.
+                // But typically users want to see updates in the specific view they are in.
+                await pusherServer.trigger('global-feed', 'new-post', completePost);
+            }
+        }
+
+        return NextResponse.json(completePost);
     } catch (error) {
         console.error("[POSTS_CREATE]", error);
         return new NextResponse("Internal Error", { status: 500 });
