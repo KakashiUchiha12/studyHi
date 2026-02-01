@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, X, FileText, Image as ImageIcon, Megaphone } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { uploadFiles } from "@/lib/uploadthing";
 
 interface CreatePostProps {
     communityId?: string;
@@ -77,32 +78,28 @@ export function CreatePost({ communityId, currentUser, onPostCreated, isAnnounce
                 // Start tracking upload
                 setUploadingFiles(prev => [...prev, { name: file.name, progress: 0 }]);
 
-                // Simulate progress
+                // Simulate progress (since uploadFiles doesn't give granular progress for simple usage)
                 const progressInterval = setInterval(() => {
                     setUploadingFiles(prev => prev.map(f =>
                         f.name === file.name ? { ...f, progress: Math.min(f.progress + 10, 90) } : f
                     ));
                 }, 100);
 
-                const formData = new FormData();
-                formData.append("file", file);
-
                 try {
-                    const res = await fetch("/api/upload", {
-                        method: "POST",
-                        body: formData
+                    // Use UploadThing instead of local API
+                    const res = await uploadFiles("postAttachment", {
+                        files: [file],
                     });
 
-                    if (res.ok) {
-                        const data = await res.json();
+                    if (res && res[0]) {
                         // Complete progress
                         clearInterval(progressInterval);
                         setUploadingFiles(prev => prev.filter(f => f.name !== file.name));
 
                         setAttachments(prev => [...prev, {
-                            url: data.url,
-                            name: file.name,
-                            size: file.size,
+                            url: res[0].url,
+                            name: res[0].name,
+                            size: res[0].size,
                             type: file.type.startsWith("image/") ? "image" : "file"
                         }]);
                     }
@@ -110,6 +107,7 @@ export function CreatePost({ communityId, currentUser, onPostCreated, isAnnounce
                     console.error("Upload failed", error);
                     clearInterval(progressInterval);
                     setUploadingFiles(prev => prev.filter(f => f.name !== file.name));
+                    alert("Failed to upload file. Please try again.");
                 }
             }
         }
