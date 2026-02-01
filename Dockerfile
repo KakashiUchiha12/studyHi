@@ -24,12 +24,17 @@ RUN apt-get update && apt-get install -y \
     libpango1.0-dev \
     libjpeg-dev \
     libgif-dev \
-    librsvg2-dev
+    librsvg2-dev \
+    openssl
+
 WORKDIR /app
 COPY . .
 
 # Install all dependencies for building
 RUN npm ci
+
+# Generate Prisma Client
+RUN npx prisma generate
 
 # Build the application
 RUN npm run build:production
