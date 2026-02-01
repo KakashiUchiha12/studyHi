@@ -4,8 +4,8 @@ import { z } from 'zod'
 const envSchema = z.object({
   // Database Configuration
   DATABASE_URL: z.string().url().refine(
-    (url) => url.startsWith('file:') || url.includes('localhost') || url.includes('sqlite'),
-    { message: "DATABASE_URL must be a valid SQLite URL" }
+    (url) => url.startsWith('file:') || url.startsWith('mysql:') || url.includes('localhost') || url.includes('sqlite'),
+    { message: "DATABASE_URL must be a valid SQLite or MySQL URL" }
   ),
 
   // Authentication
@@ -130,7 +130,7 @@ export function isServiceConfigured(service: 'oauth' | 'pusher' | 'uploadthing')
   switch (service) {
     case 'oauth':
       return !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) ||
-             !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET)
+        !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET)
     case 'pusher':
       return !!(env.PUSHER_APP_ID && env.PUSHER_KEY && env.PUSHER_SECRET && env.PUSHER_CLUSTER)
     case 'uploadthing':
