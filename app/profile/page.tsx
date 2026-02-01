@@ -180,12 +180,19 @@ export default function ProfilePage() {
     try {
       console.log('Starting profile picture upload...', file.name)
 
-      const res = await uploadFiles("profileImage", {
-        files: [file],
-      })
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (res && res[0]) {
-        const imageUrl = res[0].url
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const imageUrl = data.url
+
+
         console.log('Upload successful, updating profile with:', imageUrl)
 
         // Update database
