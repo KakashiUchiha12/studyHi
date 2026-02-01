@@ -8,8 +8,8 @@ services:
       dockerfile: Dockerfile
       target: runner
       args:
-        NEXT_PUBLIC_PUSHER_KEY: ${NEXT_PUBLIC_PUSHER_KEY}
-        NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER}
+        NEXT_PUBLIC_PUSHER_KEY: ${PUSHER_KEY}
+        NEXT_PUBLIC_PUSHER_CLUSTER: ${PUSHER_CLUSTER}
     ports:
       - "3000:3000"
     environment:
@@ -23,9 +23,9 @@ services:
       - PUSHER_KEY=${PUSHER_KEY}
       - PUSHER_SECRET=${PUSHER_SECRET}
       - PUSHER_CLUSTER=${PUSHER_CLUSTER}
-      # Pusher Keys (Client - for runtime check if needed)
-      - NEXT_PUBLIC_PUSHER_KEY=${NEXT_PUBLIC_PUSHER_KEY}
-      - NEXT_PUBLIC_PUSHER_CLUSTER=${NEXT_PUBLIC_PUSHER_CLUSTER}
+      # Pusher Keys (Client - mapped from Server keys)
+      - NEXT_PUBLIC_PUSHER_KEY=${PUSHER_KEY}
+      - NEXT_PUBLIC_PUSHER_CLUSTER=${PUSHER_CLUSTER}
       # Google Auth
       - GOOGLE_CLIENT_ID=your_google_client_id
       - GOOGLE_CLIENT_SECRET=your_google_client_secret
