@@ -52,7 +52,8 @@ RUN apt-get update && apt-get install -y \
     libpangocairo-1.0-0 \
     libjpeg62-turbo \
     libgif7 \
-    librsvg2-2
+    librsvg2-2 \
+    openssl
 
 WORKDIR /app
 
@@ -73,6 +74,7 @@ RUN chown nextjs:nodejs .next
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 USER nextjs
 
