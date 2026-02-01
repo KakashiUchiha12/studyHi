@@ -4,6 +4,7 @@ const nextConfig = {
   // Production optimizations
   reactStrictMode: true,
   poweredByHeader: false,
+  output: 'standalone', // Required for Docker deployment
 
   // Image optimization
   images: {

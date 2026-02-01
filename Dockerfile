@@ -37,10 +37,10 @@ RUN npm ci
 RUN npx prisma generate
 
 
-# Build the application
 # We need to set dummy environment variables so the build doesn't fail on validation
-ENV DATABASE_URL="file:./db.sqlite"
+ENV DATABASE_URL="mysql://root:password@localhost:3306/studyhi"
 ENV NEXTAUTH_SECRET="dummy_secret_for_build_must_be_32_chars_long"
+ENV NEXTAUTH_URL="http://localhost:3000"
 RUN npm run build:production
 
 # Production image, copy all the files and run next
