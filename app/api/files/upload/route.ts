@@ -8,7 +8,7 @@ import path from 'path'
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id
     const formData = await request.formData()
-    
+
     const file = formData.get('file') as File
     const subjectId = formData.get('subjectId') as string
     const category = formData.get('category') as string
@@ -77,8 +77,8 @@ export async function POST(request: NextRequest) {
     const fileExtension = path.extname(file.name)
     const fileName = `${timestamp}-${randomString}${fileExtension}`
 
-    // Save file to disk
-    const uploadDir = path.join(process.cwd(), 'uploads', userId, subjectId)
+    // Save file to disk - updated to use persistent public/uploads path
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'files', userId, subjectId)
     await mkdir(uploadDir, { recursive: true })
 
     const filePath = path.join(uploadDir, fileName)
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },

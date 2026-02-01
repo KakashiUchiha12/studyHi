@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar as CalendarIcon, Loader2, Plus } from "lucide-react";
-import { UploadDropzone } from "@/lib/uploadthing";
+import { Calendar as CalendarIcon, Loader2, Plus, Upload, X } from "lucide-react";
+// import { UploadDropzone } from "@/lib/uploadthing";
 import { toast } from "sonner";
 
 interface CreateEventDialogProps {
@@ -83,17 +83,53 @@ export function CreateEventDialog({ communityId, onEventCreated }: CreateEventDi
                                 </Button>
                             </div>
                         ) : (
-                            <div className="border border-dashed rounded-md p-4">
-                                <UploadDropzone
-                                    endpoint="communityCoverImage"
-                                    onClientUploadComplete={(res) => {
-                                        if (res?.[0]) setFormData({ ...formData, coverImage: res[0].url });
-                                    }}
-                                    appearance={{
-                                        container: "h-32",
-                                        button: "bg-primary text-primary-foreground hover:bg-primary/90"
+                            <div className="border border-dashed rounded-md p-4 flex flex-col items-center justify-center text-center space-y-2">
+                                <div className="p-4 bg-muted rounded-full">
+                                    <Upload className="w-8 h-8 text-muted-foreground" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium">Upload cover image</p>
+                                    <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
+                                </div>
+                                <Input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    id="cover-upload"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+
+                                        const formData = new FormData();
+                                        formData.append("file", file);
+
+                                        try {
+                                            const res = await fetch("/api/upload", {
+                                                method: "POST",
+                                                body: formData
+                                            });
+
+                                            if (res.ok) {
+                                                const data = await res.json();
+                                                setFormData({ ...formData, coverImage: data.url });
+                                                toast.success("Cover image uploaded");
+                                            } else {
+                                                toast.error("Upload failed");
+                                            }
+                                        } catch (error) {
+                                            console.error(error);
+                                            toast.error("Upload error");
+                                        }
                                     }}
                                 />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => document.getElementById("cover-upload")?.click()}
+                                >
+                                    Select Image
+                                </Button>
                             </div>
                         )}
                     </div>

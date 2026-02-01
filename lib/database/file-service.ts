@@ -209,7 +209,7 @@ export class FileService {
     userId: string
   ): Promise<string> {
     try {
-      const uploadDir = path.join(process.cwd(), 'uploads', userId, subjectId)
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'files', userId, subjectId)
       await mkdir(uploadDir, { recursive: true })
 
       const filePath = path.join(uploadDir, fileName)
