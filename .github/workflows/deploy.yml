@@ -16,7 +16,11 @@ jobs:
           password: ${{ secrets.DROPLET_PASSWORD }}
           script: |
             cd studyHi
+            # Force clean start (discards local changes/locks)
+            git fetch --all
+            git reset --hard origin/main
             git pull origin main
-            # Re-run the deployment script (safest way) or just rebuild
+            
+            # Run the installer
             chmod +x scripts/deploy-script.sh
             ./scripts/deploy-script.sh
