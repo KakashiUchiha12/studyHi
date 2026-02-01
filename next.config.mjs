@@ -88,6 +88,8 @@ const nextConfig = {
         fs: false,
       };
     }
+    // Important: Return the modified config
+    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
     return config;
   },
 };
