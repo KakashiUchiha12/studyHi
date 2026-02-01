@@ -10,7 +10,7 @@ The path to the source video file (e.g., "video.mp4").
 #>
 
 param (
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$InputFile
 )
 
@@ -35,10 +35,10 @@ if (Test-Path $OutputDir) {
     Remove-Item $OutputDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $OutputDir | Out-Null
-Write-Host "📂 Created output folder: $OutputDir" -ForegroundColor Cyan
+Write-Host "FOLDER Created output folder: $OutputDir" -ForegroundColor Cyan
 
 # 3. Generate Encryption Key (16 bytes)
-Write-Host "bf Generating encryption key..." -ForegroundColor Cyan
+Write-Host "KEY Generating encryption key..." -ForegroundColor Cyan
 $KeyBytes = New-Object Byte[] 16
 [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($KeyBytes)
 [System.IO.File]::WriteAllBytes($KeyFile, $KeyBytes)
@@ -49,7 +49,7 @@ $KeyInfoContent = "$KeyUrl`n$KeyFile"
 Set-Content -Path $KeyInfoFile -Value $KeyInfoContent -NoNewline
 
 # 5. Run FFmpeg Encryption
-Write-Host "bf Starting encryption (this might take a minute)..." -ForegroundColor Yellow
+Write-Host "Running FFmpeg (this takes time)..." -ForegroundColor Yellow
 $FFmpegCommand = "ffmpeg -i `"$InputFile`" -c:v copy -c:a copy -hls_time 10 -hls_key_info_file `"$KeyInfoFile`" -hls_playlist_type vod -hls_segment_filename `"$SegmentPattern`" `"$PlaylistFile`""
 
 # Execute
@@ -58,10 +58,11 @@ Invoke-Expression $FFmpegCommand
 # 6. Cleanup
 if (Test-Path $PlaylistFile) {
     Remove-Item $KeyInfoFile # Remove the temp info file, but KEEP the key file
-    Write-Host "`n✅ SUCCESS! Encrypted video is ready." -ForegroundColor Green
+    Write-Host "`nSUCCESS! Encrypted video is ready." -ForegroundColor Green
     Write-Host "-> Folder: $OutputDir"
     Write-Host "-> Upload this ENTIRE folder to your cPanel."
     Write-Host "-> URL will be: https://your-site.com/uploads/encrypted_$VideoName/index.m3u8"
-} else {
-    Write-Host "`n❌ Error: FFmpeg failed to create the playlist." -ForegroundColor Red
+}
+else {
+    Write-Host "`nERROR: FFmpeg failed to create the playlist." -ForegroundColor Red
 }
