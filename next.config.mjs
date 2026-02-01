@@ -86,6 +86,7 @@ const nextConfig = {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
+        canvas: false, // Fix: Prevent bundling canvas on client-side
       };
     }
     // Important: Return the modified config
