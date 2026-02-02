@@ -143,8 +143,27 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
     }, [communityId, userId, isAnnouncement, queryClient]);
 
     const handleNewPost = (post: any) => {
-        // Optimistically add to cache - React Query will handle this
-        // The cache invalidation will happen naturally
+        // Optimistically add to cache immediately
+        console.log("Optimistically adding new post to top of feed:", post.id);
+
+        queryClient.setQueryData(['posts', communityId, userId, isAnnouncement], (oldData: any) => {
+            if (!oldData || !oldData.pages) return { pages: [[post]], pageParams: [undefined] };
+
+            // Create a new first page with the new post prepended
+            const firstPage = oldData.pages[0];
+
+            // Avoid duplicate if it already exists
+            if (firstPage.some((p: any) => p.id === post.id)) {
+                return oldData;
+            }
+
+            const newFirstPage = [post, ...firstPage];
+
+            return {
+                ...oldData,
+                pages: [newFirstPage, ...oldData.pages.slice(1)]
+            };
+        });
     };
 
     const canCreatePost = () => {
