@@ -39,13 +39,13 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthSessionProvider>
             <ReactQueryProvider>
-              <SocketProvider>
-                <ThemeProvider defaultTheme="light">
-                  {children}
-                  <Toaster position="top-right" />
-                  <Analytics />
-                </ThemeProvider>
-              </SocketProvider>
+              {/* <SocketProvider> */}
+              <ThemeProvider defaultTheme="light">
+                {children}
+                <Toaster position="top-right" />
+                <Analytics />
+              </ThemeProvider>
+              {/* </SocketProvider> */}
             </ReactQueryProvider>
           </AuthSessionProvider>
         </ErrorBoundary>
