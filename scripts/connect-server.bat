@@ -4,5 +4,5 @@ echo.
 echo 1. If it asks "Are you sure...", type: yes
 echo 2. When it asks for "password", type the password you set (It will stay hidden/blank).
 echo.
-ssh root@139.59.71.83
+ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=120 root@139.59.71.83
 pause
