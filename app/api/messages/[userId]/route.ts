@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 const MESSAGES_BATCH = 20;
 
-export async function POST(
+export async function GET(
     req: Request,
     props: { params: Promise<{ userId: string }> }
 ) {

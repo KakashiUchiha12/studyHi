@@ -11,7 +11,7 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -54,7 +54,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -87,7 +87,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -97,10 +97,10 @@ export async function GET(
 
     const userId = (session.user as any).id
     const { id } = await params
-    
+
     // Get file info from database
     const file = await fileService.getFileById(id, userId)
-    
+
     if (!file) {
       return NextResponse.json(
         { error: 'File not found' },
@@ -119,13 +119,13 @@ export async function GET(
     // Read file from disk
     const filePath = file.filePath
     const fileBuffer = await readFile(filePath)
-    
+
     // Set appropriate headers
     const headers = new Headers()
     headers.set('Content-Type', file.mimeType)
     headers.set('Content-Disposition', `inline; filename="${file.originalName}"`)
     headers.set('Cache-Control', 'public, max-age=31536000') // Cache for 1 year
-    
+
     return new NextResponse(fileBuffer as any, {
       status: 200,
       headers

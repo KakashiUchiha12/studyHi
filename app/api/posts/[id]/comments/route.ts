@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher";
 
 export async function GET(
     req: Request,
@@ -70,11 +71,45 @@ export async function POST(
                     select: { likes: true }
                 },
                 likes: {
-                    where: { userId: (session.user as any).id }, // Likely empty on creation but consistent structure
+                    where: { userId: (session.user as any).id },
                     select: { userId: true }
                 }
             }
         });
+
+        // Trigger Pusher update
+        if (pusherServer) {
+            try {
+                // Fetch updated counts for the post
+                const updatedPost = await prisma.post.findUnique({
+                    where: { id: params.id },
+                    select: {
+                        communityId: true,
+                        _count: {
+                            select: { likes: true, comments: true }
+                        }
+                    }
+                });
+
+                if (updatedPost) {
+                    // Notify global feed
+                    await pusherServer.trigger('global-feed', 'post-updated', {
+                        id: params.id,
+                        _count: updatedPost._count
+                    });
+
+                    // Notify community channel if applicable
+                    if (updatedPost.communityId) {
+                        await pusherServer.trigger(`community-${updatedPost.communityId}`, 'post-updated', {
+                            id: params.id,
+                            _count: updatedPost._count
+                        });
+                    }
+                }
+            } catch (pusherError) {
+                console.error("[PUSHER_COMMENT_TRIGGER_ERROR]", pusherError);
+            }
+        }
 
         return NextResponse.json(comment);
     } catch (error) {

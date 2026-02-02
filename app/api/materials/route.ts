@@ -44,11 +44,11 @@ export async function POST(request: NextRequest) {
     }
 
     const data: CreateMaterialData = await request.json()
-    
-    // Validate required fields
-    if (!data.chapterId || !data.title || !data.type || data.order === undefined) {
+
+    // Validate required fields - either chapterId or subjectId must be present
+    if ((!data.chapterId && !data.subjectId) || !data.title || !data.type || data.order === undefined) {
       return NextResponse.json(
-        { error: 'Chapter ID, title, type, and order are required' },
+        { error: 'Chapter ID or Subject ID, title, type, and order are required' },
         { status: 400 }
       )
     }

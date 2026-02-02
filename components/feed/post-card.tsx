@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,14 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     const [loadingComments, setLoadingComments] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
+    const [commentCount, setCommentCount] = useState(post._count.comments);
+
+    // Sync state with props when they change (real-time updates from FeedView)
+    useEffect(() => {
+        setLiked(post.likes && post.likes.length > 0);
+        setLikeCount(post._count.likes);
+        setCommentCount(post._count.comments);
+    }, [post.likes, post._count.likes, post._count.comments]);
 
     const toggleLike = async () => {
         // Optimistic update
@@ -207,7 +215,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                     </Button>
                     <Button variant="ghost" size="sm" className="flex-1 gap-2" onClick={loadComments}>
                         <MessageSquare className="w-4 h-4" />
-                        {post._count.comments > 0 && post._count.comments}
+                        {commentCount > 0 && commentCount}
                     </Button>
                     <Button variant="ghost" size="sm" className="flex-1 gap-2">
                         <Share2 className="w-4 h-4" />

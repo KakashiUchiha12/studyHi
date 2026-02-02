@@ -42,12 +42,14 @@ export default function DirectMessagePage() {
                         type="conversation"
                         apiUrl={`/api/messages/${otherUserId}`}
                         socketUrl="/api/socket/direct-messages"
+                        socket={socket}
                         paramKey="conversationId"
                         paramValue={otherUserId}
                         name="Chat"
                         member={session?.user as any} // Pass current user
                     />
                     <ChatInput
+                        socket={socket}
                         apiUrl="/api/socket/direct-messages"
                         query={{
                             receiverId: otherUserId

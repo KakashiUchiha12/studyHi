@@ -136,6 +136,25 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
             });
         });
 
+        channel.bind('post-updated', (updatedData: { id: string, _count: any }) => {
+            console.log("Real-time post update received:", updatedData);
+
+            queryClient.setQueryData(['posts', communityId, userId, isAnnouncement], (oldData: any) => {
+                if (!oldData || !oldData.pages) return oldData;
+
+                return {
+                    ...oldData,
+                    pages: oldData.pages.map((page: any[]) =>
+                        page.map((post: any) =>
+                            post.id === updatedData.id
+                                ? { ...post, _count: { ...post._count, ...updatedData._count } }
+                                : post
+                        )
+                    )
+                };
+            });
+        });
+
         return () => {
             pusherClient.unsubscribe(channelName);
             channel.unbind_all();

@@ -51,19 +51,32 @@ export const ChatInput = ({
         try {
             const payload = {
                 content: values.content,
+                senderId: (member as any)?.id,
                 ...query // Contains channelId or receiverId
             };
 
-            await fetch("/api/messages", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            if (socket) {
+                // Use socket for real-time sending (and saving via server.ts)
+                socket.emit("send-message", payload);
+                form.reset();
+            } else {
+                // Fallback to API if socket not connected (though server.ts handles saving, 
+                // we might want an http route as backup? For now, let's try to rely on socket or show error).
+                // Since our API route /api/messages was questionable, let's stick to socket for now 
+                // or assume an http route exists if we really need it.
+                // But given the task is to fix messaging and we know server.ts handles it:
 
-            form.reset();
+                await fetch("/api/messages", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                form.reset();
+            }
         } catch (error) {
             console.error("ChatInput Error", error);
-            alert("Failed to send message");
+            // alert("Failed to send message");
         }
     }
 

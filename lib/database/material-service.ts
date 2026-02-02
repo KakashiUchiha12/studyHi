@@ -3,7 +3,8 @@ import { Material, Prisma } from '@prisma/client'
 import { chapterService } from './chapter-service'
 
 export interface CreateMaterialData {
-  chapterId: string
+  chapterId?: string
+  subjectId?: string
   title: string
   type: string
   content?: string
@@ -22,6 +23,8 @@ export interface UpdateMaterialData {
   duration?: number
   order?: number
   isCompleted?: boolean
+  chapterId?: string
+  subjectId?: string
 }
 
 export class MaterialService {
@@ -40,14 +43,15 @@ export class MaterialService {
     }
   }
 
-  // Get all materials for a subject
+  // Get all materials for a subject (both in chapters and direct)
   async getMaterialsBySubjectId(subjectId: string): Promise<Material[]> {
     try {
       return await this.prisma.material.findMany({
         where: {
-          chapter: {
-            subjectId: subjectId
-          }
+          OR: [
+            { subjectId: subjectId },
+            { chapter: { subjectId: subjectId } }
+          ]
         },
         include: {
           chapter: {
@@ -59,7 +63,6 @@ export class MaterialService {
           }
         },
         orderBy: [
-          { chapter: { order: 'asc' } },
           { order: 'asc' }
         ]
       })
@@ -86,7 +89,8 @@ export class MaterialService {
     try {
       return await this.prisma.material.create({
         data: {
-          chapterId: data.chapterId,
+          chapterId: data.chapterId || null,
+          subjectId: data.subjectId || null,
           title: data.title,
           type: data.type,
           content: data.content || '',
@@ -154,8 +158,10 @@ export class MaterialService {
         }
       })
 
-      // Update chapter completion status based on materials
-              await this.updateChapterCompletionFromMaterials(material.chapterId)
+      // Update chapter completion status based on materials if it belongs to one
+      if (material.chapterId) {
+        await this.updateChapterCompletionFromMaterials(material.chapterId)
+      }
 
       return updatedMaterial
     } catch (error) {
@@ -189,7 +195,7 @@ export class MaterialService {
           where: { chapterId: chapterId }
         }),
         this.prisma.material.count({
-          where: { 
+          where: {
             chapterId: chapterId,
             isCompleted: true
           }
@@ -241,7 +247,7 @@ export class MaterialService {
           where: { chapterId: chapterId }
         }),
         this.prisma.material.count({
-          where: { 
+          where: {
             chapterId: chapterId,
             isCompleted: true
           }

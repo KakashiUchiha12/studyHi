@@ -30,6 +30,7 @@ import { FileUploadSimple } from '@/components/subjects/file-upload-simple'
 import { useChapters } from '@/hooks/useChapters'
 import { useMaterials } from '@/hooks/useMaterials'
 import { PDFThumbnail } from '@/components/pdf-thumbnail'
+import { FilePreview } from '@/components/file-preview'
 import { Chapter, Material } from '@/lib/database'
 
 interface Subject {
@@ -68,15 +69,15 @@ interface SubjectDetailDialogProps {
   subject: Subject
 }
 
-export function SubjectDetailDialog({ 
-  open, 
-  onOpenChange, 
-  subject 
+export function SubjectDetailDialog({
+  open,
+  onOpenChange,
+  subject
 }: SubjectDetailDialogProps) {
   // Utility function to safely parse material content
   const parseMaterialContent = (content: string) => {
     if (!content) return { files: [], links: [] }
-    
+
     try {
       // Try to parse as new structured format
       const parsed = JSON.parse(content)
@@ -105,54 +106,57 @@ export function SubjectDetailDialog({
         }
       }
     }
-    
+
     return { files: [], links: [] }
   }
 
   // State variables
-  const { 
-    chapters, 
-    loading: chaptersLoading, 
+  const {
+    chapters,
+    loading: chaptersLoading,
     error: chaptersError,
-    createChapter, 
-    updateChapter, 
-    deleteChapter, 
+    createChapter,
+    updateChapter,
+    deleteChapter,
     toggleChapterCompletion,
-    reorderChapters 
+    reorderChapters
   } = useChapters(subject.id)
-  
-  const { 
-    materials: materialsFromHook, 
-    loading: materialsLoading, 
+
+  const {
+    materials: materialsFromHook,
+    loading: materialsLoading,
     error: materialsError,
-    createMaterial, 
-    updateMaterial, 
-    deleteMaterial, 
+    createMaterial,
+    updateMaterial,
+    deleteMaterial,
     toggleMaterialCompletion,
     reorderMaterials,
-    refreshMaterials 
+    refreshMaterials
   } = useMaterials(undefined, subject.id)
-  
+
   // Local materials state for immediate UI updates
   const [localMaterials, setLocalMaterials] = useState<Material[]>([])
-  
+
   // Sync local state with hook state
   useEffect(() => {
     setLocalMaterials(materialsFromHook)
   }, [materialsFromHook])
-  
+
   // Use local materials for rendering
   const materials = localMaterials
-
   const [newChapterName, setNewChapterName] = useState("")
   const [editingChapter, setEditingChapter] = useState<string | null>(null)
   const [editingChapterName, setEditingChapterName] = useState("")
   const [draggedChapter, setDraggedChapter] = useState<string | null>(null)
   const [dragOverChapterIndex, setDragOverChapterIndex] = useState<number | null>(null)
+
+  // Preview state
+  const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+
   const [newMaterialName, setNewMaterialName] = useState("")
   const [editingMaterial, setEditingMaterial] = useState<string | null>(null)
   const [editingMaterialName, setEditingMaterialName] = useState("")
-  const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null)
   const [draggedMaterial, setDraggedMaterial] = useState<string | null>(null)
   const [dragOverMaterialIndex, setDragOverMaterialIndex] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -230,7 +234,7 @@ export function SubjectDetailDialog({
           order: chapters.length,
           description: ''
         })
-      setNewChapterName("")
+        setNewChapterName("")
       } catch (error) {
         console.error('Failed to create chapter:', error)
       }
@@ -248,7 +252,7 @@ export function SubjectDetailDialog({
   const updateChapterName = async (chapterId: string, newName: string) => {
     try {
       await updateChapter(chapterId, { title: newName })
-    setEditingChapter(null)
+      setEditingChapter(null)
     } catch (error) {
       console.error('Failed to update chapter name:', error)
     }
@@ -301,12 +305,12 @@ export function SubjectDetailDialog({
           return { id: chapter.id, order: index }
         }
       })
-      
+
       await reorderChapters(newOrder)
     } catch (error) {
       console.error('Failed to reorder chapters:', error)
     }
-    
+
     setDraggedChapter(null)
     setDragOverChapterIndex(null)
   }
@@ -319,19 +323,20 @@ export function SubjectDetailDialog({
   const addMaterial = async () => {
     if (newMaterialName.trim()) {
       try {
-              const newMaterial = await createMaterial({
-        chapterId: chapters[0]?.id || '', // Default to first chapter or empty string
-        title: newMaterialName.trim(),
-        type: 'OTHER',
-        content: '',
-        order: materials.length
-      })
-      
-      if (newMaterial) {
-        // Immediately add to local state for instant UI feedback
-        setLocalMaterials(prev => [...prev, newMaterial])
-      setNewMaterialName("")
-      }
+        const newMaterial = await createMaterial({
+          subjectId: subject.id,
+          chapterId: chapters[0]?.id, // Link to first chapter if it exists, otherwise undefined
+          title: newMaterialName.trim(),
+          type: 'OTHER',
+          content: '',
+          order: materials.length
+        })
+
+        if (newMaterial) {
+          // Immediately add to local state for instant UI feedback
+          setLocalMaterials(prev => [...prev, newMaterial])
+          setNewMaterialName("")
+        }
       } catch (error) {
         console.error('Failed to create material:', error)
       }
@@ -343,11 +348,11 @@ export function SubjectDetailDialog({
       const updatedMaterial = await updateMaterial(materialId, { title: newName })
       if (updatedMaterial) {
         // Immediately update local state for instant UI feedback
-        setLocalMaterials(prev => prev.map(m => 
+        setLocalMaterials(prev => prev.map(m =>
           m.id === materialId ? updatedMaterial : m
         ))
       }
-    setEditingMaterial(null)
+      setEditingMaterial(null)
     } catch (error) {
       console.error('Failed to update material name:', error)
     }
@@ -383,7 +388,7 @@ export function SubjectDetailDialog({
   const handleMaterialDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
     console.log('Material drop:', { dropIndex, draggedMaterial })
-    
+
     if (!draggedMaterial) {
       console.log('No dragged material')
       return
@@ -391,7 +396,7 @@ export function SubjectDetailDialog({
 
     const draggedIndex = materials.findIndex((material) => material.id === draggedMaterial)
     console.log('Dragged index:', draggedIndex)
-    
+
     if (draggedIndex === -1 || draggedIndex === dropIndex) {
       console.log('Invalid drop: same index or material not found')
       setDraggedMaterial(null)
@@ -412,14 +417,14 @@ export function SubjectDetailDialog({
           return { id: material.id, order: index }
         }
       })
-      
+
       console.log('New order:', newOrder)
       await reorderMaterials(newOrder)
       console.log('Materials reordered successfully')
     } catch (error) {
       console.error('Failed to reorder materials:', error)
     }
-    
+
     setDraggedMaterial(null)
     setDragOverMaterialIndex(null)
   }
@@ -450,7 +455,7 @@ export function SubjectDetailDialog({
   const handleFileDrop = async (e: React.DragEvent, dropMaterialId: string, dropIndex: number) => {
     e.preventDefault()
     console.log('File drop:', { dropMaterialId, dropIndex, draggedFile })
-    
+
     if (!draggedFile || draggedFile.materialId !== dropMaterialId) {
       console.log('Invalid drop: draggedFile or materialId mismatch')
       return
@@ -465,7 +470,7 @@ export function SubjectDetailDialog({
     try {
       let files: any[] = []
       let existingLinks: any[] = []
-      
+
       // Try to parse as new structured format
       try {
         const parsed = JSON.parse(currentMaterial.content)
@@ -490,9 +495,9 @@ export function SubjectDetailDialog({
           return
         }
       }
-      
+
       const draggedFileIndex = files.findIndex((file: any) => file.id === draggedFile.fileId)
-      
+
       if (draggedFileIndex === -1 || draggedFileIndex === dropIndex) {
         setDraggedFile(null)
         setDragOverFileIndex(null)
@@ -524,10 +529,10 @@ export function SubjectDetailDialog({
       }
 
       console.log('Files reordered successfully')
-      
+
       // Immediately update local state for instant UI feedback
       if (updatedMaterial) {
-        setLocalMaterials(prev => prev.map(m => 
+        setLocalMaterials(prev => prev.map(m =>
           m.id === dropMaterialId ? updatedMaterial : m
         ))
       }
@@ -556,22 +561,22 @@ export function SubjectDetailDialog({
           // New structured format
           const files = parsed.files
           const fileIndex = files.findIndex((file: any) => file.id === fileId)
-          
+
           if (fileIndex !== -1) {
             files[fileIndex].name = newName
-            
+
             const updatedMaterial = await updateMaterial(materialId, {
               content: JSON.stringify({
                 files: files,
                 links: parsed.links || []
               })
             })
-            
+
             console.log('File name updated successfully')
-            
+
             // Immediately update local state for instant UI feedback
             if (updatedMaterial) {
-              setLocalMaterials(prev => prev.map(m => 
+              setLocalMaterials(prev => prev.map(m =>
                 m.id === materialId ? updatedMaterial : m
               ))
             }
@@ -580,22 +585,22 @@ export function SubjectDetailDialog({
           // Handle old format - convert to new structured format
           const files = JSON.parse(currentMaterial.content.substring(6))
           const fileIndex = files.findIndex((file: any) => file.id === fileId)
-          
+
           if (fileIndex !== -1) {
             files[fileIndex].name = newName
-            
+
             const updatedMaterial = await updateMaterial(materialId, {
               content: JSON.stringify({
                 files: files,
                 links: []
               })
             })
-            
+
             console.log('File name updated successfully')
-            
+
             // Immediately update local state for instant UI feedback
             if (updatedMaterial) {
-              setLocalMaterials(prev => prev.map(m => 
+              setLocalMaterials(prev => prev.map(m =>
                 m.id === materialId ? updatedMaterial : m
               ))
             }
@@ -613,33 +618,33 @@ export function SubjectDetailDialog({
     try {
       setUploadingFile(materialId)
       setUploadError(null)
-      
+
       const formData = new FormData()
       formData.append('file', file)
       formData.append('subjectId', subject.id)
       formData.append('category', 'MATERIAL')
       formData.append('description', `Uploaded for material: ${materials.find(m => m.id === materialId)?.title || 'Unknown'}`)
-      
+
       const response = await fetch('/api/files/upload', {
         method: 'POST',
         body: formData
       })
-      
+
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to upload file')
       }
-      
+
       const result = await response.json()
-      
+
       // Get current material to check existing files
       const currentMaterial = materials.find(m => m.id === materialId)
       let existingFiles = []
       let existingLinks = []
-      
+
       console.log('Current material:', currentMaterial)
       console.log('Current material content:', currentMaterial?.content)
-      
+
       // Parse existing content if available
       if (currentMaterial?.content) {
         try {
@@ -679,20 +684,20 @@ export function SubjectDetailDialog({
         existingLinks = []
         console.log('Converted old file format:', existingFiles)
       }
-      
+
       // Add new file to the list
       const newFile = {
         id: result.file.id,
-      name: file.name,
+        name: file.name,
         url: `/api/files/${result.file.id}`,
-      size: file.size,
-      type: file.type,
+        size: file.size,
+        type: file.type,
         uploadedAt: new Date().toISOString()
       }
-      
+
       existingFiles.push(newFile)
       console.log('Updated files list:', existingFiles)
-      
+
       // Update the material with the new structured content
       const updatedMaterial = await updateMaterial(materialId, {
         content: JSON.stringify({
@@ -700,12 +705,12 @@ export function SubjectDetailDialog({
           links: existingLinks
         })
       })
-      
+
       console.log('Material updated successfully:', updatedMaterial)
       console.log('File uploaded successfully:', result)
-      
+
       // Immediately update local state for instant UI feedback
-      setLocalMaterials(prev => prev.map(m => 
+      setLocalMaterials(prev => prev.map(m =>
         m.id === materialId ? updatedMaterial : m
       ))
     } catch (error) {
@@ -721,7 +726,7 @@ export function SubjectDetailDialog({
   const removeFileFromMaterial = async (materialId: string, fileId?: string) => {
     try {
       const currentMaterial = materials.find(m => m.id === materialId)
-      
+
       if (fileId && currentMaterial?.content) {
         try {
           // Try to parse as new structured format
@@ -730,7 +735,7 @@ export function SubjectDetailDialog({
             // New structured format
             const updatedFiles = parsed.files.filter((file: any) => file.id !== fileId)
             const existingLinks = parsed.links || []
-            
+
             let updatedMaterial
             if (updatedFiles.length === 0 && existingLinks.length === 0) {
               // No content left, clear the content
@@ -744,10 +749,10 @@ export function SubjectDetailDialog({
                 })
               })
             }
-            
+
             // Immediately update local state for instant UI feedback
             if (updatedMaterial) {
-              setLocalMaterials(prev => prev.map(m => 
+              setLocalMaterials(prev => prev.map(m =>
                 m.id === materialId ? updatedMaterial : m
               ))
             }
@@ -755,7 +760,7 @@ export function SubjectDetailDialog({
             // Handle old format - convert to new structured format
             const files = JSON.parse(currentMaterial.content.substring(6))
             const updatedFiles = files.filter((file: any) => file.id !== fileId)
-            
+
             let updatedMaterial
             if (updatedFiles.length === 0) {
               // No files left, clear the content
@@ -769,10 +774,10 @@ export function SubjectDetailDialog({
                 })
               })
             }
-            
+
             // Immediately update local state for instant UI feedback
             if (updatedMaterial) {
-              setLocalMaterials(prev => prev.map(m => 
+              setLocalMaterials(prev => prev.map(m =>
                 m.id === materialId ? updatedMaterial : m
               ))
             }
@@ -786,15 +791,15 @@ export function SubjectDetailDialog({
           fileUrl: '',
           fileSize: 0
         })
-        
+
         // Immediately update local state for instant UI feedback
         if (updatedMaterial) {
-          setLocalMaterials(prev => prev.map(m => 
+          setLocalMaterials(prev => prev.map(m =>
             m.id === materialId ? updatedMaterial : m
           ))
         }
       }
-      
+
       console.log('File removed successfully from material:', materialId)
     } catch (error) {
       console.error('Failed to remove file from material:', error)
@@ -830,7 +835,7 @@ export function SubjectDetailDialog({
         // Get current material to preserve existing files
         const currentMaterial = materials.find(m => m.id === materialId)
         let newContent = ''
-        
+
         if (currentMaterial?.content) {
           try {
             // Try to parse as new structured format
@@ -858,7 +863,7 @@ export function SubjectDetailDialog({
                 }
                 const cleanJson = filesPart.substring(0, jsonEnd)
                 const existingFiles = JSON.parse(cleanJson)
-                
+
                 newContent = JSON.stringify({
                   files: existingFiles,
                   links: [{
@@ -925,27 +930,27 @@ export function SubjectDetailDialog({
             }]
           })
         }
-        
+
         console.log('Adding link to material. New content:', newContent)
         console.log('Current material before update:', currentMaterial)
         console.log('Files to preserve:', currentMaterial?.content ? 'Will be extracted' : 'None')
-        
+
         // Update the material with the new content
         const updatedMaterial = await updateMaterial(materialId, {
           content: newContent
         })
-        
+
         console.log('Updated material after adding link:', updatedMaterial)
-        
-      setNewLinkUrl("")
-      setNewLinkDescription("")
-      setAddingLinkToMaterial(null)
-        
+
+        setNewLinkUrl("")
+        setNewLinkDescription("")
+        setAddingLinkToMaterial(null)
+
         console.log('Link added successfully to material:', materialId)
-        
+
         // Immediately update local state for instant UI feedback
         if (updatedMaterial) {
-          setLocalMaterials(prev => prev.map(m => 
+          setLocalMaterials(prev => prev.map(m =>
             m.id === materialId ? updatedMaterial : m
           ))
         }
@@ -960,7 +965,7 @@ export function SubjectDetailDialog({
       // Get current material to preserve existing files
       const currentMaterial = materials.find(m => m.id === materialId)
       let newContent = ''
-      
+
       if (currentMaterial?.content) {
         try {
           // Try to parse as new structured format
@@ -995,17 +1000,17 @@ export function SubjectDetailDialog({
           }
         }
       }
-      
+
       // Update the material with the new content
       const updatedMaterial = await updateMaterial(materialId, {
         content: newContent
       })
-      
+
       console.log('Link removed successfully from material:', materialId)
-      
+
       // Immediately update local state for instant UI feedback
       if (updatedMaterial) {
-        setLocalMaterials(prev => prev.map(m => 
+        setLocalMaterials(prev => prev.map(m =>
           m.id === materialId ? updatedMaterial : m
         ))
       }
@@ -1145,11 +1150,9 @@ export function SubjectDetailDialog({
                   {chapters.map((chapter, index) => (
                     <div
                       key={chapter.id}
-                      className={`border rounded-lg p-3 transition-all ${
-                        draggedChapter === chapter.id ? "opacity-50 scale-95" : ""
-                      } ${dragOverChapterIndex === index ? "ring-2 ring-primary ring-offset-2" : ""} ${
-                        chapter.isCompleted ? "bg-muted/30" : ""
-                      }`}
+                      className={`border rounded-lg p-3 transition-all ${draggedChapter === chapter.id ? "opacity-50 scale-95" : ""
+                        } ${dragOverChapterIndex === index ? "ring-2 ring-primary ring-offset-2" : ""} ${chapter.isCompleted ? "bg-muted/30" : ""
+                        }`}
                       draggable
                       onDragStart={(e) => handleChapterDragStart(e, chapter.id)}
                       onDragOver={(e) => handleChapterDragOver(e, index)}
@@ -1254,9 +1257,8 @@ export function SubjectDetailDialog({
                   {filteredMaterials.map((material, index) => (
                     <div
                       key={material.id}
-                      className={`border rounded-lg p-4 space-y-3 transition-all ${
-                        draggedMaterial === material.id ? "opacity-50 scale-95" : ""
-                      } ${dragOverMaterialIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                      className={`border rounded-lg p-4 space-y-3 transition-all ${draggedMaterial === material.id ? "opacity-50 scale-95" : ""
+                        } ${dragOverMaterialIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
                       draggable
                       onDragStart={(e) => handleMaterialDragStart(e, material.id)}
                       onDragOver={(e) => handleMaterialDragOver(e, index)}
@@ -1307,7 +1309,7 @@ export function SubjectDetailDialog({
                       {(() => {
                         // Get files using the utility function
                         const { files, links } = parseMaterialContent(material.content || '')
-                        
+
                         // Handle backward compatibility for old fileUrl format
                         if (files.length === 0 && material.fileUrl) {
                           const convertedFiles = [{
@@ -1320,16 +1322,16 @@ export function SubjectDetailDialog({
                           }]
                           console.log('Converted old fileUrl format to files:', convertedFiles.length)
                           return (
-                        <div className="space-y-2">
+                            <div className="space-y-2">
                               <p className="text-sm font-medium text-muted-foreground">
                                 Files: {convertedFiles.length} file(s)
                               </p>
                               {convertedFiles.map((file: any, index: number) => (
-                                <div 
-                                  key={file.id} 
+                                <div
+                                  key={file.id}
                                   className="bg-muted/50 rounded-md p-3 transition-all"
                                 >
-                              <div className="flex items-center justify-between">
+                                  <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
                                       {/* Show thumbnail if available */}
                                       <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
@@ -1341,32 +1343,39 @@ export function SubjectDetailDialog({
                                             className="w-full h-full object-cover"
                                           />
                                         ) : file.type === 'application/pdf' ? (
-                                          <PDFThumbnail
-                                            documentId={file.id}
-                                            fileUrl={file.url}
-                                            className="w-full h-full"
-                                          />
+                                          <FileText className="h-8 w-8 text-red-500" />
                                         ) : (
                                           getFileIcon(file.type)
                                         )}
                                       </div>
-                                  <div>
-                                    <p className="text-sm font-medium">{file.name}</p>
-                                    <p className="text-xs text-muted-foreground">
+                                      <div>
+                                        <p className="text-sm font-medium">{file.name}</p>
+                                        <p className="text-xs text-muted-foreground">
                                           {(file.size / 1024 / 1024).toFixed(2)} MB
                                         </p>
                                         <p className="text-xs text-muted-foreground">
                                           {new Date(file.uploadedAt).toLocaleDateString()}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                      <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
-                                    <Eye className="h-3 w-3" />
-                                  </Button>
-                                      <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
-                                    <Download className="h-3 w-3" />
-                                  </Button>
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setPreviewFile(file)
+                                          setIsPreviewOpen(true)
+                                        }}
+                                      >
+                                        <Eye className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}
+                                      >
+                                        <Download className="h-3 w-3" />
+                                      </Button>
                                     </div>
                                   </div>
                                 </div>
@@ -1374,20 +1383,19 @@ export function SubjectDetailDialog({
                             </div>
                           )
                         }
-                        
+
                         if (files.length === 0) return null
-                        
+
                         return (
                           <div className="space-y-2">
                             <p className="text-sm font-medium text-muted-foreground">
                               Files: {files.length} file(s)
                             </p>
                             {files.map((file: any, index: number) => (
-                              <div 
-                                key={file.id} 
-                                className={`bg-muted/50 rounded-md p-3 transition-all ${
-                                  draggedFile?.fileId === file.id ? "opacity-50 scale-95" : ""
-                                } ${dragOverFileIndex?.materialId === material.id && dragOverFileIndex?.index === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                              <div
+                                key={file.id}
+                                className={`bg-muted/50 rounded-md p-3 transition-all ${draggedFile?.fileId === file.id ? "opacity-50 scale-95" : ""
+                                  } ${dragOverFileIndex?.materialId === material.id && dragOverFileIndex?.index === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
                                 draggable
                                 onDragStart={(e) => handleFileDragStart(e, material.id, file.id)}
                                 onDragOver={(e) => handleFileDragOver(e, material.id, index)}
@@ -1401,7 +1409,7 @@ export function SubjectDetailDialog({
                                     <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
                                       <GripVertical className="h-3 w-3 text-muted-foreground transition-opacity" />
                                     </div>
-                                    
+
                                     {/* Show thumbnail if available */}
                                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
                                       {/* For images, show the actual image as thumbnail */}
@@ -1412,11 +1420,7 @@ export function SubjectDetailDialog({
                                           className="w-full h-full object-cover"
                                         />
                                       ) : file.type === 'application/pdf' ? (
-                                        <PDFThumbnail
-                                          documentId={file.id}
-                                          fileUrl={file.url}
-                                          className="w-full h-full"
-                                        />
+                                        <FileText className="h-8 w-8 text-red-500" />
                                       ) : (
                                         getFileIcon(file.type)
                                       )}
@@ -1442,7 +1446,7 @@ export function SubjectDetailDialog({
                                         />
                                       ) : (
                                         <div className="flex items-center space-x-2">
-                                          <p 
+                                          <p
                                             className="text-sm font-medium cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded"
                                             onClick={() => {
                                               setEditingFileName({ materialId: material.id, fileId: file.id })
@@ -1451,9 +1455,9 @@ export function SubjectDetailDialog({
                                           >
                                             {file.name}
                                           </p>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
                                             className="h-4 w-4 p-0 hover:bg-muted/50"
                                             onClick={() => {
                                               setEditingFileName({ materialId: material.id, fileId: file.id })
@@ -1473,50 +1477,61 @@ export function SubjectDetailDialog({
                                     </div>
                                   </div>
                                   <div className="flex items-center space-x-1">
-                                    <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setPreviewFile(file)
+                                        setIsPreviewOpen(true)
+                                      }}
+                                    >
                                       <Eye className="h-3 w-3" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => window.open(file.url, '_blank')}>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}
+                                    >
                                       <Download className="h-3 w-3" />
                                     </Button>
                                     <Button variant="ghost" size="sm" onClick={() => removeFileFromMaterial(material.id, file.id)}>
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
                         )
                       })()}
-                      
+
                       {/* Display links if available */}
                       {(() => {
                         // Get links using the utility function
                         const { files, links } = parseMaterialContent(material.content || '')
-                        
+
                         if (links.length === 0) return null
-                        
+
                         return (
                           <div className="space-y-2 mt-3">
                             <p className="text-sm font-medium text-muted-foreground">Links:</p>
                             {links.map((link: any, index: number) => (
                               <div key={index} className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                  <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                                  <div>
-                                    <p className="text-sm font-medium">{link.description}</p>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                                    <div>
+                                      <p className="text-sm font-medium">{link.description}</p>
                                       <p className="text-xs text-blue-600 dark:text-blue-400">
                                         <button
                                           onClick={() => openLink(link.url)}
                                           className="hover:underline cursor-pointer"
                                         >
-                                      {link.url}
+                                          {link.url}
                                         </button>
-                                    </p>
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1525,10 +1540,10 @@ export function SubjectDetailDialog({
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
                         )
                       })()}
 
@@ -1542,9 +1557,9 @@ export function SubjectDetailDialog({
                               Upload files or add content
                             </p>
                             <div className="flex space-x-2 justify-center">
-                            <Button
-                              variant="outline"
-                              size="sm"
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => document.getElementById(`file-upload-${material.id}`)?.click()}
                                 disabled={uploadingFile === material.id}
                               >
@@ -1565,8 +1580,8 @@ export function SubjectDetailDialog({
                               >
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add Link
-                            </Button>
-                          </div>
+                              </Button>
+                            </div>
                             {uploadError && uploadingFile === material.id && (
                               <p className="text-xs text-red-600 mt-2">{uploadError}</p>
                             )}
@@ -1574,7 +1589,7 @@ export function SubjectDetailDialog({
                               <div className="mt-2">
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
-                        </div>
+                                </div>
                                 <p className="text-xs text-gray-600 mt-1">Uploading file...</p>
                               </div>
                             )}
@@ -1588,15 +1603,15 @@ export function SubjectDetailDialog({
                               }}
                               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.mp4,.mp3"
                             />
-                            
+
                             {/* Link input dialog */}
                             {addingLinkToMaterial === material.id && (
                               <div className="mt-3 p-3 bg-muted/50 rounded-md">
-                            <div className="space-y-2">
-                              <Input
+                                <div className="space-y-2">
+                                  <Input
                                     placeholder="Link description (e.g., 'Course Notes')"
-                                value={newLinkDescription}
-                                onChange={(e) => setNewLinkDescription(e.target.value)}
+                                    value={newLinkDescription}
+                                    onChange={(e) => setNewLinkDescription(e.target.value)}
                                     className="h-8 text-sm"
                                   />
                                   <Input
@@ -1605,27 +1620,27 @@ export function SubjectDetailDialog({
                                     onChange={(e) => setNewLinkUrl(e.target.value)}
                                     className="h-8 text-sm"
                                   />
-                            <div className="flex space-x-2">
-                              <Button
-                                size="sm"
-                                onClick={() => addLinkToMaterial(material.id)}
-                                disabled={!newLinkUrl.trim() || !newLinkDescription.trim()}
-                              >
-                                Add Link
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setAddingLinkToMaterial(null)
-                                  setNewLinkUrl("")
-                                  setNewLinkDescription("")
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => addLinkToMaterial(material.id)}
+                                      disabled={!newLinkUrl.trim() || !newLinkDescription.trim()}
+                                    >
+                                      Add Link
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setAddingLinkToMaterial(null)
+                                        setNewLinkUrl("")
+                                        setNewLinkDescription("")
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
                             )}
                           </div>
