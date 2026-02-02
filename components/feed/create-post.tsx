@@ -196,8 +196,14 @@ export function CreatePost({ communityId, currentUser, onPostCreated, isAnnounce
                                 )}
                             </div>
                             <Button size="sm" onClick={handleSubmit} disabled={loading || (!content.trim() && attachments.length === 0) || uploadingFiles.length > 0}>
-                                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                Post
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Posting...
+                                    </>
+                                ) : (
+                                    "Post"
+                                )}
                             </Button>
                         </div>
 
