@@ -5,15 +5,19 @@ import PusherClient from "pusher-js"
 PusherClient.logToConsole = true;
 
 // Server-side Pusher instance
-export const pusherServer = process.env.PUSHER_APP_ID && process.env.PUSHER_KEY && process.env.PUSHER_SECRET && process.env.PUSHER_CLUSTER
-  ? new Pusher({
-    appId: process.env.PUSHER_APP_ID,
-    key: process.env.PUSHER_KEY,
-    secret: process.env.PUSHER_SECRET,
-    cluster: process.env.PUSHER_CLUSTER,
-    useTLS: true,
-  })
-  : null
+// Server-side Pusher instance
+const APP_ID = process.env.PUSHER_APP_ID || "1933924";
+const KEY = process.env.PUSHER_KEY || "03c8b458570215655ea3";
+const SECRET = process.env.PUSHER_SECRET || "447b4e7fb1e016284ebf";
+const CLUSTER = process.env.PUSHER_CLUSTER || "ap2";
+
+export const pusherServer = new Pusher({
+  appId: APP_ID === "your_pusher_app_id" ? "1933924" : APP_ID,
+  key: KEY === "your_pusher_key" ? "03c8b458570215655ea3" : KEY,
+  secret: SECRET === "your_pusher_secret" ? "447b4e7fb1e016284ebf" : SECRET,
+  cluster: CLUSTER === "your_pusher_cluster" ? "ap2" : CLUSTER,
+  useTLS: true,
+});
 
 // Client-side Pusher instance
 const PUSHER_KEY = process.env.NEXT_PUBLIC_PUSHER_KEY || "03c8b458570215655ea3";
