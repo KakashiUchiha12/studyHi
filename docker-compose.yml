@@ -57,8 +57,9 @@ services:
   # Redis for caching and sessions
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # Ports removed to prevent external access. Accessed via internal network "redis:6379"
+    # ports:
+    #   - "6379:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
