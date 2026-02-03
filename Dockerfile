@@ -63,7 +63,7 @@ RUN apt-get update && apt-get install -y \
     openssl
 
 # Install Prisma CLI globally for migrations
-RUN npm install -g prisma
+RUN npm install -g prisma@6.14.0
 
 WORKDIR /app
 
