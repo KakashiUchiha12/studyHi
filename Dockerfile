@@ -62,6 +62,9 @@ RUN apt-get update && apt-get install -y \
     librsvg2-2 \
     openssl
 
+# Install Prisma CLI globally for migrations
+RUN npm install -g prisma
+
 WORKDIR /app
 
 ENV NODE_ENV=production

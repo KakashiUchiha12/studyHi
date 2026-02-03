@@ -14,7 +14,7 @@ docker compose up -d --build
 
 # Run database migrations
 echo "Running database migrations..."
-docker compose exec -T app npx prisma migrate deploy
+docker compose exec -T app sh -c "export HOME=/tmp && npx prisma migrate deploy"
 
 # Prune unused images to save space
 docker image prune -f
