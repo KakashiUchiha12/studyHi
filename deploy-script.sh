@@ -7,14 +7,14 @@ echo "Starting deployment..."
 git pull origin main
 
 # Stop existing containers to ensure clean state (optional but safer for port changes)
-docker-compose down
+docker compose down
 
 # Rebuild and start containers
-docker-compose up -d --build
+docker compose up -d --build
 
 # Run database migrations
 echo "Running database migrations..."
-docker-compose exec -T app npx prisma migrate deploy
+docker compose exec -T app npx prisma migrate deploy
 
 # Prune unused images to save space
 docker image prune -f
