@@ -1,0 +1,39 @@
+# 🛡️ Video Security Shield (Robust Version)
+# Upload this to your 'videos' folder and rename to ".htaccess"
+
+# 1. Force CORS for all video files (Allows playing on other domains)
+<IfModule mod_headers.c>
+    <FilesMatch "\.(m3u8|ts|key)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>
+
+# 2. Set Correct MIME Types (Helps browser understand the files)
+AddType application/vnd.apple.mpegurl .m3u8
+AddType video/mp2t .ts
+AddType application/octet-stream .key
+
+# 3. Protect the Secret Key (The Anti-Piracy part)
+<Files "stream.key">
+    # Security Rules (Allow specific sites)
+    <IfModule mod_setenvif.c>
+        SetEnvIf Referer "^https://(.*\.?)freemdcat\.com" allowed_site
+        SetEnvIf Referer "^https://(.*\.?)predoctr\.pk" allowed_site
+        SetEnvIf Referer "^http://localhost" allowed_site
+    </IfModule>
+
+    <IfModule mod_authz_core.c>
+        Require all denied
+        Require env allowed_site
+        Require ip 127.0.0.1
+    </IfModule>
+
+    <IfModule !mod_authz_core.c>
+        Order Deny,Allow
+        Deny from all
+        Allow from env=allowed_site
+    </IfModule>
+</Files>
+
+# Prevent directory listing
+Options -Indexes
