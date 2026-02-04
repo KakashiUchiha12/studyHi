@@ -13,7 +13,8 @@ WORKDIR /app
 
 # Install dependencies only when needed
 COPY package*.json ./
-RUN npm ci
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 20000 && npm config set fetch-retry-maxtimeout 120000
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM node:20-slim AS builder
@@ -31,7 +32,8 @@ WORKDIR /app
 COPY . .
 
 # Install all dependencies for building
-RUN npm ci
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 20000 && npm config set fetch-retry-maxtimeout 120000
+RUN npm install
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -63,6 +65,7 @@ RUN apt-get update && apt-get install -y \
     openssl
 
 # Install Prisma CLI globally for migrations
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 20000 && npm config set fetch-retry-maxtimeout 120000
 RUN npm install -g prisma@6.14.0
 
 WORKDIR /app
