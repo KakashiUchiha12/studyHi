@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Bell, MessageSquare, Users, UserCircle, Globe, Settings2, Home, User, LayoutDashboard } from "lucide-react";
+import { Bell, MessageSquare, Users, UserCircle, Globe, Settings2, Home, User, LayoutDashboard, HardDrive } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -45,6 +45,12 @@ export function SocialSidebar() {
             href: "/messages",
             icon: MessageSquare,
             count: unread.messages
+        },
+        {
+            title: "Study Drive",
+            href: "/drive",
+            icon: HardDrive,
+            count: 0
         },
         {
             title: "My Profile",
