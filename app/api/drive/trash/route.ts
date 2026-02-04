@@ -211,49 +211,59 @@ export async function DELETE(request: NextRequest) {
 
       return NextResponse.json({ success: true });
     } else {
-      // Delete folder and all contents
+      // Delete folder and all contents recursively
       const folder = await prisma.driveFolder.findFirst({
         where: { id: itemId, driveId: drive.id },
-        include: {
-          files: true,
-          children: { include: { files: true } },
-        },
       });
 
       if (!folder) {
         return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
       }
 
-      // Calculate total size
-      let totalSize = BigInt(0);
-      const filesToDelete: string[] = [];
+      // Helper function to recursively collect all files in folder tree
+      async function collectAllFiles(folderId: string): Promise<{
+        files: any[];
+        totalSize: bigint;
+      }> {
+        // Get files in this folder
+        const files = await prisma.driveFile.findMany({
+          where: { folderId },
+        });
 
-      // Collect files from this folder
-      for (const file of folder.files) {
-        totalSize += file.fileSize;
-        filesToDelete.push(file.filePath);
-        if (file.thumbnailPath) filesToDelete.push(file.thumbnailPath);
-      }
+        let allFiles = [...files];
+        let totalSize = files.reduce((sum, f) => sum + f.fileSize, BigInt(0));
 
-      // Collect files from subfolders
-      for (const child of folder.children) {
-        for (const file of child.files) {
-          totalSize += file.fileSize;
-          filesToDelete.push(file.filePath);
-          if (file.thumbnailPath) filesToDelete.push(file.thumbnailPath);
+        // Get subfolders
+        const subfolders = await prisma.driveFolder.findMany({
+          where: { parentId: folderId },
+        });
+
+        // Recursively collect from each subfolder
+        for (const subfolder of subfolders) {
+          const subResult = await collectAllFiles(subfolder.id);
+          allFiles = [...allFiles, ...subResult.files];
+          totalSize += subResult.totalSize;
         }
+
+        return { files: allFiles, totalSize };
       }
+
+      // Collect all files recursively
+      const { files: allFiles, totalSize } = await collectAllFiles(itemId);
 
       // Delete physical files
-      for (const filePath of filesToDelete) {
+      for (const file of allFiles) {
         try {
-          await fs.unlink(filePath);
+          await fs.unlink(file.filePath);
+          if (file.thumbnailPath) {
+            await fs.unlink(file.thumbnailPath).catch(() => {});
+          }
         } catch (err) {
-          console.error('Error deleting file:', filePath, err);
+          console.error('Error deleting file:', file.filePath, err);
         }
       }
 
-      // Delete from database
+      // Delete from database (cascade will handle children and files)
       await prisma.driveFolder.delete({ where: { id: itemId } });
 
       // Update storage

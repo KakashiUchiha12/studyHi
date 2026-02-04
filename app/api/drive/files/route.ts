@@ -82,7 +82,13 @@ export async function GET(request: NextRequest) {
     // Parse tags from JSON strings
     const filesWithParsedTags = files.map(file => ({
       ...file,
-      tags: JSON.parse(file.tags),
+      tags: (() => {
+        try {
+          return JSON.parse(file.tags);
+        } catch {
+          return [];
+        }
+      })(),
       fileSize: file.fileSize.toString(),
     }));
 
@@ -242,8 +248,24 @@ export async function POST(request: NextRequest) {
     // Write file to disk
     await writeFile(filePath, buffer);
 
-    // Parse tags
-    const parsedTags = tags ? JSON.parse(tags) : [];
+    // Parse tags safely
+    let parsedTags: string[] = [];
+    if (tags) {
+      try {
+        parsedTags = JSON.parse(tags);
+        if (!Array.isArray(parsedTags)) {
+          return NextResponse.json(
+            { error: 'Tags must be a JSON array' },
+            { status: 400 }
+          );
+        }
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'Invalid JSON format for tags' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Create file record in database
     const newFile = await prisma.driveFile.create({
