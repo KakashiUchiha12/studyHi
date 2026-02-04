@@ -1,0 +1,56 @@
+const handleImportTasks = async (parsedTasks: ParsedTask[]) => {
+  try {
+    // Create tasks one by one via API
+    const createdTasks = []
+    let successCount = 0
+    let failCount = 0
+
+    for (const parsedTask of parsedTasks) {
+      try {
+        const taskData = {
+          title: parsedTask.title,
+          description: parsedTask.description || '',
+          dueDate: parsedTask.dueDate ? parsedTask.dueDate.toISOString() : null,
+          priority: parsedTask.priority || 'medium',
+          status: parsedTask.status || 'pending',
+          category: 'general',
+          subjectId: null,
+        }
+
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(taskData),
+        })
+
+        if (response.ok) {
+          const createdTask = await response.json()
+          createdTasks.push(createdTask)
+          successCount++
+        } else {
+          console.error('Failed to create task:', parsedTask.title)
+          failCount++
+        }
+      } catch (error) {
+        console.error('Error creating task:', parsedTask.title, error)
+        failCount++
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Successfully imported ${successCount} task${successCount > 1 ? 's' : ''}!`)
+      // Refresh tasks by calling onTasksChange with all current tasks plus new ones
+      onTasksChange([...tasks, ...createdTasks])
+    }
+    
+    if (failCount > 0) {
+      toast.error(`Failed to import ${failCount} task${failCount > 1 ? 's' : ''}`)
+    }
+  } catch (error) {
+    console.error("Import failed:", error)
+    toast.error("Failed to import tasks. Please try again.")
+    throw error
+  }
+}

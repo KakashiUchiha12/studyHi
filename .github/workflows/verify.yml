@@ -1,0 +1,41 @@
+name: Deployment Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Create Dummy Env File
+      run: |
+        cp env.production.template .env.production
+        # We don't need real values for file/build verification, 
+        # but the verify script checks for the PRESENCE of keys.
+        # The template has the keys, so this passes.
+
+    - name: Verify Deployment Prerequisites
+      run: npm run verify
+
+    - name: Build Test (Dry Run)
+      run: npm run build
+      env:
+        # Provide dummy values to satisfy Next.js build time validation if strictly needed
+        DATABASE_URL: "mysql://mock:mock@localhost:3306/mock"
+        NEXTAUTH_SECRET: "mock_secret_for_build_verification_32_chars"
+        NEXTAUTH_URL: "http://localhost:3000"

@@ -1,0 +1,110 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { FeedView } from "@/components/feed/feed-view";
+import { useSession } from "next-auth/react";
+import { useParams } from "next/navigation";
+import { EventCard } from "@/components/community/event-card";
+import { CreateEventDialog } from "@/components/community/create-event-dialog";
+import { Loader2 } from "lucide-react";
+
+export default function CommunityHome() {
+    const params = useParams();
+    const { data: session } = useSession();
+    const communityId = params.id as string;
+
+    // Events State
+    const [events, setEvents] = useState<any[]>([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
+
+    const fetchEvents = async () => {
+        setLoadingEvents(true);
+        try {
+            const res = await fetch(`/api/communities/${communityId}/events`);
+            if (res.ok) setEvents(await res.json());
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingEvents(false);
+        }
+    };
+
+    useEffect(() => {
+        // Initial fetch for events only when tab might be visited? 
+        // For now, let's fetch on mount or we can lazy load.
+        // Let's fetch on mount for simplicity.
+        fetchEvents();
+    }, [communityId]);
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Community Hub</h2>
+            </div>
+
+            <Tabs defaultValue="posts">
+                <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
+                    <TabsTrigger value="posts">Posts</TabsTrigger>
+                    <TabsTrigger value="announcements">Announcements</TabsTrigger>
+                    <TabsTrigger value="events">Events</TabsTrigger>
+                    <TabsTrigger value="members">Members</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="posts" className="space-y-4 mt-6">
+                    <FeedView communityId={communityId} currentUser={session?.user} />
+                </TabsContent>
+
+                <TabsContent value="announcements" className="mt-6">
+                    <div className="mb-4 text-sm text-muted-foreground">
+                        Official updates from community admins.
+                    </div>
+                    {/* Reuse FeedView but filter for announcements. 
+                        We need to update FeedView to accept filters or just pass a special prop.
+                        Update FeedView to accept 'isAnnouncement' prop.
+                    */}
+                    <FeedView
+                        communityId={communityId}
+                        currentUser={session?.user}
+                        isAnnouncement={true}
+                    />
+                </TabsContent>
+
+                <TabsContent value="events" className="mt-6 space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold">Upcoming Events</h3>
+                        <CreateEventDialog
+                            communityId={communityId}
+                            onEventCreated={fetchEvents}
+                        />
+                    </div>
+
+                    {loadingEvents ? (
+                        <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                    ) : events.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground bg-white rounded-xl border border-dashed">
+                            No upcoming events.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {events.map(event => (
+                                <EventCard
+                                    key={event.id}
+                                    event={event}
+                                    communityId={communityId}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="members">
+                    <div className="text-center py-20 text-muted-foreground bg-white rounded-xl border border-dashed">
+                        <p>Member list coming soon.</p>
+                    </div>
+                </TabsContent>
+            </Tabs>
+        </div>
+    );
+}
