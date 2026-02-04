@@ -12,11 +12,11 @@ import { trackBandwidth } from '@/lib/drive/bandwidth';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const fileId = params.id;
+    const { id: fileId } = await params;
 
     // Get file from database
     const file = await prisma.driveFile.findUnique({
@@ -112,7 +112,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -120,7 +120,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const fileId = params.id;
+    const { id: fileId } = await params;
     const body = await request.json();
     const { originalName, description, tags, isPublic } = body;
 
@@ -205,7 +205,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -213,7 +213,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const fileId = params.id;
+    const { id: fileId } = await params;
     const { searchParams } = new URL(request.url);
     const permanent = searchParams.get('permanent') === 'true';
 
