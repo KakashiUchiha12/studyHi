@@ -10,7 +10,8 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's drive
     const drive = await prisma.drive.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
     });
 
     if (!drive) {
@@ -35,17 +36,48 @@ export async function GET(request: NextRequest) {
       deletedAt: null,
     };
 
-    if (parentId) {
+    if (parentId && parentId !== '') {
       where.parentId = parentId;
-    } else if (parentId === null) {
+    } else {
       // Root folders only
       where.parentId = null;
+    }
+
+    // Get user's subjects that don't have a drive folder yet
+    if (!parentId || parentId === '') {
+      const subjects = await prisma.subject.findMany({
+        where: {
+          userId: user.id,
+          driveFolders: {
+            none: { driveId: drive.id, deletedAt: null }
+          }
+        }
+      });
+
+      // Create drive folders for these subjects automatically
+      if (subjects.length > 0) {
+        await Promise.all(subjects.map(subject =>
+          prisma.driveFolder.create({
+            data: {
+              driveId: drive.id,
+              name: `Subjects - ${subject.name}`,
+              path: `Subjects - ${subject.name}`,
+              subjectId: subject.id,
+              isPublic: false
+            }
+          })
+        ));
+      }
     }
 
     // Get folders with pagination
     const [folders, total] = await Promise.all([
       prisma.driveFolder.findMany({
-        where,
+        where: {
+          ...where,
+          // If at root, we also want to explicitly include subject folders 
+          // even if they were just created above
+        },
         include: {
           parent: {
             select: {
@@ -54,33 +86,17 @@ export async function GET(request: NextRequest) {
               path: true,
             },
           },
-          children: {
-            where: { deletedAt: null },
+          _count: {
             select: {
-              id: true,
-              name: true,
-              path: true,
-              isPublic: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          },
-          files: {
-            where: { deletedAt: null },
-            select: {
-              id: true,
-              originalName: true,
-              fileSize: true,
-              mimeType: true,
-              fileType: true,
-              isPublic: true,
-              createdAt: true,
+              files: { where: { deletedAt: null } },
+              children: { where: { deletedAt: null } },
             },
           },
           subject: {
             select: {
               id: true,
               name: true,
+              color: true
             },
           },
         },
@@ -91,17 +107,16 @@ export async function GET(request: NextRequest) {
       prisma.driveFolder.count({ where }),
     ]);
 
-    // Convert BigInt to string for files
-    const foldersWithConvertedSizes = folders.map(folder => ({
+    // Add folderType and format response
+    const formattedFolders = folders.map(folder => ({
       ...folder,
-      files: folder.files.map(file => ({
-        ...file,
-        fileSize: file.fileSize.toString(),
-      })),
+      folderType: folder.subjectId ? 'subject' : 'regular',
+      // Ensure compatible structure for UI
+      files: [] // No need to return nested files here as they are fetched separately
     }));
 
     return NextResponse.json({
-      folders: foldersWithConvertedSizes,
+      folders: formattedFolders,
       pagination: {
         page,
         limit,
@@ -125,7 +140,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -141,14 +157,14 @@ export async function POST(request: NextRequest) {
 
     // Get user's drive
     const drive = await prisma.drive.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
     });
 
     if (!drive) {
       // Create drive if it doesn't exist
       const newDrive = await prisma.drive.create({
         data: {
-          userId: session.user.id,
+          userId: user.id,
         },
       });
 
@@ -161,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     const currentDrive = drive || await prisma.drive.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
     });
 
     if (!currentDrive) {
@@ -210,7 +226,7 @@ export async function POST(request: NextRequest) {
       const subject = await prisma.subject.findFirst({
         where: {
           id: subjectId,
-          userId: session.user.id,
+          userId: user.id,
         },
       });
 
@@ -222,15 +238,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Build folder path
-    const folderPath = parentPath ? `${parentPath}/${name}` : name;
+    // Build folder path with "Subjects" prefix for subject folders
+    const folderName = subjectId ? `Subjects - ${name}` : name;
+    const folderPath = parentPath ? `${parentPath}/${folderName}` : folderName;
 
     // Create folder
     const newFolder = await prisma.driveFolder.create({
       data: {
         driveId: currentDrive.id,
         parentId: parentId || null,
-        name,
+        name: folderName,
         path: folderPath,
         isPublic: isPublic || false,
         subjectId: subjectId || null,
@@ -256,7 +273,7 @@ export async function POST(request: NextRequest) {
     await prisma.driveActivity.create({
       data: {
         driveId: currentDrive.id,
-        userId: session.user.id,
+        userId: user.id,
         action: 'upload',
         targetType: 'folder',
         targetId: newFolder.id,

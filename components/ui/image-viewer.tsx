@@ -1,8 +1,9 @@
 "use client";
 
-import { X, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface ImageViewerProps {
     images: { url: string }[];
@@ -12,6 +13,8 @@ interface ImageViewerProps {
 }
 
 export function ImageViewer({ images, initialIndex = 0, isOpen, onClose }: ImageViewerProps) {
+    const { toast } = useToast();
+    const [isSaving, setIsSaving] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
     useEffect(() => {
@@ -34,27 +37,44 @@ export function ImageViewer({ images, initialIndex = 0, isOpen, onClose }: Image
     const currentImage = images[currentIndex];
 
     const nextImage = () => {
-        setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+        setCurrentIndex((prev) => (prev + 1) % images.length);
     };
 
     const prevImage = () => {
-        setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
     };
 
     const handleDownload = async () => {
         try {
-            const response = await fetch(currentImage.url);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `image-${currentIndex + 1}.jpg`; // Simple naming
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            setIsSaving(true);
+            const response = await fetch('/api/drive/save-from-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: currentImage.url,
+                    name: `image-${currentIndex + 1}.jpg`
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save to Drive');
+            }
+
+            const data = await response.json();
+
+            toast({
+                title: 'Saved to Drive',
+                description: 'File has been saved to your personal Drive.',
+            });
         } catch (e) {
-            console.error("Download failed", e);
+            console.error("Save to Drive failed", e);
+            toast({
+                title: 'Error',
+                description: 'Failed to save file to Drive.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -76,8 +96,13 @@ export function ImageViewer({ images, initialIndex = 0, isOpen, onClose }: Image
                 size="icon"
                 className="absolute top-4 right-16 text-white hover:bg-white/10 z-50 rounded-full w-10 h-10"
                 onClick={handleDownload}
+                disabled={isSaving}
             >
-                <Download className="w-6 h-6" />
+                {isSaving ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                    <Download className="w-6 h-6" />
+                )}
             </Button>
 
             {/* Navigation Arrows */}

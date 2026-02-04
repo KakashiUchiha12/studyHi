@@ -9,38 +9,67 @@ export async function GET(
 ) {
     try {
         const session = await getServerSession(authOptions);
-        const userId = (session?.user as any)?.id;
+        const userId = params.id;
 
-        const profile = await prisma.user.findUnique({
-            where: { id: params.id },
-            include: {
-                socialProfile: true,
+        if (!userId) {
+            return new NextResponse("User ID required", { status: 400 });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                image: true,
+                createdAt: true,
+                socialProfile: {
+                    select: {
+                        bio: true,
+                        website: true,
+                        location: true,
+                        banner: true,
+                    },
+                },
                 _count: {
-                    select: { followers: true, following: true, posts: true }
-                }
-            }
+                    select: {
+                        posts: true,
+                        followers: true,
+                        following: true,
+                    },
+                },
+            },
         });
 
-        if (!profile) {
+        if (!user) {
             return new NextResponse("User not found", { status: 404 });
         }
 
         let isFollowing = false;
-        if (userId) {
-            const follow = await prisma.follows.findUnique({
-                where: {
-                    followerId_followingId: {
-                        followerId: userId,
-                        followingId: params.id
-                    }
-                }
+        if (session?.user?.email) {
+            const currentUser = await prisma.user.findUnique({
+                where: { email: session.user.email },
+                select: { id: true }
             });
-            isFollowing = !!follow;
+
+            if (currentUser) {
+                const follow = await prisma.follows.findUnique({
+                    where: {
+                        followerId_followingId: {
+                            followerId: currentUser.id,
+                            followingId: user.id
+                        }
+                    }
+                });
+                isFollowing = !!follow;
+            }
         }
 
-        return NextResponse.json({ ...profile, isFollowing });
+        return NextResponse.json({
+            ...user,
+            isFollowing
+        });
     } catch (error) {
-        console.error("[USER_PROFILE_GET]", error);
+        console.error("[USER_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
 }

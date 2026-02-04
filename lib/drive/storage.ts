@@ -14,11 +14,11 @@ export const STORAGE_LIMITS = {
  */
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
@@ -27,20 +27,20 @@ export function formatBytes(bytes: number): string {
  */
 export function calculateStoragePercentage(used: bigint, limit: bigint): number {
   if (limit === BigInt(0)) return 0;
-  return Number((used * BigInt(100)) / limit);
+  return (Number(used) / Number(limit)) * 100;
 }
 
 /**
  * Check if storage limit is exceeded
  */
-export function isStorageLimitExceeded(used: bigint, limit: bigint, additionalSize: number): boolean {
+export function isStorageLimitExceeded(used: bigint, limit: bigint, additionalSize: number = 0): boolean {
   return used + BigInt(additionalSize) > limit;
 }
 
 /**
  * Check if bandwidth limit is exceeded
  */
-export function isBandwidthLimitExceeded(used: bigint, limit: bigint, additionalSize: number): boolean {
+export function isBandwidthLimitExceeded(used: bigint, limit: bigint, additionalSize: number = 0): boolean {
   return used + BigInt(additionalSize) > limit;
 }
 
@@ -54,15 +54,15 @@ export function getTimeUntilBandwidthReset(bandwidthReset: Date): {
 } {
   const now = new Date();
   const diff = bandwidthReset.getTime() - now.getTime();
-  
+
   if (diff <= 0) {
     return { hours: 0, minutes: 0, seconds: 0 };
   }
-  
+
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-  
+
   return { hours, minutes, seconds };
 }
 

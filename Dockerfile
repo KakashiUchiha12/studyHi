@@ -7,7 +7,9 @@ RUN apt-get update && apt-get install -y \
     libpango1.0-dev \
     libjpeg-dev \
     libgif-dev \
-    librsvg2-dev
+    librsvg2-dev \
+    ghostscript \
+    graphicsmagick
 
 WORKDIR /app
 
@@ -62,7 +64,9 @@ RUN apt-get update && apt-get install -y \
     libjpeg62-turbo \
     libgif7 \
     librsvg2-2 \
-    openssl
+    openssl \
+    ghostscript \
+    graphicsmagick
 
 # Install Prisma CLI globally for migrations
 RUN npm config set fetch-retries 5 && npm config set fetch-retry-mintimeout 20000 && npm config set fetch-retry-maxtimeout 120000

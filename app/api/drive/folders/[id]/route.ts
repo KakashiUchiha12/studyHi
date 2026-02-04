@@ -6,6 +6,72 @@ import { unlink } from 'fs/promises';
 import path from 'path';
 
 /**
+ * GET /api/drive/folders/[id]
+ * Get folder details and breadcrumbs
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    const user = session?.user as any;
+    if (!user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: folderId } = await params;
+
+    // Get folder and verify ownership
+    const folder = await prisma.driveFolder.findUnique({
+      where: { id: folderId },
+      include: {
+        drive: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!folder || folder.deletedAt) {
+      return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
+    }
+
+    if (folder.drive.userId !== user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Build breadcrumbs
+    const breadcrumbs = [];
+    let current = await prisma.driveFolder.findUnique({
+      where: { id: folderId },
+      include: { parent: true },
+    });
+
+    while (current) {
+      breadcrumbs.unshift({ id: current.id, name: current.name });
+      if (current.parentId) {
+        current = await prisma.driveFolder.findUnique({
+          where: { id: current.parentId },
+          include: { parent: true },
+        });
+      } else {
+        current = null;
+      }
+    }
+
+    return NextResponse.json({ folder, breadcrumbs });
+  } catch (error) {
+    console.error('Error getting folder:', error);
+    return NextResponse.json(
+      { error: 'Failed to get folder' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * PUT /api/drive/folders/[id]
  * Update folder metadata
  */
@@ -15,7 +81,8 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -47,7 +114,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
     }
 
-    if (folder.drive.userId !== session.user.id) {
+    if (folder.drive.userId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -118,7 +185,7 @@ export async function PUT(
     await prisma.driveActivity.create({
       data: {
         driveId: folder.driveId,
-        userId: session.user.id,
+        userId: user.id,
         action: 'rename',
         targetType: 'folder',
         targetId: folderId,
@@ -152,7 +219,8 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -177,7 +245,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
     }
 
-    if (folder.drive.userId !== session.user.id) {
+    if (folder.drive.userId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -217,7 +285,7 @@ export async function DELETE(
       await prisma.driveActivity.create({
         data: {
           driveId: folder.driveId,
-          userId: session.user.id,
+          userId: user.id,
           action: 'delete',
           targetType: 'folder',
           targetId: folderId,
@@ -267,7 +335,7 @@ export async function DELETE(
       await prisma.driveActivity.create({
         data: {
           driveId: folder.driveId,
-          userId: session.user.id,
+          userId: user.id,
           action: 'delete',
           targetType: 'folder',
           targetId: folderId,

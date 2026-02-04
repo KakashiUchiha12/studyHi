@@ -9,31 +9,40 @@ export async function POST(
 ) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session) {
+        if (!session?.user?.email) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { id } = params; // Target user ID
+        const currentUser = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            select: { id: true }
+        });
 
-        // Should configure user to not follow themselves
-        if (id === (session.user as any).id) {
+        if (!currentUser) {
+            return new NextResponse("User not found", { status: 404 });
+        }
+
+        if (currentUser.id === params.id) {
             return new NextResponse("Cannot follow yourself", { status: 400 });
         }
 
-        await prisma.follows.create({
-            data: {
-                followerId: (session.user as any).id,
-                followingId: id
+        await prisma.follows.upsert({
+            where: {
+                followerId_followingId: {
+                    followerId: currentUser.id,
+                    followingId: params.id
+                }
+            },
+            update: {},
+            create: {
+                followerId: currentUser.id,
+                followingId: params.id
             }
         });
 
-        return NextResponse.json({ success: true, following: true });
+        return NextResponse.json({ success: true });
     } catch (error) {
         console.error("[FOLLOW_POST]", error);
-        // Handle unique constraint violation (already following)
-        if ((error as any).code === 'P2002') {
-            return NextResponse.json({ success: true, following: true });
-        }
         return new NextResponse("Internal Error", { status: 500 });
     }
 }
@@ -44,20 +53,29 @@ export async function DELETE(
 ) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session) {
+        if (!session?.user?.email) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const { id } = params; // Target user ID
+        const currentUser = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            select: { id: true }
+        });
 
-        await prisma.follows.deleteMany({
+        if (!currentUser) {
+            return new NextResponse("User not found", { status: 404 });
+        }
+
+        await prisma.follows.delete({
             where: {
-                followerId: (session.user as any).id,
-                followingId: id
+                followerId_followingId: {
+                    followerId: currentUser.id,
+                    followingId: params.id
+                }
             }
         });
 
-        return NextResponse.json({ success: true, following: false });
+        return NextResponse.json({ success: true });
     } catch (error) {
         console.error("[FOLLOW_DELETE]", error);
         return new NextResponse("Internal Error", { status: 500 });

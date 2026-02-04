@@ -11,6 +11,8 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CommentItem } from "./comment-item";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 interface PostCardProps {
     post: any;
@@ -27,6 +29,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
     const [commentCount, setCommentCount] = useState(post._count.comments);
+    const { toast } = useToast();
+    const [isSavingInProgress, setIsSavingInProgress] = useState<string | null>(null);
 
     // Sync state with props when they change (real-time updates from FeedView)
     useEffect(() => {
@@ -86,6 +90,39 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                 setCommentText("");
             }
         } catch (e) { }
+    };
+
+    const handleSaveToDrive = async (att: any) => {
+        try {
+            setIsSavingInProgress(att.id);
+            const response = await fetch('/api/drive/save-from-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url: att.url,
+                    name: att.name || "downloaded-file"
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to save to Drive');
+            }
+
+            toast({
+                title: 'Saved to Drive',
+                description: `"${att.name || 'File'}" has been saved to your personal Drive.`,
+            });
+        } catch (e: any) {
+            console.error("Save to Drive failed", e);
+            toast({
+                title: 'Error',
+                description: e.message || 'Failed to save file to Drive.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsSavingInProgress(null);
+        }
     };
 
     const mediaAttachments = post.attachments?.filter((att: any) => att.type === "image") || [];
@@ -181,24 +218,60 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                 {/* File Attachments */}
                 {fileAttachments.length > 0 && (
                     <div className="space-y-2">
-                        {fileAttachments.map((att: any) => (
-                            <a
-                                key={att.id}
-                                href={att.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors border"
-                            >
-                                <div className="bg-background p-2 rounded-md shadow-sm">
-                                    <FileText className="w-5 h-5 text-blue-500" />
-                                </div>
-                                <div className="flex-1 overflow-hidden">
-                                    <p className="text-sm font-medium truncate">{att.name || "Attached File"}</p>
-                                    <p className="text-xs text-muted-foreground">{att.size ? `${Math.round(att.size / 1024)} KB` : "Document"}</p>
-                                </div>
-                                <Download className="w-4 h-4 text-muted-foreground" />
-                            </a>
-                        ))}
+                        {fileAttachments.map((att: any) => {
+                            const isPDF = att.mimeType === 'application/pdf' || att.name?.toLowerCase().endsWith('.pdf');
+                            // In the post API, attachments might not have a direct fileId if they were external URLs,
+                            // but if they were uploaded through the platform, we can try to guess or use a specific proxy.
+                            // For now, let's assume if it has a 'url' that looks like our internal storage, we can use it.
+
+                            return (
+                                <button
+                                    key={att.id}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        handleSaveToDrive(att);
+                                    }}
+                                    disabled={!!isSavingInProgress}
+                                    className="w-full flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors border text-left group disabled:opacity-50"
+                                >
+                                    <div className="relative bg-background rounded-md shadow-sm group-hover:bg-accent transition-colors overflow-hidden h-20 w-20 flex items-center justify-center shrink-0">
+                                        {isPDF ? (
+                                            <img
+                                                src={att.url.includes('/api/drive/files')
+                                                    ? `${att.url}${att.url.includes('?') ? '&' : '?'}thumbnail=true`
+                                                    : `/api/media/thumbnail?url=${encodeURIComponent(att.url)}`
+                                                }
+                                                alt={att.name}
+                                                className="h-full w-full object-cover"
+                                                onError={(e) => {
+                                                    // Fallback to icon if thumbnail fails
+                                                    (e.target as any).style.display = 'none';
+                                                    if ((e.target as any).nextSibling) {
+                                                        (e.target as any).nextSibling.classList.remove('hidden');
+                                                        (e.target as any).nextSibling.classList.add('flex');
+                                                    }
+                                                }}
+                                            />
+                                        ) : null}
+                                        <div className={cn("flex items-center justify-center w-full h-full", isPDF ? "hidden" : "flex")}>
+                                            <FileText className="w-8 h-8 text-blue-500" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 overflow-hidden">
+                                        <p className="text-sm font-medium truncate">{att.name || "Attached File"}</p>
+                                        <p className="text-xs text-muted-foreground">{att.size ? `${Math.round(att.size / 1024)} KB` : "Document"}</p>
+                                    </div>
+                                    {isSavingInProgress === att.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                    ) : (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <span>Save to Drive</span>
+                                            <Download className="w-4 h-4" />
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </CardContent>

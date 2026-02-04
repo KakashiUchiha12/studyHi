@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { readFile, unlink } from 'fs/promises';
+import { readFile, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 import { trackBandwidth } from '@/lib/drive/bandwidth';
 
@@ -16,6 +16,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
+    const user = session?.user as any;
     const { id: fileId } = await params;
 
     // Get file from database
@@ -36,7 +37,7 @@ export async function GET(
     }
 
     // Check permissions
-    const isOwner = session?.user?.id === file.drive.userId;
+    const isOwner = user?.id === file.drive.userId;
     const canAccess = isOwner || file.isPublic || !file.drive.isPrivate;
 
     if (!canAccess) {
@@ -44,7 +45,7 @@ export async function GET(
     }
 
     // If not the owner, track bandwidth for the owner
-    if (!isOwner && session?.user?.id) {
+    if (!isOwner && user?.id) {
       const bandwidthCheck = await trackBandwidth(
         file.drive.userId,
         Number(file.fileSize)
@@ -77,7 +78,7 @@ export async function GET(
     await prisma.driveActivity.create({
       data: {
         driveId: file.driveId,
-        userId: session?.user?.id || file.drive.userId,
+        userId: user?.id || file.drive.userId,
         action: 'download',
         targetType: 'file',
         targetId: file.id,
@@ -90,10 +91,87 @@ export async function GET(
     });
 
     // Return file with appropriate headers
-    return new NextResponse(fileBuffer, {
+    const inline = request.nextUrl.searchParams.get('inline') === 'true';
+    const thumbnail = request.nextUrl.searchParams.get('thumbnail') === 'true';
+
+    if (thumbnail) {
+      let thumbBuffer: Buffer | null = null;
+      let thumbMimeType = 'image/webp';
+
+      if (file.thumbnailPath) {
+        try {
+          thumbBuffer = await readFile(path.join(process.cwd(), file.thumbnailPath));
+        } catch (error) {
+          console.error('Failed to read existing thumbnail:', error);
+        }
+      }
+
+      // Generate if not found
+      if (!thumbBuffer) {
+        const { ThumbnailService } = await import('@/lib/drive/thumbnail-service');
+        const originalBuffer = await readFile(path.join(process.cwd(), file.filePath));
+
+        thumbBuffer = await ThumbnailService.generateThumbnail(originalBuffer, file.mimeType);
+
+        if (thumbBuffer) {
+          try {
+            const thumbRelDir = await ThumbnailService.ensureThumbnailDir(file.drive.userId);
+            const thumbName = `${file.id}_thumb.webp`;
+            const thumbPath = path.join(thumbRelDir, thumbName).replace(/\\/g, '/');
+
+            await writeFile(path.join(process.cwd(), thumbPath), thumbBuffer);
+
+            // Save path to DB for future use
+            await prisma.driveFile.update({
+              where: { id: file.id },
+              data: { thumbnailPath: thumbPath }
+            });
+          } catch (error) {
+            console.error('Failed to save generated thumbnail:', error);
+          }
+        }
+      }
+
+      if (thumbBuffer) {
+        return new NextResponse(thumbBuffer as any, {
+          headers: {
+            'Content-Type': thumbMimeType,
+            'Content-Disposition': 'inline',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        });
+      }
+
+      // If it's an image, we can try to return the original inline
+      if (file.mimeType.startsWith('image/')) {
+        return new NextResponse(fileBuffer as any, {
+          headers: {
+            'Content-Type': file.mimeType,
+            'Content-Disposition': 'inline',
+            'Cache-Control': 'public, max-age=3600',
+          },
+        });
+      }
+
+      // Final fallback for thumbnails - don't trigger download by returning a transparent pixel
+      const TRANSPARENT_PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+      return new NextResponse(TRANSPARENT_PIXEL as any, {
+        headers: {
+          'Content-Type': 'image/gif',
+          'Content-Disposition': 'inline',
+          'Cache-Control': 'no-cache',
+        },
+        status: 200, // Return 200 with fallback to avoid browser error behaviors
+      });
+    }
+
+    // Return file with appropriate headers
+    return new NextResponse(fileBuffer as any, {
       headers: {
         'Content-Type': file.mimeType,
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(file.originalName)}"`,
+        'Content-Disposition': inline
+          ? 'inline'
+          : `attachment; filename="${encodeURIComponent(file.originalName)}"`,
         'Content-Length': file.fileSize.toString(),
       },
     });
@@ -116,7 +194,8 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -140,7 +219,7 @@ export async function PUT(
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    if (file.drive.userId !== session.user.id) {
+    if (file.drive.userId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -170,7 +249,7 @@ export async function PUT(
     await prisma.driveActivity.create({
       data: {
         driveId: file.driveId,
-        userId: session.user.id,
+        userId: user.id,
         action: 'rename',
         targetType: 'file',
         targetId: file.id,
@@ -209,7 +288,8 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -234,14 +314,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    if (file.drive.userId !== session.user.id) {
+    if (file.drive.userId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     if (permanent) {
       // Permanently delete file
       const filePath = path.join(process.cwd(), file.filePath);
-      
+
       try {
         await unlink(filePath);
       } catch (error) {
@@ -265,7 +345,7 @@ export async function DELETE(
       await prisma.driveActivity.create({
         data: {
           driveId: file.driveId,
-          userId: session.user.id,
+          userId: user.id,
           action: 'delete',
           targetType: 'file',
           targetId: file.id,
@@ -291,7 +371,7 @@ export async function DELETE(
       await prisma.driveActivity.create({
         data: {
           driveId: file.driveId,
-          userId: session.user.id,
+          userId: user.id,
           action: 'delete',
           targetType: 'file',
           targetId: file.id,

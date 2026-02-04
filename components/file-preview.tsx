@@ -4,16 +4,18 @@ import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  FileText, 
-  Download, 
-  Eye, 
+import {
+  FileText,
+  Download,
+  Eye,
   X,
   Play,
   Pause,
   Volume2,
-  VolumeX
+  VolumeX,
+  Loader2
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 // Import PDF.js
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
@@ -42,13 +44,13 @@ interface FilePreviewProps {
   onDelete?: (fileId: string) => void
 }
 
-export function FilePreview({ 
-  file, 
-  isOpen, 
-  onClose, 
-  showDownload = true, 
+export function FilePreview({
+  file,
+  isOpen,
+  onClose,
+  showDownload = true,
   showDelete = false,
-  onDelete 
+  onDelete
 }: FilePreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
@@ -145,13 +147,39 @@ export function FilePreview({
     element.addEventListener('ended', () => setIsPlaying(false))
   }
 
-  const handleDownload = () => {
-    const link = document.createElement('a')
-    link.href = file.url
-    link.download = file.name
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const { toast } = useToast()
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleDownload = async () => {
+    try {
+      setIsSaving(true)
+      const response = await fetch('/api/drive/save-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: file.url,
+          name: file.name
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save to Drive')
+      }
+
+      toast({
+        title: 'Saved to Drive',
+        description: 'File has been saved to your personal Drive.',
+      })
+    } catch (e) {
+      console.error("Save to Drive failed", e)
+      toast({
+        title: 'Error',
+        description: 'Failed to save file to Drive.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleDelete = () => {
@@ -169,29 +197,33 @@ export function FilePreview({
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">Image Preview</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* Image Content */}
           <div className="flex-1 flex items-center justify-center bg-muted/20 p-4">
-            <img 
-              src={file.url} 
+            <img
+              src={file.url}
               alt={file.name}
               className="max-w-full max-h-full object-contain rounded shadow-lg"
               onError={(e) => {
@@ -212,25 +244,29 @@ export function FilePreview({
             <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
               <span className="text-sm font-medium">PDF Preview</span>
               <div className="flex items-center space-x-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => window.open(file.url, '_blank')}
                 >
                   <Eye className="h-3 w-3 mr-1" />
                   Open in New Tab
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={handleDownload}
+                  disabled={isSaving}
                 >
-                  <Download className="h-3 w-3 mr-1" />
-                  Download
+                  {isSaving ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Download className="h-3 w-3 mr-1" />
+                  )}
+                  Save to Drive
                 </Button>
               </div>
             </div>
-            
+
             {/* PDF Content */}
             <div className="flex-1 relative">
               <PDFViewer url={file.url} />
@@ -240,33 +276,37 @@ export function FilePreview({
       )
     }
 
-    if (file.type.includes('word') || file.type.includes('document') || 
-        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    if (file.type.includes('word') || file.type.includes('document') ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
       return (
         <div className="w-full h-[60vh] flex flex-col">
           {/* Word Document Header */}
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">Word Document</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* Word Content */}
           <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 p-8">
             <div className="text-6xl mb-6">📄</div>
@@ -274,9 +314,13 @@ export function FilePreview({
             <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
               Preview not available for Word documents. You can download the file to view it in Microsoft Word or compatible applications.
             </p>
-            <Button onClick={handleDownload} size="lg">
-              <Download className="h-4 w-4 mr-2" />
-              Download Document
+            <Button onClick={handleDownload} size="lg" disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Save to Drive
             </Button>
           </div>
         </div>
@@ -284,32 +328,36 @@ export function FilePreview({
     }
 
     if (file.type.includes('excel') || file.type.includes('spreadsheet') ||
-        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
       return (
         <div className="w-full h-[60vh] flex flex-col">
           {/* Excel Header */}
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">Excel Spreadsheet</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* Excel Content */}
           <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 p-8">
             <div className="text-6xl mb-6">📊</div>
@@ -317,9 +365,13 @@ export function FilePreview({
             <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
               Preview not available for Excel files. You can download the file to view it in Microsoft Excel or compatible applications.
             </p>
-            <Button onClick={handleDownload} size="lg">
-              <Download className="h-4 w-4 mr-2" />
-              Download Spreadsheet
+            <Button onClick={handleDownload} size="lg" disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Save to Drive
             </Button>
           </div>
         </div>
@@ -327,32 +379,36 @@ export function FilePreview({
     }
 
     if (file.type.includes('powerpoint') || file.type.includes('presentation') ||
-        file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
+      file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
       return (
         <div className="w-full h-[60vh] flex flex-col">
           {/* PowerPoint Header */}
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">PowerPoint Presentation</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* PowerPoint Content */}
           <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 p-8">
             <div className="text-6xl mb-6">📊</div>
@@ -360,9 +416,13 @@ export function FilePreview({
             <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
               Preview not available for PowerPoint files. You can download the file to view it in Microsoft PowerPoint or compatible applications.
             </p>
-            <Button onClick={handleDownload} size="lg">
-              <Download className="h-4 w-4 mr-2" />
-              Download Presentation
+            <Button onClick={handleDownload} size="lg" disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Save to Drive
             </Button>
           </div>
         </div>
@@ -376,25 +436,29 @@ export function FilePreview({
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">Audio Preview</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* Audio Content */}
           <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 p-8">
             <div className="text-6xl mb-6">🎵</div>
@@ -419,25 +483,29 @@ export function FilePreview({
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">Video Preview</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* Video Content */}
           <div className="flex-1 flex items-center justify-center bg-muted/20 p-8">
             <video
@@ -461,25 +529,29 @@ export function FilePreview({
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">Text File Preview</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* Text Content */}
           <div className="flex-1 bg-muted/20 p-4">
             <div className="bg-background rounded-lg border h-full overflow-auto">
@@ -508,25 +580,29 @@ export function FilePreview({
           <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
             <span className="text-sm font-medium">Archive File</span>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => window.open(file.url, '_blank')}
               >
                 <Eye className="h-3 w-3 mr-1" />
                 Open in New Tab
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleDownload}
+                disabled={isSaving}
               >
-                <Download className="h-3 w-3 mr-1" />
-                Download
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3 mr-1" />
+                )}
+                Save to Drive
               </Button>
             </div>
           </div>
-          
+
           {/* Archive Content */}
           <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 p-8">
             <div className="text-6xl mb-6">📦</div>
@@ -534,9 +610,13 @@ export function FilePreview({
             <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
               Preview not available for archive files. You can download the file and extract it using applications like WinRAR, 7-Zip, or built-in archive tools.
             </p>
-            <Button onClick={handleDownload} size="lg">
-              <Download className="h-4 w-4 mr-2" />
-              Download Archive
+            <Button onClick={handleDownload} size="lg" disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              Save to Drive
             </Button>
           </div>
         </div>
@@ -550,25 +630,29 @@ export function FilePreview({
         <div className="bg-muted/50 p-2 border-b flex items-center justify-between">
           <span className="text-sm font-medium">File Preview</span>
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => window.open(file.url, '_blank')}
             >
               <Eye className="h-3 w-3 mr-1" />
               Open in New Tab
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={handleDownload}
+              disabled={isSaving}
             >
-              <Download className="h-3 w-3 mr-1" />
-              Download
+              {isSaving ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3 mr-1" />
+              )}
+              Save to Drive
             </Button>
           </div>
         </div>
-        
+
         {/* Default File Content */}
         <div className="flex-1 flex flex-col items-center justify-center bg-muted/20 p-8">
           <div className="text-6xl mb-6">{getFileIcon(file.type)}</div>
@@ -576,9 +660,13 @@ export function FilePreview({
           <p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
             Preview not available for this file type. You can download the file to view it in an appropriate application.
           </p>
-          <Button onClick={handleDownload} size="lg">
-            <Download className="h-4 w-4 mr-2" />
-            Download File
+          <Button onClick={handleDownload} size="lg" disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Save to Drive
           </Button>
         </div>
       </div>
@@ -599,7 +687,7 @@ export function FilePreview({
             </Button>
           </div>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {/* File Information */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
@@ -634,12 +722,12 @@ export function FilePreview({
               <p className="text-muted-foreground text-sm mt-1">{file.description}</p>
             </div>
           )}
-          
+
           {/* File Preview */}
           <div className="border rounded-lg p-4 bg-background">
             {renderPreview()}
           </div>
-          
+
           {/* Actions */}
           <div className="flex justify-end space-x-2">
             {showDelete && onDelete && (
@@ -649,9 +737,13 @@ export function FilePreview({
               </Button>
             )}
             {showDownload && (
-              <Button onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" />
-                Download
+              <Button onClick={handleDownload} disabled={isSaving}>
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Save to Drive
               </Button>
             )}
             <Button variant="outline" onClick={onClose}>
@@ -681,11 +773,11 @@ function PDFViewer({ url }: { url: string }) {
     try {
       setIsLoading(true)
       setError(null)
-      
+
       // Load the PDF document
       const loadingTask = pdfjsLib.getDocument(url)
       const pdf = await loadingTask.promise
-      
+
       setPdfDocument(pdf)
       setTotalPages(pdf.numPages)
       setIsLoading(false)
@@ -715,7 +807,7 @@ function PDFViewer({ url }: { url: string }) {
         const viewport = page.getViewport({ scale: 1 })
         const canvasWidth = canvas.clientWidth
         const canvasHeight = canvas.clientHeight
-        
+
         const scale = Math.min(canvasWidth / viewport.width, canvasHeight / viewport.height)
         const scaledViewport = page.getViewport({ scale })
 

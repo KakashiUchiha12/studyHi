@@ -19,7 +19,8 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's drive
     const drive = await prisma.drive.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: user.id },
     });
 
     if (!drive) {
@@ -45,9 +46,9 @@ export async function GET(request: NextRequest) {
       deletedAt: null,
     };
 
-    if (folderId) {
+    if (folderId && folderId !== '') {
       where.folderId = folderId;
-    } else if (folderId === null) {
+    } else {
       // Root folder
       where.folderId = null;
     }
@@ -95,16 +96,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       files: filesWithParsedTags,
       pagination: {
+        total,
         page,
         limit,
-        total,
         totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error) {
-    console.error('Error listing files:', error);
+    console.error('Error getting files:', error);
     return NextResponse.json(
-      { error: 'Failed to list files' },
+      { error: 'Failed to get files' },
       { status: 500 }
     );
   }
@@ -112,175 +113,105 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/drive/files
- * Upload a new file
+ * Upload a file
  */
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = session?.user as any;
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const folderId = formData.get('folderId') as string | null;
-    const description = formData.get('description') as string | null;
-    const tags = formData.get('tags') as string | null;
-    const isPublic = formData.get('isPublic') === 'true';
+    const tagsString = formData.get('tags') as string | null;
+    const parsedTags = tagsString ? JSON.parse(tagsString) : [];
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     // Validate file size
-    const validation = validateFileSize(file.size);
-    if (!validation.valid) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
-    }
-
-    // Get user's drive
-    const drive = await prisma.drive.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    if (!drive) {
-      // Create drive if it doesn't exist
-      const newDrive = await prisma.drive.create({
-        data: {
-          userId: session.user.id,
-        },
-      });
-
-      if (!newDrive) {
-        return NextResponse.json(
-          { error: 'Failed to create drive' },
-          { status: 500 }
-        );
-      }
-    }
-
-    // Check storage limit
-    const currentDrive = drive || await prisma.drive.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    if (!currentDrive) {
+    if (!validateFileSize(file.size)) {
       return NextResponse.json(
-        { error: 'Drive not found' },
-        { status: 404 }
-      );
-    }
-
-    if (isStorageLimitExceeded(currentDrive.storageUsed, currentDrive.storageLimit, file.size)) {
-      return NextResponse.json(
-        { error: 'Storage limit exceeded' },
+        { error: `File size exceeds limit of ${STORAGE_LIMITS.MAX_FILE_SIZE / 1024 / 1024}MB` },
         { status: 400 }
       );
     }
 
-    // Verify folder exists and belongs to user
-    if (folderId) {
-      const folder = await prisma.driveFolder.findFirst({
-        where: {
-          id: folderId,
-          driveId: currentDrive.id,
-          deletedAt: null,
-        },
-      });
-
-      if (!folder) {
-        return NextResponse.json(
-          { error: 'Folder not found' },
-          { status: 404 }
-        );
-      }
-    }
-
-    // Read file buffer and calculate hash
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileHash = calculateBufferHash(buffer, 'md5');
-
-    // Check for duplicate files
-    const existingFile = await prisma.driveFile.findFirst({
-      where: {
-        driveId: currentDrive.id,
-        fileHash,
-        deletedAt: null,
-      },
+    // Get user's drive
+    const drive = await prisma.drive.findUnique({
+      where: { userId: user.id },
     });
 
-    if (existingFile) {
+    if (!drive) {
+      return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
+    }
+
+    const currentDrive = drive;
+
+    // Check storage limits
+    if (isStorageLimitExceeded(currentDrive.storageUsed, currentDrive.storageLimit, file.size)) {
       return NextResponse.json(
-        { error: 'File already exists', existingFile },
-        { status: 409 }
+        { error: 'Storage limit exceeded' },
+        { status: 402 }
       );
     }
 
-    // Generate storage path
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const uploadDir = path.join(
-      process.cwd(),
-      'uploads',
-      'drives',
-      session.user.id,
-      year.toString(),
-      month
-    );
+    // Create unique file name and path
+    const fileId = uuidv4();
+    const extension = path.extname(file.name);
+    const fileName = `${fileId}${extension}`;
+    const date = new Date();
+    const relativeDir = path.join('uploads', 'drives', user.id, date.getFullYear().toString(), (date.getMonth() + 1).toString());
+    const uploadDir = path.join(process.cwd(), relativeDir);
 
     // Create directory if it doesn't exist
     await mkdir(uploadDir, { recursive: true });
 
-    // Generate unique filename
-    const fileExt = path.extname(file.name);
-    const storedName = `${uuidv4()}${fileExt}`;
-    const filePath = path.join(uploadDir, storedName);
-    const relativeFilePath = path.join(
-      'uploads',
-      'drives',
-      session.user.id,
-      year.toString(),
-      month,
-      storedName
-    );
+    const filePath = path.join(relativeDir, fileName);
+    const fullPath = path.join(process.cwd(), filePath);
 
-    // Write file to disk
-    await writeFile(filePath, buffer);
+    // Save file to disk
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(fullPath, buffer);
 
-    // Parse tags safely
-    let parsedTags: string[] = [];
-    if (tags) {
-      try {
-        parsedTags = JSON.parse(tags);
-        if (!Array.isArray(parsedTags)) {
-          return NextResponse.json(
-            { error: 'Tags must be a JSON array' },
-            { status: 400 }
-          );
-        }
-      } catch (error) {
-        return NextResponse.json(
-          { error: 'Invalid JSON format for tags' },
-          { status: 400 }
-        );
+    // Calculate hash
+    const hash = calculateBufferHash(buffer);
+
+    // Generate thumbnail
+    let thumbnailPath = null;
+    try {
+      const { ThumbnailService } = await import('@/lib/drive/thumbnail-service');
+      const thumbBuffer = await ThumbnailService.generateThumbnail(buffer, file.type || 'application/octet-stream');
+
+      if (thumbBuffer) {
+        const thumbRelDir = await ThumbnailService.ensureThumbnailDir(user.id);
+        const thumbName = `${fileId}_thumb.webp`;
+        thumbnailPath = path.join(thumbRelDir, thumbName).replace(/\\/g, '/');
+
+        const fullThumbPath = path.join(process.cwd(), thumbnailPath);
+        await writeFile(fullThumbPath, thumbBuffer);
       }
+    } catch (error) {
+      console.error('Failed to generate thumbnail during upload:', error);
     }
 
-    // Create file record in database
+    // Create database record
     const newFile = await prisma.driveFile.create({
       data: {
         driveId: currentDrive.id,
         folderId: folderId || null,
         originalName: file.name,
-        storedName,
+        storedName: fileName,
+        filePath: filePath.replace(/\\/g, '/'), // Use forward slashes
+        thumbnailPath,
         fileSize: BigInt(file.size),
         mimeType: file.type || 'application/octet-stream',
-        fileType: fileExt.replace('.', ''),
-        fileHash,
-        filePath: relativeFilePath,
-        isPublic,
-        description: description || null,
+        fileType: extension.slice(1).toUpperCase() || 'FILE',
+        fileHash: hash,
         tags: JSON.stringify(parsedTags),
       },
       include: {
@@ -306,7 +237,7 @@ export async function POST(request: NextRequest) {
     await prisma.driveActivity.create({
       data: {
         driveId: currentDrive.id,
-        userId: session.user.id,
+        userId: user.id,
         action: 'upload',
         targetType: 'file',
         targetId: newFile.id,

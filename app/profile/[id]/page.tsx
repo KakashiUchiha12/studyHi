@@ -8,6 +8,8 @@ import { Users, FileText } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { ProfilePostGrid } from "@/components/profile/profile-post-grid";
+import { ProfileSubjects } from "@/components/profile/profile-subjects";
+import { ProfileDocuments } from "@/components/profile/profile-documents";
 
 import { UserListDialog } from "@/components/profile/user-list-dialog";
 
@@ -134,6 +136,13 @@ export default function UserProfilePage() {
 
                 {/* Content Side */}
                 <div className="w-full md:w-2/3 space-y-6">
+                    {/* Subjects Section */}
+                    <ProfileSubjects userId={profile.id} isOwnProfile={isMe} />
+
+                    {/* Public Documents Section */}
+                    <ProfileDocuments userId={profile.id} isOwnProfile={isMe} />
+
+                    {/* Posts Grid */}
                     <ProfilePostGrid userId={profile.id} currentUserId={(session?.user as any)?.id} />
                 </div>
             </div>

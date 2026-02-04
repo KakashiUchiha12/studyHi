@@ -3,9 +3,8 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
     req: Request,
-    props: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
-    const params = await props.params;
     try {
         const following = await prisma.follows.findMany({
             where: { followerId: params.id },
@@ -14,15 +13,14 @@ export async function GET(
                     select: {
                         id: true,
                         name: true,
-                        image: true
+                        image: true,
+                        username: true
                     }
                 }
             }
         });
 
-        // Flatten structure
-        const result = following.map(f => f.following);
-        return NextResponse.json(result);
+        return NextResponse.json(following.map(f => f.following));
     } catch (error) {
         console.error("[FOLLOWING_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
