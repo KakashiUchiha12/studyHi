@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
             toDrive.id,
             null,
             session.user.id,
-            `${file.originalName} (${Date.now()})`
+            `${file.originalName} (Copy)`
           );
           importResult.imported.push(copiedFile);
           importResult.totalSize += file.fileSize;
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
               toDrive.id,
               copiedFolder.id,
               session.user.id,
-              `${file.originalName} (${Date.now()})`
+              `${file.originalName} (Copy)`
             );
             importResult.imported.push(copiedFile);
             importResult.totalSize += file.fileSize;
@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
               toDrive.id,
               copiedFolder.id,
               session.user.id,
-              `${file.originalName} (${Date.now()})`
+              `${file.originalName} (Copy)`
             );
             importResult.imported.push(copiedFile);
             importResult.totalSize += file.fileSize;
