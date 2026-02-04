@@ -33,6 +33,7 @@ model Subject {
   tasks             Task[]
   testMarks         TestMark[]
   materials         Material[]
+  driveFolders      DriveFolder[]
 }
 
 model SubjectFile {
@@ -98,6 +99,12 @@ model User {
   testMarks         TestMark[]
   profile           UserProfile?
   userSettings      UserSettings?
+  
+  // Drive Relations
+  drive                 Drive?
+  driveActivities       DriveActivity[]
+  sentCopyRequests      CopyRequest[] @relation("SentCopyRequests")
+  receivedCopyRequests  CopyRequest[] @relation("ReceivedCopyRequests")
 }
 
 model UserProfile {
@@ -600,4 +607,124 @@ model Message {
   @@index([senderId])
   @@index([receiverId])
   @@index([channelId])
+}
+
+// Drive/Cloud Storage Models
+
+model Drive {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  storageUsed     BigInt    @default(0) @map("storage_used") // in bytes
+  storageLimit    BigInt    @default(10737418240) @map("storage_limit") // 10GB in bytes
+  bandwidthUsed   BigInt    @default(0) @map("bandwidth_used") // daily bandwidth
+  bandwidthLimit  BigInt    @default(10737418240) @map("bandwidth_limit") // 10GB daily
+  bandwidthReset  DateTime  @default(now()) @map("bandwidth_reset")
+  isPrivate       Boolean   @default(false) @map("is_private")
+  allowCopying    String    @default("REQUEST") // "ALLOW", "REQUEST", "DENY"
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files           DriveFile[]
+  folders         DriveFolder[]
+  activities      DriveActivity[]
+  copyRequests    CopyRequest[]
+  
+  @@map("drives")
+}
+
+model DriveFolder {
+  id              String          @id @default(cuid())
+  driveId         String          @map("drive_id")
+  parentId        String?         @map("parent_id")
+  name            String
+  path            String          // full path for easy querying
+  isPublic        Boolean         @default(false) @map("is_public")
+  subjectId       String?         @map("subject_id") // Link to Subject if folder represents a subject
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?       @map("deleted_at") // Soft delete for trash
+  
+  drive           Drive           @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  parent          DriveFolder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children        DriveFolder[]   @relation("FolderHierarchy")
+  subject         Subject?        @relation(fields: [subjectId], references: [id])
+  files           DriveFile[]
+  
+  @@index([driveId])
+  @@index([parentId])
+  @@index([subjectId])
+  @@map("drive_folders")
+}
+
+model DriveFile {
+  id              String       @id @default(cuid())
+  driveId         String       @map("drive_id")
+  folderId        String?      @map("folder_id")
+  originalName    String       @map("original_name")
+  storedName      String       @unique @map("stored_name") // UUID-based filename
+  fileSize        BigInt       @map("file_size") // in bytes
+  mimeType        String       @map("mime_type")
+  fileType        String       @map("file_type") // extension
+  fileHash        String       @map("file_hash") // MD5/SHA256 for duplicate detection
+  filePath        String       @map("file_path") // path on disk
+  thumbnailPath   String?      @map("thumbnail_path")
+  isPublic        Boolean      @default(false) @map("is_public")
+  downloadCount   Int          @default(0) @map("download_count")
+  description     String?
+  tags            String       @default("[]") // JSON array
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  deletedAt       DateTime?    @map("deleted_at") // Soft delete for trash
+  
+  drive           Drive        @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  folder          DriveFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  @@index([driveId])
+  @@index([folderId])
+  @@index([fileHash]) // For duplicate detection
+  @@map("drive_files")
+}
+
+model DriveActivity {
+  id              String       @id @default(cuid())
+  driveId         String       @map("drive_id")
+  userId          String       @map("user_id")
+  action          String       // "upload", "download", "delete", "rename", "move", "copy", "import"
+  targetType      String       @map("target_type") // "file", "folder"
+  targetId        String       @map("target_id")
+  targetName      String       @map("target_name")
+  metadata        String?      @default("{}") // JSON for additional info
+  createdAt       DateTime     @default(now()) @map("created_at")
+  
+  drive           Drive        @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([driveId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("drive_activities")
+}
+
+model CopyRequest {
+  id              String       @id @default(cuid())
+  fromUserId      String       @map("from_user_id")
+  toUserId        String       @map("to_user_id")
+  fromDriveId     String       @map("from_drive_id")
+  toDriveId       String       @map("to_drive_id")
+  requestType     String       @map("request_type") // "subject", "file", "folder"
+  targetId        String       @map("target_id")
+  status          String       @default("PENDING") // "PENDING", "APPROVED", "DENIED"
+  message         String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  
+  fromUser        User         @relation("SentCopyRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser          User         @relation("ReceivedCopyRequests", fields: [toUserId], references: [id], onDelete: Cascade)
+  fromDrive       Drive        @relation(fields: [fromDriveId], references: [id], onDelete: Cascade)
+  
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([status])
+  @@map("copy_requests")
 }

@@ -106,7 +106,7 @@
     "pdf-parse": "^1.1.1",
     "pdf-poppler": "^0.2.1",
     "pdf2pic": "^2.2.4",
-    "pdfjs-dist": "^3.11.174",
+    "pdfjs-dist": "^4.2.67",
     "prisma": "^6.14.0",
     "pusher": "^5.2.0",
     "pusher-js": "^8.4.0-rc2",

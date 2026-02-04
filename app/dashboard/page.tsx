@@ -1896,24 +1896,23 @@ export default function DashboardPage() {
 
 
         </div>
-      </main >
+      </main>
 
       {/* Back to Top Button - Mobile Optimized */}
-      < Button
+      <Button
         variant="ghost"
         size="sm"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })
-        }
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className="fixed bottom-4 right-4 z-50 rounded-full h-12 w-12 p-0 bg-background/80 backdrop-blur-sm border border-border/50 shadow-lg hover:bg-background/90 hover:shadow-xl transition-all duration-200 focus-ring md:hidden"
         title="Back to Top"
       >
         <ChevronDown className="h-5 w-5 rotate-180" />
-      </Button >
+      </Button>
 
 
 
       {/* Enhanced Study Timer Component */}
-      < AdvancedStudyTimer
+      <AdvancedStudyTimer
         subjects={subjects}
         isOpen={showStudyTimer}
         onOpenChange={setShowStudyTimer}
@@ -2301,6 +2300,6 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
 
-    </div >
+    </div>
   )
 }
