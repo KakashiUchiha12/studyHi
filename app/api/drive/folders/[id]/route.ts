@@ -11,7 +11,7 @@ import path from 'path';
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -19,7 +19,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const folderId = params.id;
+    const { id: folderId } = await params;
     const body = await request.json();
     const { name, isPublic } = body;
 
@@ -148,7 +148,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -156,7 +156,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const folderId = params.id;
+    const { id: folderId } = await params;
     const { searchParams } = new URL(request.url);
     const permanent = searchParams.get('permanent') === 'true';
 
