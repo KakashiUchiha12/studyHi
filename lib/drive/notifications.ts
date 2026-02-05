@@ -43,7 +43,7 @@ export async function notifyCopyApproved(data: {
 export async function notifyCopyDenied(data: {
     userId: string;
     itemName: string;
-  denier Name: string;
+    denierName: string;
 }) {
     await prisma.notification.create({
         data: {
