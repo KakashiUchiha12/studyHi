@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { SocialSidebar } from "@/components/social/social-sidebar";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 import { StudyHiLogo } from "@/components/ui/studyhi-logo";
+import { FeedSearchBar } from "@/components/feed/feed-search-bar";
 import Link from "next/link";
 
 export default function GlobalFeedPage() {
@@ -23,16 +24,19 @@ export default function GlobalFeedPage() {
                 </div>
             </header>
 
-            <div className="container max-w-[1600px] py-6 px-4 md:px-6">
-                <div className="flex flex-col md:flex-row gap-4 lg:gap-6 justify-center">
+            <div className="container max-w-[1600px] py-6 px-0 sm:px-4 md:px-6">
+                <div className="flex flex-col md:flex-row gap-0 sm:gap-4 lg:gap-6 justify-center">
                     {/* Left Sidebar - Navigation */}
                     <aside className="hidden md:block w-56 lg:w-64 shrink-0 top-20 h-fit sticky">
                         <SocialSidebar />
                     </aside>
 
                     {/* Main Content - Feed */}
-                    <main className="flex-1 max-w-2xl lg:max-w-3xl min-w-0 w-full">
-                        <h1 className="text-2xl font-bold mb-4 px-2">Your Feed</h1>
+                    <main className="flex-1 max-w-2xl lg:max-w-3xl min-w-0 w-full space-y-2 sm:space-y-4">
+                        <div className="px-4 sm:px-0">
+                            <FeedSearchBar />
+                        </div>
+                        <h1 className="text-2xl font-bold mb-2 sm:mb-4 px-4 sm:px-2">Your Feed</h1>
                         <FeedView currentUser={session?.user} />
                     </main>
 

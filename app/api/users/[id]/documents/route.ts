@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const [driveFiles, subjectFiles] = await Promise.all([
             prisma.driveFile.findMany({
                 where: {
-                    drive: { userId: params.id },
+                    drive: { userId: id },
                     OR: [
                         { isPublic: true },
                         { NOT: { mimeType: 'application/pdf' } }
@@ -21,7 +22,7 @@ export async function GET(
             }),
             prisma.subjectFile.findMany({
                 where: {
-                    userId: params.id,
+                    userId: id,
                     OR: [
                         { isPublic: true },
                         { NOT: { mimeType: 'application/pdf' } }

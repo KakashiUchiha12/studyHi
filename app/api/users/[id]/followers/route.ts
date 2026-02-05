@@ -3,11 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const followers = await prisma.follows.findMany({
-            where: { followingId: params.id },
+            where: { followingId: id },
             include: {
                 follower: {
                     select: {

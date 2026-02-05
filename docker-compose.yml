@@ -84,9 +84,14 @@ services:
 
 volumes:
   mysql_data:
+    external: true
+    name: studyhiapp27thjanuary_mysql_data
   redis_data:
+    external: true
+    name: studyhiapp27thjanuary_redis_data
   uploads_data:
-
+    external: true
+    name: studyhiapp27thjanuary_uploads_data
 
 networks:
   studyplanner-network:

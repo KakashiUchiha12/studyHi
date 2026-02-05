@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatBytes } from '@/lib/drive/storage';
+import { cn } from '@/lib/utils';
 
 interface PublicDocument {
     id: string;
@@ -16,6 +17,8 @@ interface PublicDocument {
     downloadCount: number;
     createdAt: string;
     thumbnailPath?: string;
+    thumbnailUrl?: string;
+    downloadUrl?: string;
 }
 
 interface ProfileDocumentsProps {
@@ -71,8 +74,8 @@ export function ProfileDocuments({ userId, isOwnProfile }: ProfileDocumentsProps
     }
 
     return (
-        <Card>
-            <CardHeader>
+        <Card className="rounded-none sm:rounded-xl border-x-0 sm:border-x">
+            <CardHeader className="px-4 sm:px-6">
                 <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     Public Documents
@@ -86,16 +89,27 @@ export function ProfileDocuments({ userId, isOwnProfile }: ProfileDocumentsProps
                                 {/* Thumbnail or icon */}
                                 <div className="aspect-video bg-slate-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                                     {doc.thumbnailUrl ? (
-                                        <img
-                                            src={doc.thumbnailUrl}
-                                            alt={doc.originalName}
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                // If thumbnail fails, show icon
-                                                (e.target as any).style.display = 'none';
-                                                (e.target as any).nextSibling.style.display = 'block';
-                                            }}
-                                        />
+                                        <div className="relative w-full h-full">
+                                            <img
+                                                src={`${doc.thumbnailUrl}&v=hq`}
+                                                alt={doc.originalName}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    // If thumbnail fails, show icon
+                                                    (e.target as any).style.display = 'none';
+                                                    if ((e.target as any).nextSibling) {
+                                                        (e.target as any).nextSibling.style.display = 'block';
+                                                    }
+                                                }}
+                                            />
+                                            {doc.mimeType === 'application/pdf' && (
+                                                <div className="absolute top-2 left-2 pointer-events-none">
+                                                    <div className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase">
+                                                        PDF
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     ) : null}
                                     <FileText className={`h-12 w-12 text-slate-400 ${doc.thumbnailUrl ? 'hidden' : 'block'}`} />
                                 </div>

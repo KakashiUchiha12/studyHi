@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -194,7 +194,7 @@ function FolderCard({
   );
 }
 
-export default function DrivePage() {
+function DrivePageContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -807,3 +807,13 @@ export default function DrivePage() {
     </div >
   );
 }
+
+
+export default function DrivePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+      <DrivePageContent />
+    </Suspense>
+  );
+}
+

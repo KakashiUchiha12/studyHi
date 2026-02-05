@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -41,7 +41,7 @@ interface SearchResult {
     path?: string;
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -286,3 +286,13 @@ export default function SearchPage() {
         </div>
     );
 }
+
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+      <SearchPageContent />
+    </Suspense>
+  );
+}
+

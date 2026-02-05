@@ -5,11 +5,11 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
-        const userId = params.id;
+        const { id: userId } = await params;
 
         if (!userId) {
             return new NextResponse("User ID required", { status: 400 });
@@ -26,6 +26,18 @@ export async function GET(
                     select: {
                         bio: true,
                         website: true,
+                        websiteLabel: true,
+                        websiteUrl2: true,
+                        websiteLabel2: true,
+                        githubUrl: true,
+                        linkedinUrl: true,
+                        twitterUrl: true,
+                        instagramUrl: true,
+                        instagramLabel: true,
+                        youtubeUrl: true,
+                        youtubeLabel: true,
+                        whatsappUrl: true,
+                        whatsappLabel: true,
                         location: true,
                         banner: true,
                     },

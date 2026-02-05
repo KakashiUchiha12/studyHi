@@ -31,10 +31,25 @@ export async function PUT(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { name, username, bio, image } = await req.json();
-
-    // Update User (name, image, username)
-    // Update SocialProfile (bio)
+    const {
+      name,
+      username,
+      bio,
+      image,
+      website,
+      websiteLabel,
+      websiteUrl2,
+      websiteLabel2,
+      githubUrl,
+      linkedinUrl,
+      twitterUrl,
+      instagramUrl,
+      instagramLabel,
+      youtubeUrl,
+      youtubeLabel,
+      whatsappUrl,
+      whatsappLabel
+    } = await req.json();
 
     // Check username uniqueness if changed
     if (username) {
@@ -54,8 +69,38 @@ export async function PUT(req: Request) {
         username,
         socialProfile: {
           upsert: {
-            create: { bio },
-            update: { bio }
+            create: {
+              bio,
+              website,
+              websiteLabel,
+              websiteUrl2,
+              websiteLabel2,
+              githubUrl,
+              linkedinUrl,
+              twitterUrl,
+              instagramUrl,
+              instagramLabel,
+              youtubeUrl,
+              youtubeLabel,
+              whatsappUrl,
+              whatsappLabel
+            },
+            update: {
+              bio,
+              website,
+              websiteLabel,
+              websiteUrl2,
+              websiteLabel2,
+              githubUrl,
+              linkedinUrl,
+              twitterUrl,
+              instagramUrl,
+              instagramLabel,
+              youtubeUrl,
+              youtubeLabel,
+              whatsappUrl,
+              whatsappLabel
+            }
           }
         }
       }

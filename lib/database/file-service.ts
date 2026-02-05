@@ -1,8 +1,10 @@
 import { dbService } from './index'
 import { SubjectFile } from '@prisma/client'
 import fs from 'fs'
+import fsPromises from 'fs/promises'
 import path from 'path'
 import { promisify } from 'util'
+import { ThumbnailService } from '../drive/thumbnail-service'
 
 const writeFile = promisify(fs.writeFile)
 const mkdir = promisify(fs.mkdir)
@@ -226,12 +228,24 @@ export class FileService {
     filePath: string,
     fileName: string,
     subjectId: string,
-    userId: string
+    userId: string,
+    mimeType: string
   ): Promise<string | null> {
     try {
-      // For now, return null - thumbnail generation can be implemented later
-      // This could use libraries like sharp for images, pdf-poppler for PDFs, etc.
-      // TODO: Implement actual thumbnail generation
+      const fileBuffer = await fsPromises.readFile(filePath)
+      const thumbBuffer = await ThumbnailService.generateThumbnail(fileBuffer, mimeType)
+
+      if (thumbBuffer) {
+        const thumbRelDir = await ThumbnailService.ensureThumbnailDir(userId)
+        const fileId = path.parse(fileName).name
+        const thumbName = `${fileId}_thumb.webp`
+        const thumbnailPath = path.join(thumbRelDir, thumbName).replace(/\\/g, '/')
+
+        const fullThumbPath = path.join(process.cwd(), thumbnailPath)
+        await fsPromises.writeFile(fullThumbPath, thumbBuffer)
+        return thumbnailPath
+      }
+
       return null
     } catch (error) {
       console.error('Error creating thumbnail:', error)

@@ -10,7 +10,7 @@ export class ThumbnailService {
     static async generateThumbnail(
         buffer: Buffer,
         mimeType: string,
-        options: { width?: number; height?: number } = { width: 400 }
+        options: { width?: number; height?: number } = { width: 1200 }
     ): Promise<Buffer | null> {
         try {
             if (mimeType.startsWith('image/')) {
@@ -37,7 +37,7 @@ export class ThumbnailService {
                 fit: 'cover',
                 withoutEnlargement: true,
             })
-            .toFormat('webp') // Use WebP for better compression
+            .webp({ quality: 90 }) // Higher quality WebP
             .toBuffer();
     }
 
@@ -66,11 +66,11 @@ export class ThumbnailService {
             await fs.writeFile(tempPdfPath, buffer);
 
             const convertOptions = {
-                density: 100,
+                density: 300, // Higher density for crisp text
                 saveFilename: 'thumb',
                 savePath: tempOutputDir,
                 format: 'webp',
-                width: options.width || 400,
+                width: options.width || 1200,
                 height: options.height,
             };
 

@@ -14,7 +14,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const eventId = (await params).id
+    const eventId = params.id
 
     // Check if the event exists and belongs to the user
     const existingEvent = await calendarEventService.getCalendarEventById(eventId)

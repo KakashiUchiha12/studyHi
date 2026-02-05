@@ -5,7 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Heart, MessageSquare, Share2, MoreHorizontal, FileText, Download, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, MessageSquare, Share2, MoreHorizontal, FileText, Download, X, ChevronLeft, ChevronRight, Video } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -129,7 +129,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     const fileAttachments = post.attachments?.filter((att: any) => att.type !== "image") || [];
 
     return (
-        <Card className="mb-4">
+        <Card className="mb-2 sm:mb-4 rounded-none sm:rounded-xl border-x-0 sm:border-x">
             <CardHeader className="flex flex-row items-center gap-4 p-4 pb-2">
                 <Avatar>
                     <AvatarImage src={post.user.image} />
@@ -161,19 +161,19 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
 
                 {/* Image Gallery */}
                 {mediaAttachments.length > 0 && (
-                    <div className="relative group overflow-hidden rounded-md bg-black/5 border aspect-video flex items-center justify-center">
+                    <div className="relative group overflow-hidden rounded-md bg-muted/30 border flex flex-col">
                         {/* Image */}
                         <div
-                            className="w-full h-full flex transition-transform duration-300 ease-out cursor-pointer"
+                            className="w-full flex transition-transform duration-300 ease-out cursor-pointer"
                             style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
                             onClick={() => setIsViewerOpen(true)}
                         >
                             {mediaAttachments.map((att: any, index: number) => (
-                                <div key={att.id || index} className="min-w-full h-full relative flex items-center justify-center bg-black">
+                                <div key={att.id || index} className="min-w-full relative flex items-center justify-center">
                                     <img
                                         src={att.url}
                                         alt={`Post image ${index + 1}`}
-                                        className="max-h-[500px] w-auto h-full object-contain"
+                                        className="w-full h-auto object-contain"
                                     />
                                 </div>
                             ))}
@@ -254,19 +254,28 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                                             />
                                         ) : null}
                                         <div className={cn("flex items-center justify-center w-full h-full", isPDF ? "hidden" : "flex")}>
-                                            <FileText className="w-8 h-8 text-blue-500" />
+                                            {att.type === 'video' ? (
+                                                <Video className="w-8 h-8 text-purple-500" />
+                                            ) : (
+                                                <FileText className="w-8 h-8 text-blue-500" />
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex-1 overflow-hidden">
                                         <p className="text-sm font-medium truncate">{att.name || "Attached File"}</p>
-                                        <p className="text-xs text-muted-foreground">{att.size ? `${Math.round(att.size / 1024)} KB` : "Document"}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] uppercase font-bold text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded leading-none">
+                                                {att.type === 'video' ? 'Video' : (isPDF ? 'PDF' : 'File')}
+                                            </span>
+                                            <p className="text-xs text-muted-foreground">{att.size ? `${Math.round(att.size / 1024)} KB` : "Document"}</p>
+                                        </div>
                                     </div>
                                     {isSavingInProgress === att.id ? (
                                         <Loader2 className="w-4 h-4 animate-spin text-primary" />
                                     ) : (
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span>Save to Drive</span>
-                                            <Download className="w-4 h-4" />
+                                        <div className="flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/5 px-2 py-1 rounded-full transition-colors group-hover:bg-primary/10 shrink-0">
+                                            <span className="hidden sm:inline">Save to Drive</span>
+                                            <Download className="w-3.5 h-3.5" />
                                         </div>
                                     )}
                                 </button>

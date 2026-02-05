@@ -406,19 +406,32 @@ model CalendarEvent {
 // Social Media Models
 
 model SocialProfile {
-  id           String   @id @default(cuid())
-  userId       String   @unique @map("user_id")
-  bio          String?
-  website      String?
-  location     String?
-  banner       String?
-  githubUrl    String?  @map("github_url")
-  linkedinUrl  String?  @map("linkedin_url")
-  twitterUrl   String?  @map("twitter_url")
-  instagramUrl String?  @map("instagram_url")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  bio            String?
+  location       String?
+  banner         String?
+  
+  // Websites
+  website        String?
+  websiteLabel   String?  @map("website_label")
+  websiteUrl2    String?  @map("website_url_2")
+  websiteLabel2  String?  @map("website_label_2")
+  
+  // Social Media
+  githubUrl      String?  @map("github_url")
+  linkedinUrl    String?  @map("linkedin_url")
+  twitterUrl     String?  @map("twitter_url")
+  instagramUrl   String?  @map("instagram_url")
+  instagramLabel String?  @map("instagram_label")
+  youtubeUrl     String?  @map("youtube_url")
+  youtubeLabel   String?  @map("youtube_label")
+  whatsappUrl    String?  @map("whatsapp_url")
+  whatsappLabel  String?  @map("whatsapp_label")
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Follows {

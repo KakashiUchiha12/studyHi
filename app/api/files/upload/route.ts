@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     // Create thumbnail if it's an image or PDF
     let thumbnailPath: string | null = null
     if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-      thumbnailPath = await fileService.createThumbnail(filePath, fileName, subjectId, userId)
+      thumbnailPath = await fileService.createThumbnail(filePath, fileName, subjectId, userId, file.type)
     }
 
     // Parse tags

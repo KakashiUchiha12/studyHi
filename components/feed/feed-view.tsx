@@ -215,7 +215,7 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
             {isLoading ? (
                 <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-2 sm:space-y-4">
                     {posts.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
                             No posts found.

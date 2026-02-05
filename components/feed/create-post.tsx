@@ -5,8 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, X, FileText, Image as ImageIcon, Megaphone } from "lucide-react";
+import { Loader2, X, FileText, Image as ImageIcon, Megaphone, Video, Paperclip } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface CreatePostProps {
     communityId?: string;
@@ -99,11 +100,16 @@ export function CreatePost({ communityId, currentUser, onPostCreated, isAnnounce
                         clearInterval(progressInterval);
                         setUploadingFiles(prev => prev.filter(f => f.name !== file.name));
 
+                        let type = "file";
+                        if (file.type.startsWith("image/")) type = "image";
+                        else if (file.type.startsWith("video/")) type = "video";
+                        else if (file.type === "application/pdf") type = "pdf";
+
                         setAttachments(prev => [...prev, {
                             url: data.url,
                             name: file.name,
                             size: file.size,
-                            type: file.type.startsWith("image/") ? "image" : "file"
+                            type: type
                         }]);
                     }
                 } catch (error) {
@@ -116,7 +122,10 @@ export function CreatePost({ communityId, currentUser, onPostCreated, isAnnounce
     };
 
     return (
-        <Card className={`mb-6 ${isAnnouncementMode ? "border-blue-200 bg-blue-50/30" : ""}`}>
+        <Card className={cn(
+            "mb-2 sm:mb-6 rounded-none sm:rounded-xl border-x-0 sm:border-x",
+            isAnnouncementMode ? "border-blue-200 bg-blue-50/30" : ""
+        )}>
             <CardContent className="p-4">
                 <div className="flex gap-4">
                     <Avatar>
@@ -139,8 +148,14 @@ export function CreatePost({ communityId, currentUser, onPostCreated, isAnnounce
                                         {att.type === "image" ? (
                                             <img src={att.url} alt="Attachment" className="h-20 w-20 object-cover rounded-md border" />
                                         ) : (
-                                            <div className="h-20 w-20 bg-slate-100 flex flex-col items-center justify-center rounded-md border text-xs text-muted-foreground p-1 text-center truncate">
-                                                <FileText className="h-6 w-6 mb-1" />
+                                            <div className="h-20 w-20 bg-slate-100 flex flex-col items-center justify-center rounded-md border text-[10px] text-muted-foreground p-1 text-center truncate">
+                                                {att.type === "video" ? (
+                                                    <Video className="h-6 w-6 mb-1 text-purple-500" />
+                                                ) : att.type === "pdf" ? (
+                                                    <FileText className="h-6 w-6 mb-1 text-red-500" />
+                                                ) : (
+                                                    <FileText className="h-6 w-6 mb-1 text-blue-500" />
+                                                )}
                                                 <span className="w-full truncate">{att.name}</span>
                                             </div>
                                         )}
@@ -180,14 +195,30 @@ export function CreatePost({ communityId, currentUser, onPostCreated, isAnnounce
                                     accept="image/*"
                                     onChange={handleFileSelect}
                                 />
+                                <input
+                                    type="file"
+                                    id="post-attachment-upload"
+                                    multiple
+                                    className="hidden"
+                                    onChange={handleFileSelect}
+                                />
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     className="text-muted-foreground hover:text-foreground hover:bg-muted/50 gap-2 h-8 px-2"
                                     onClick={() => document.getElementById('post-media-upload')?.click()}
                                 >
-                                    <ImageIcon className="w-4 h-4" />
-                                    <span className="text-xs">Add Media</span>
+                                    <ImageIcon className="w-4 h-4 text-emerald-500" />
+                                    <span className="text-xs hidden md:inline">Add Media</span>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-muted-foreground hover:text-foreground hover:bg-muted/50 gap-2 h-8 px-2"
+                                    onClick={() => document.getElementById('post-attachment-upload')?.click()}
+                                >
+                                    <Paperclip className="w-4 h-4 text-blue-500" />
+                                    <span className="text-xs hidden md:inline">Add Attachment</span>
                                 </Button>
                                 {isAnnouncementMode && (
                                     <span className="text-xs font-semibold text-blue-600 flex items-center gap-1">

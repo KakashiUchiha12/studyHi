@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const subjects = await prisma.subject.findMany({
             where: {
-                userId: params.id,
+                userId: id,
             },
             orderBy: { order: 'asc' },
             include: {

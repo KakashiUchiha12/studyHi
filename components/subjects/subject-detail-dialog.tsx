@@ -22,6 +22,7 @@ import {
   FileText,
   ImageIcon,
   File,
+  Folder,
   GripVertical,
   Search,
   BookMarked,
@@ -690,6 +691,7 @@ export function SubjectDetailDialog({
         id: result.file.id,
         name: file.name,
         url: `/api/files/${result.file.id}`,
+        thumbnailUrl: result.file.thumbnailPath ? `/api/files/${result.file.id}/thumbnail` : undefined,
         size: file.size,
         type: file.type,
         uploadedAt: new Date().toISOString()
@@ -1271,7 +1273,7 @@ export function SubjectDetailDialog({
                           <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
                             <GripVertical className="h-4 w-4 text-muted-foreground transition-opacity" />
                           </div>
-                          <BookOpen className="h-4 w-4 text-muted-foreground" />
+                          <Folder className="h-4 w-4 text-muted-foreground" />
                           {editingMaterial === material.id ? (
                             <Input
                               value={editingMaterialName}
@@ -1412,12 +1414,17 @@ export function SubjectDetailDialog({
 
                                     {/* Show thumbnail if available */}
                                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
-                                      {/* For images, show the actual image as thumbnail */}
-                                      {file.type.startsWith('image/') ? (
+                                      {/* Show thumbnail if available, otherwise generic icon */}
+                                      {file.thumbnailUrl || (file.type.startsWith('image/') && file.url) ? (
                                         <img
-                                          src={file.url}
+                                          src={file.thumbnailUrl || file.url}
                                           alt="File thumbnail"
                                           className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            // Fallback if thumbnail fails to load
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                            (e.target as HTMLImageElement).parentElement?.classList.add('flex-col');
+                                          }}
                                         />
                                       ) : file.type === 'application/pdf' ? (
                                         <FileText className="h-8 w-8 text-red-500" />

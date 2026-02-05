@@ -44,7 +44,7 @@ export function ProfilePostGrid({ userId, currentUserId }: ProfilePostGridProps)
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {posts.map((post) => {
                 const hasMedia = post.attachments && post.attachments.length > 0;
                 const firstMedia = hasMedia ? post.attachments[0] : null;
@@ -54,25 +54,44 @@ export function ProfilePostGrid({ userId, currentUserId }: ProfilePostGridProps)
                         <DialogTrigger asChild>
                             <div className="aspect-square relative cursor-pointer group bg-slate-100 overflow-hidden rounded-md border">
                                 {hasMedia ? (
-                                    <img
-                                        src={firstMedia.url}
-                                        alt="Post content"
-                                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                    />
+                                    <div className="w-full h-full relative group">
+                                        <img
+                                            src={firstMedia.url.includes('/api/drive/files')
+                                                ? `${firstMedia.url}${firstMedia.url.includes('?') ? '&' : '?'}thumbnail=true&v=hq`
+                                                : `/api/media/thumbnail?url=${encodeURIComponent(firstMedia.url)}&v=hq`
+                                            }
+                                            alt="Post content"
+                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                            onError={(e) => {
+                                                // Fallback to original URL or icon if thumbnail fails
+                                                const target = e.target as HTMLImageElement;
+                                                if (!target.src.endsWith(firstMedia.url)) {
+                                                    target.src = firstMedia.url;
+                                                }
+                                            }}
+                                        />
+                                        {(firstMedia.mimeType === 'application/pdf' || firstMedia.name?.toLowerCase().endsWith('.pdf')) && (
+                                            <div className="absolute top-2 left-2 pointer-events-none">
+                                                <div className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase">
+                                                    PDF
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="w-full h-full p-4 flex items-center justify-center bg-white text-xs md:text-sm text-center text-muted-foreground select-none">
                                         {post.content.length > 50 ? post.content.slice(0, 50) + "..." : post.content}
                                     </div>
                                 )}
 
-                                {/* Hover Overlay */}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 text-white font-bold">
+                                {/* Statistics Overlay (Always Visible) */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 flex items-center gap-3 text-white text-xs font-bold shadow-sm">
                                     <div className="flex items-center gap-1">
-                                        <Heart className="w-5 h-5 fill-white" />
+                                        <Heart className="w-3.5 h-3.5 fill-white" />
                                         <span>{post._count?.likes || 0}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <MessageSquare className="w-5 h-5 fill-white" />
+                                        <MessageSquare className="w-3.5 h-3.5 fill-white" />
                                         <span>{post._count?.comments || 0}</span>
                                     </div>
                                 </div>

@@ -16,6 +16,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 interface Subject {
     id: string;
@@ -146,8 +147,8 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
 
     return (
         <>
-            <Card>
-                <CardHeader>
+            <Card className="rounded-none sm:rounded-xl border-x-0 sm:border-x">
+                <CardHeader className="px-4 sm:px-6">
                     <CardTitle className="flex items-center gap-2">
                         <BookOpen className="h-5 w-5" />
                         Subjects

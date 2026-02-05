@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { detectDuplicates } from '@/lib/drive/duplicate-detection';
+import path from 'path';
 
 /**
  * POST /api/drive/import - Import files/folders from another user
@@ -10,30 +11,35 @@ import { detectDuplicates } from '@/lib/drive/duplicate-detection';
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user || !(session.user as any).id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userId = (session.user as any).id;
 
     const body = await request.json();
-    const { fromUserId, importType, targetId, skipDuplicates = true } = body;
+    const importType = body.importType || body.targetType;
+    const fromUserId = body.fromUserId;
+    const targetId = body.targetId || body.subjectId;
+    const skipDuplicates = body.skipDuplicates ?? true;
 
     if (!fromUserId || !importType || !targetId) {
       return NextResponse.json(
-        { error: 'Missing required fields: fromUserId, importType, targetId' },
+        { error: 'Missing required fields: fromUserId, importType/targetType, targetId/subjectId' },
         { status: 400 }
       );
     }
 
-    if (!['subject', 'file', 'folder'].includes(importType)) {
+    const type = importType.toLowerCase();
+    if (!['subject', 'file', 'folder'].includes(type)) {
       return NextResponse.json(
-        { error: 'Invalid importType. Must be subject, file, or folder.' },
+        { error: 'Invalid import type. Must be subject, file, or folder.' },
         { status: 400 }
       );
     }
 
     // Get requester's drive
     const toDrive = await prisma.drive.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: userId },
     });
 
     if (!toDrive) {
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest) {
       totalSize: BigInt(0),
     };
 
-    if (importType === 'file') {
+    if (type === 'file') {
       // Import single file
       const file = await prisma.driveFile.findFirst({
         where: {
@@ -120,7 +126,7 @@ export async function POST(request: NextRequest) {
             file,
             toDrive.id,
             null,
-            session.user.id,
+            userId,
             `${file.originalName} (Copy)`
           );
           importResult.imported.push(copiedFile);
@@ -132,12 +138,12 @@ export async function POST(request: NextRequest) {
           file,
           toDrive.id,
           null,
-          session.user.id
+          userId
         );
         importResult.imported.push(copiedFile);
         importResult.totalSize += file.fileSize;
       }
-    } else if (importType === 'folder') {
+    } else if (type === 'folder') {
       // Import folder with all files
       const folder = await prisma.driveFolder.findFirst({
         where: {
@@ -206,7 +212,7 @@ export async function POST(request: NextRequest) {
               file,
               toDrive.id,
               copiedFolder.id,
-              session.user.id,
+              userId,
               `${file.originalName} (Copy)`
             );
             importResult.imported.push(copiedFile);
@@ -218,7 +224,7 @@ export async function POST(request: NextRequest) {
             file,
             toDrive.id,
             copiedFolder.id,
-            session.user.id
+            userId
           );
           importResult.imported.push(copiedFile);
           importResult.totalSize += file.fileSize;
@@ -229,7 +235,7 @@ export async function POST(request: NextRequest) {
       await prisma.driveActivity.create({
         data: {
           driveId: toDrive.id,
-          userId: session.user.id,
+          userId: userId,
           action: 'import',
           targetType: 'folder',
           targetId: copiedFolder.id,
@@ -242,120 +248,281 @@ export async function POST(request: NextRequest) {
           }),
         },
       });
-    } else if (importType === 'subject') {
-      // Import subject folder and all files
-      const subject = await prisma.subject.findFirst({
-        where: {
-          id: targetId,
-          userId: fromUserId,
-        },
-      });
+    } else if (type === 'subject') {
+      const actualTargetId = targetId;
+      const fileIds = body.fileIds || []; // Files selected in UI
 
-      if (!subject) {
-        return NextResponse.json(
-          { error: 'Subject not found' },
-          { status: 404 }
-        );
-      }
-
-      // Find subject folder
-      const subjectFolder = await prisma.driveFolder.findFirst({
-        where: {
-          subjectId: targetId,
-          driveId: fromDrive.id,
-          deletedAt: null,
-        },
+      // Import subject and its hierarchy
+      const sourceSubject = await prisma.subject.findUnique({
+        where: { id: actualTargetId },
         include: {
-          files: {
-            where: { deletedAt: null },
+          chapters: {
+            include: {
+              materials: true
+            }
           },
-        },
-      });
-
-      if (!subjectFolder) {
-        return NextResponse.json(
-          { error: 'Subject folder not found' },
-          { status: 404 }
-        );
-      }
-
-      // Check if folder is public or copying is allowed
-      if (!subjectFolder.isPublic && fromDrive.allowCopying !== 'ALLOW') {
-        return NextResponse.json(
-          { error: 'Subject is not public and copying requires approval' },
-          { status: 403 }
-        );
-      }
-
-      // Check for duplicates
-      const filesData = subjectFolder.files.map((file) => ({
-        name: file.originalName,
-        hash: file.fileHash,
-        size: file.fileSize,
-      }));
-
-      const duplicateChecks = await detectDuplicates(toDrive.id, filesData);
-
-      // Create folder (without linking to subject)
-      const copiedFolder = await prisma.driveFolder.create({
-        data: {
-          driveId: toDrive.id,
-          parentId: null,
-          name: `${subject.name} (Imported)`,
-          path: `/${subject.name} (Imported)`,
-          isPublic: false,
-        },
-      });
-
-      // Import files
-      for (let i = 0; i < subjectFolder.files.length; i++) {
-        const file = subjectFolder.files[i];
-        const duplicate = duplicateChecks[i];
-
-        if (duplicate.isDuplicate) {
-          if (skipDuplicates) {
-            importResult.duplicates.push({
-              name: file.originalName,
-              type: duplicate.duplicateType,
-              existingFileId: duplicate.existingFileId,
-            });
-            importResult.skipped.push(file.originalName);
-          } else {
-            const copiedFile = await importFile(
-              file,
-              toDrive.id,
-              copiedFolder.id,
-              session.user.id,
-              `${file.originalName} (Copy)`
-            );
-            importResult.imported.push(copiedFile);
-            importResult.totalSize += file.fileSize;
-          }
-        } else {
-          const copiedFile = await importFile(
-            file,
-            toDrive.id,
-            copiedFolder.id,
-            session.user.id
-          );
-          importResult.imported.push(copiedFile);
-          importResult.totalSize += file.fileSize;
+          files: true
         }
+      });
+
+      if (!sourceSubject) {
+        return NextResponse.json({ error: 'Source subject not found' }, { status: 404 });
+      }
+
+      // 1. Ensure Destination Subject exists
+      let destSubject = await prisma.subject.findFirst({
+        where: { userId: userId, name: sourceSubject.name }
+      });
+
+      if (!destSubject) {
+        destSubject = await prisma.subject.create({
+          data: {
+            userId: userId,
+            name: sourceSubject.name,
+            color: sourceSubject.color,
+            description: sourceSubject.description,
+            code: sourceSubject.code,
+            credits: sourceSubject.credits,
+            instructor: sourceSubject.instructor,
+          }
+        });
+      }
+
+      // 2. Ensure Drive Folder exists for the destination subject
+      let destFolder = await prisma.driveFolder.findFirst({
+        where: { driveId: toDrive.id, subjectId: destSubject.id, deletedAt: null }
+      });
+
+      if (!destFolder) {
+        const folderName = `Subjects - ${destSubject.name}`;
+        destFolder = await prisma.driveFolder.create({
+          data: {
+            driveId: toDrive.id,
+            name: folderName,
+            path: `/${folderName}`,
+            subjectId: destSubject.id,
+          }
+        });
+      }
+
+      // 3. Import SubjectFiles (standalone files)
+      for (const sFile of sourceSubject.files) {
+        // If fileIds is specified, only import if matched
+        if (fileIds.length > 0 && !fileIds.includes(sFile.id)) continue;
+
+        // Check if already in drive by storedName (GLOBAL unique constraint)
+        // Since storedName is globally unique, we need to check if it exists anywhere
+        const duplicate = await prisma.driveFile.findFirst({
+          where: { storedName: sFile.fileName }
+        });
+
+        if (duplicate) {
+          // File already exists globally, skip
+          importResult.duplicates.push({ name: sFile.originalName, type: 'storedName', reason: 'File already exists in database' });
+        } else {
+          // No duplicate, create new file
+          const copiedFile = await prisma.driveFile.create({
+            data: {
+              driveId: toDrive.id,
+              folderId: destFolder.id,
+              originalName: sFile.originalName,
+              storedName: sFile.fileName,
+              fileSize: BigInt(sFile.fileSize),
+              mimeType: sFile.mimeType,
+              fileType: sFile.fileType,
+              fileHash: '', // We can't easily get hash from SubjectFile without reading it
+              filePath: sFile.filePath,
+              thumbnailPath: sFile.thumbnailPath,
+              isPublic: false,
+            }
+          });
+          importResult.imported.push(copiedFile);
+          importResult.totalSize += BigInt(sFile.fileSize);
+        }
+      }
+
+      // 4. Recursive Copy: Chapters -> Materials -> Files/Links
+      for (const sourceChapter of sourceSubject.chapters) {
+        // Create Chapter
+        const destChapter = await prisma.chapter.upsert({
+          where: {
+            subjectId_order: {
+              subjectId: destSubject.id,
+              order: sourceChapter.order
+            }
+          },
+          update: { title: sourceChapter.title, description: sourceChapter.description },
+          create: {
+            subjectId: destSubject.id,
+            title: sourceChapter.title,
+            description: sourceChapter.description,
+            order: sourceChapter.order,
+            isCompleted: false
+          }
+        });
+
+        // 2. Ensure Folder for Chapter exists
+        const chapterFolder = await ensureImportFolderExists(toDrive.id, destFolder.id, sourceChapter.title);
+
+        for (const sourceMaterial of sourceChapter.materials) {
+          let materialContent: { files: any[], links: any[] } = { files: [], links: [] };
+          let hasContent = false;
+
+          // 3. Ensure Folder for Material exists (if it has files)
+          // We'll create it only if it has files, or just create it anyway for better UX
+          const materialFolder = await ensureImportFolderExists(toDrive.id, chapterFolder.id, sourceMaterial.title);
+
+          if (sourceMaterial.content) {
+            try {
+              const parsed = JSON.parse(sourceMaterial.content);
+              const originalFiles = parsed.files || [];
+              const originalLinks = parsed.links || [];
+
+              // Handle Links (Preserve in Subject but skip Drive)
+              materialContent.links = originalLinks;
+              if (originalLinks.length > 0) hasContent = true;
+
+              // Handle Files (Sync to Drive if selected)
+              for (const f of originalFiles) {
+                if (fileIds.length > 0 && !fileIds.includes(f.id)) continue;
+
+                // Find original DriveFile to get path/hash
+                const srcFile = await prisma.driveFile.findUnique({ where: { id: f.id } })
+                  || await prisma.subjectFile.findUnique({ where: { id: f.id } });
+                if (srcFile) {
+                  const copied = await importFile(srcFile, toDrive.id, materialFolder.id, userId);
+                  materialContent.files.push({
+                    id: copied.id,
+                    name: copied.originalName,
+                    url: `/api/drive/files/${copied.id}`,
+                    size: Number(copied.fileSize),
+                    type: copied.mimeType,
+                    uploadedAt: new Date().toISOString()
+                  } as any);
+                  importResult.imported.push(copied);
+                  importResult.totalSize += BigInt(srcFile.fileSize);
+                  hasContent = true;
+                }
+              }
+            } catch (e) {
+              console.error("Error parsing material content during import", e);
+            }
+          }
+
+          // Create Material in Destination
+          await prisma.material.create({
+            data: {
+              chapterId: destChapter.id,
+              subjectId: destSubject.id,
+              title: sourceMaterial.title,
+              type: sourceMaterial.type,
+              content: hasContent ? JSON.stringify(materialContent) : sourceMaterial.content,
+              order: sourceMaterial.order,
+              isCompleted: false
+            }
+          });
+        }
+      }
+
+      // 5. Import Subject-level Materials (materials with chapterId: null)
+      const subjectLevelMaterials = await prisma.material.findMany({
+        where: {
+          subjectId: sourceSubject.id,
+          chapterId: null
+        }
+      });
+
+      for (const sourceMaterial of subjectLevelMaterials) {
+        let materialContent: { files: any[], links: any[] } = { files: [], links: [] };
+        let hasContent = false;
+
+        // Ensure Folder for Material exists at subject root level
+        const materialFolder = await ensureImportFolderExists(toDrive.id, destFolder.id, sourceMaterial.title);
+
+        if (sourceMaterial.content) {
+          try {
+            const parsed = JSON.parse(sourceMaterial.content);
+            const originalFiles = parsed.files || [];
+            const originalLinks = parsed.links || [];
+
+            // Handle Links
+            materialContent.links = originalLinks;
+            if (originalLinks.length > 0) hasContent = true;
+
+            // Handle Files
+            for (const f of originalFiles) {
+              if (fileIds.length > 0 && !fileIds.includes(f.id)) continue;
+
+              const srcFile = await prisma.driveFile.findUnique({ where: { id: f.id } })
+                || await prisma.subjectFile.findUnique({ where: { id: f.id } });
+              if (srcFile) {
+                // Check if already imported by storedName
+                const existingFile = await prisma.driveFile.findFirst({
+                  where: {
+                    driveId: toDrive.id,
+                    storedName: (srcFile as any).storedName || (srcFile as any).fileName
+                  }
+                });
+
+                if (existingFile) {
+                  // File already exists, use existing ID
+                  materialContent.files.push({
+                    id: existingFile.id,
+                    name: existingFile.originalName,
+                    url: `/api/drive/files/${existingFile.id}`,
+                    size: Number(existingFile.fileSize),
+                    type: existingFile.mimeType,
+                    uploadedAt: new Date().toISOString()
+                  } as any);
+                  hasContent = true;
+                } else {
+                  // Import new file
+                  const copied = await importFile(srcFile, toDrive.id, materialFolder.id, userId);
+                  materialContent.files.push({
+                    id: copied.id,
+                    name: copied.originalName,
+                    url: `/api/drive/files/${copied.id}`,
+                    size: Number(copied.fileSize),
+                    type: copied.mimeType,
+                    uploadedAt: new Date().toISOString()
+                  } as any);
+                  importResult.imported.push(copied);
+                  importResult.totalSize += BigInt(srcFile.fileSize);
+                  hasContent = true;
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing subject-level material content during import", e);
+          }
+        }
+
+        // Create Material in Destination (subject-level, no chapter)
+        await prisma.material.create({
+          data: {
+            chapterId: null,
+            subjectId: destSubject.id,
+            title: sourceMaterial.title,
+            type: sourceMaterial.type,
+            content: hasContent ? JSON.stringify(materialContent) : sourceMaterial.content,
+            order: sourceMaterial.order,
+            isCompleted: false
+          }
+        });
       }
 
       // Log activity
       await prisma.driveActivity.create({
         data: {
           driveId: toDrive.id,
-          userId: session.user.id,
+          userId: userId,
           action: 'import',
-          targetType: 'folder',
-          targetId: copiedFolder.id,
-          targetName: copiedFolder.name,
+          targetType: 'subject',
+          targetId: destSubject.id,
+          targetName: destSubject.name,
           metadata: JSON.stringify({
             fromUserId,
-            subjectId: subject.id,
-            subjectName: subject.name,
+            sourceSubjectId: sourceSubject.id,
             fileCount: importResult.imported.length,
             duplicateCount: importResult.duplicates.length,
           }),
@@ -375,14 +542,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Import completed',
-      result: {
-        imported: importResult.imported.length,
-        duplicates: importResult.duplicates.length,
-        skipped: importResult.skipped.length,
-        totalSize: importResult.totalSize.toString(),
-        duplicateReport: importResult.duplicates,
-        files: importResult.imported,
-      },
+      imported: importResult.imported.length,
+      duplicates: importResult.duplicates.length,
+      skipped: importResult.skipped.length,
+      totalSize: importResult.totalSize.toString(),
+      duplicateReport: importResult.duplicates,
+      files: JSON.parse(JSON.stringify(importResult.imported, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      )),
     });
   } catch (error) {
     console.error('Error importing:', error);
@@ -403,17 +570,23 @@ async function importFile(
   userId: string,
   customName?: string
 ) {
+  // For imports, we need to create a NEW file with a NEW storedName
+  // because storedName is globally unique and we can't share files across drives
+  const originalStoredName = sourceFile.storedName || sourceFile.fileName;
+  const extension = path.extname(originalStoredName);
+  const newStoredName = `${Date.now()}-${Math.random().toString(36).substring(7)}${extension}`;
+
   const copiedFile = await prisma.driveFile.create({
     data: {
       driveId: targetDriveId,
       folderId: targetFolderId,
       originalName: customName || sourceFile.originalName,
-      storedName: sourceFile.storedName,
+      storedName: newStoredName,
       fileSize: sourceFile.fileSize,
       mimeType: sourceFile.mimeType,
       fileType: sourceFile.fileType,
-      fileHash: sourceFile.fileHash,
-      filePath: sourceFile.filePath,
+      fileHash: sourceFile.fileHash || '',
+      filePath: sourceFile.filePath, // This points to the same physical file
       thumbnailPath: sourceFile.thumbnailPath,
       isPublic: false,
       description: sourceFile.description,
@@ -432,9 +605,36 @@ async function importFile(
       targetName: copiedFile.originalName,
       metadata: JSON.stringify({
         originalFileId: sourceFile.id,
+        originalStoredName: originalStoredName,
       }),
     },
   });
 
   return copiedFile;
+}
+
+/**
+ * Helper to ensure a folder exists in Drive during import
+ */
+async function ensureImportFolderExists(driveId: string, parentId: string, name: string) {
+  let folder = await prisma.driveFolder.findFirst({
+    where: { driveId, parentId, name, deletedAt: null }
+  });
+
+  if (!folder) {
+    const parent = await prisma.driveFolder.findUnique({ where: { id: parentId } });
+    const path = parent ? `${parent.path}/${name}` : `/${name}`;
+
+    folder = await prisma.driveFolder.create({
+      data: {
+        driveId,
+        parentId,
+        name,
+        path,
+        isPublic: false
+      }
+    });
+  }
+
+  return folder;
 }
