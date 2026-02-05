@@ -99,12 +99,22 @@ model User {
   testMarks         TestMark[]
   profile           UserProfile?
   userSettings      UserSettings?
-  
+
   // Drive Relations
-  drive                 Drive?
-  driveActivities       DriveActivity[]
-  sentCopyRequests      CopyRequest[] @relation("SentCopyRequests")
-  receivedCopyRequests  CopyRequest[] @relation("ReceivedCopyRequests")
+  drive                Drive?
+  driveActivities      DriveActivity[]
+  sentCopyRequests     CopyRequest[]   @relation("SentCopyRequests")
+  receivedCopyRequests CopyRequest[]   @relation("ReceivedCopyRequests")
+
+  // Course Relations
+  instructorCourses Course[]           @relation("InstructorCourses")
+  enrolledCourses   CourseEnrollment[]
+  courseReviews     CourseReview[]
+  courseBookmarks   CourseBookmark[]
+  courseDiscussions CourseDiscussion[]
+  quizAttempts      QuizAttempt[]
+  chapterProgress   ChapterProgress[]
+  userBadges        UserBadge[]
 }
 
 model UserProfile {
@@ -406,32 +416,32 @@ model CalendarEvent {
 // Social Media Models
 
 model SocialProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique @map("user_id")
-  bio            String?
-  location       String?
-  banner         String?
-  
+  id       String  @id @default(cuid())
+  userId   String  @unique @map("user_id")
+  bio      String?
+  location String?
+  banner   String?
+
   // Websites
-  website        String?
-  websiteLabel   String?  @map("website_label")
-  websiteUrl2    String?  @map("website_url_2")
-  websiteLabel2  String?  @map("website_label_2")
-  
+  website       String?
+  websiteLabel  String? @map("website_label")
+  websiteUrl2   String? @map("website_url_2")
+  websiteLabel2 String? @map("website_label_2")
+
   // Social Media
-  githubUrl      String?  @map("github_url")
-  linkedinUrl    String?  @map("linkedin_url")
-  twitterUrl     String?  @map("twitter_url")
-  instagramUrl   String?  @map("instagram_url")
-  instagramLabel String?  @map("instagram_label")
-  youtubeUrl     String?  @map("youtube_url")
-  youtubeLabel   String?  @map("youtube_label")
-  whatsappUrl    String?  @map("whatsapp_url")
-  whatsappLabel  String?  @map("whatsapp_label")
-  
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubUrl      String? @map("github_url")
+  linkedinUrl    String? @map("linkedin_url")
+  twitterUrl     String? @map("twitter_url")
+  instagramUrl   String? @map("instagram_url")
+  instagramLabel String? @map("instagram_label")
+  youtubeUrl     String? @map("youtube_url")
+  youtubeLabel   String? @map("youtube_label")
+  whatsappUrl    String? @map("whatsapp_url")
+  whatsappLabel  String? @map("whatsapp_label")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Follows {
@@ -625,45 +635,45 @@ model Message {
 // Drive/Cloud Storage Models
 
 model Drive {
-  id              String    @id @default(cuid())
-  userId          String    @unique @map("user_id")
-  storageUsed     BigInt    @default(0) @map("storage_used") // in bytes
-  storageLimit    BigInt    @default(10737418240) @map("storage_limit") // 10GB in bytes
-  bandwidthUsed   BigInt    @default(0) @map("bandwidth_used") // daily bandwidth
-  bandwidthLimit  BigInt    @default(10737418240) @map("bandwidth_limit") // 10GB daily
-  bandwidthReset  DateTime  @default(now()) @map("bandwidth_reset")
-  isPrivate       Boolean   @default(false) @map("is_private")
-  allowCopying    String    @default("REQUEST") // "ALLOW", "REQUEST", "DENY"
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  files           DriveFile[]
-  folders         DriveFolder[]
-  activities      DriveActivity[]
-  copyRequests    CopyRequest[]
-  
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  storageUsed    BigInt   @default(0) @map("storage_used") // in bytes
+  storageLimit   BigInt   @default(10737418240) @map("storage_limit") // 10GB in bytes
+  bandwidthUsed  BigInt   @default(0) @map("bandwidth_used") // daily bandwidth
+  bandwidthLimit BigInt   @default(10737418240) @map("bandwidth_limit") // 10GB daily
+  bandwidthReset DateTime @default(now()) @map("bandwidth_reset")
+  isPrivate      Boolean  @default(false) @map("is_private")
+  allowCopying   String   @default("REQUEST") // "ALLOW", "REQUEST", "DENY"
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files        DriveFile[]
+  folders      DriveFolder[]
+  activities   DriveActivity[]
+  copyRequests CopyRequest[]
+
   @@map("drives")
 }
 
 model DriveFolder {
-  id              String          @id @default(cuid())
-  driveId         String          @map("drive_id")
-  parentId        String?         @map("parent_id")
-  name            String
-  path            String          // full path for easy querying
-  isPublic        Boolean         @default(false) @map("is_public")
-  subjectId       String?         @map("subject_id") // Link to Subject if folder represents a subject
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
-  deletedAt       DateTime?       @map("deleted_at") // Soft delete for trash
-  
-  drive           Drive           @relation(fields: [driveId], references: [id], onDelete: Cascade)
-  parent          DriveFolder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children        DriveFolder[]   @relation("FolderHierarchy")
-  subject         Subject?        @relation(fields: [subjectId], references: [id])
-  files           DriveFile[]
-  
+  id        String    @id @default(cuid())
+  driveId   String    @map("drive_id")
+  parentId  String?   @map("parent_id")
+  name      String
+  path      String // full path for easy querying
+  isPublic  Boolean   @default(false) @map("is_public")
+  subjectId String?   @map("subject_id") // Link to Subject if folder represents a subject
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at") // Soft delete for trash
+
+  drive    Drive         @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  parent   DriveFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children DriveFolder[] @relation("FolderHierarchy")
+  subject  Subject?      @relation(fields: [subjectId], references: [id])
+  files    DriveFile[]
+
   @@index([driveId])
   @@index([parentId])
   @@index([subjectId])
@@ -671,28 +681,28 @@ model DriveFolder {
 }
 
 model DriveFile {
-  id              String       @id @default(cuid())
-  driveId         String       @map("drive_id")
-  folderId        String?      @map("folder_id")
-  originalName    String       @map("original_name")
-  storedName      String       @unique @map("stored_name") // UUID-based filename
-  fileSize        BigInt       @map("file_size") // in bytes
-  mimeType        String       @map("mime_type")
-  fileType        String       @map("file_type") // extension
-  fileHash        String       @map("file_hash") // MD5/SHA256 for duplicate detection
-  filePath        String       @map("file_path") // path on disk
-  thumbnailPath   String?      @map("thumbnail_path")
-  isPublic        Boolean      @default(false) @map("is_public")
-  downloadCount   Int          @default(0) @map("download_count")
-  description     String?
-  tags            String       @default("[]") // JSON array
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  deletedAt       DateTime?    @map("deleted_at") // Soft delete for trash
-  
-  drive           Drive        @relation(fields: [driveId], references: [id], onDelete: Cascade)
-  folder          DriveFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  
+  id            String    @id @default(cuid())
+  driveId       String    @map("drive_id")
+  folderId      String?   @map("folder_id")
+  originalName  String    @map("original_name")
+  storedName    String    @unique @map("stored_name") // UUID-based filename
+  fileSize      BigInt    @map("file_size") // in bytes
+  mimeType      String    @map("mime_type")
+  fileType      String    @map("file_type") // extension
+  fileHash      String    @map("file_hash") // MD5/SHA256 for duplicate detection
+  filePath      String    @map("file_path") // path on disk
+  thumbnailPath String?   @map("thumbnail_path")
+  isPublic      Boolean   @default(false) @map("is_public")
+  downloadCount Int       @default(0) @map("download_count")
+  description   String?
+  tags          String    @default("[]") // JSON array
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at") // Soft delete for trash
+
+  drive  Drive        @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  folder DriveFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
   @@index([driveId])
   @@index([folderId])
   @@index([fileHash]) // For duplicate detection
@@ -700,19 +710,19 @@ model DriveFile {
 }
 
 model DriveActivity {
-  id              String       @id @default(cuid())
-  driveId         String       @map("drive_id")
-  userId          String       @map("user_id")
-  action          String       // "upload", "download", "delete", "rename", "move", "copy", "import"
-  targetType      String       @map("target_type") // "file", "folder"
-  targetId        String       @map("target_id")
-  targetName      String       @map("target_name")
-  metadata        String?      @default("{}") // JSON for additional info
-  createdAt       DateTime     @default(now()) @map("created_at")
-  
-  drive           Drive        @relation(fields: [driveId], references: [id], onDelete: Cascade)
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(cuid())
+  driveId    String   @map("drive_id")
+  userId     String   @map("user_id")
+  action     String // "upload", "download", "delete", "rename", "move", "copy", "import"
+  targetType String   @map("target_type") // "file", "folder"
+  targetId   String   @map("target_id")
+  targetName String   @map("target_name")
+  metadata   String?  @default("{}") // JSON for additional info
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  drive Drive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([driveId])
   @@index([userId])
   @@index([createdAt])
@@ -720,24 +730,321 @@ model DriveActivity {
 }
 
 model CopyRequest {
-  id              String       @id @default(cuid())
-  fromUserId      String       @map("from_user_id")
-  toUserId        String       @map("to_user_id")
-  fromDriveId     String       @map("from_drive_id")
-  toDriveId       String       @map("to_drive_id")
-  requestType     String       @map("request_type") // "subject", "file", "folder"
-  targetId        String       @map("target_id")
-  status          String       @default("PENDING") // "PENDING", "APPROVED", "DENIED"
-  message         String?
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  
-  fromUser        User         @relation("SentCopyRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUser          User         @relation("ReceivedCopyRequests", fields: [toUserId], references: [id], onDelete: Cascade)
-  fromDrive       Drive        @relation(fields: [fromDriveId], references: [id], onDelete: Cascade)
-  
+  id          String   @id @default(cuid())
+  fromUserId  String   @map("from_user_id")
+  toUserId    String   @map("to_user_id")
+  fromDriveId String   @map("from_drive_id")
+  toDriveId   String   @map("to_drive_id")
+  requestType String   @map("request_type") // "subject", "file", "folder"
+  targetId    String   @map("target_id")
+  status      String   @default("PENDING") // "PENDING", "APPROVED", "DENIED"
+  message     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  fromUser  User  @relation("SentCopyRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser    User  @relation("ReceivedCopyRequests", fields: [toUserId], references: [id], onDelete: Cascade)
+  fromDrive Drive @relation(fields: [fromDriveId], references: [id], onDelete: Cascade)
+
   @@index([fromUserId])
   @@index([toUserId])
   @@index([status])
   @@map("copy_requests")
+}
+
+// Course Management Models
+
+model Course {
+  id                 String  @id @default(cuid())
+  userId             String  @map("user_id")
+  title              String
+  slug               String  @unique
+  description        String? @db.Text
+  shortDescription   String? @map("short_description")
+  courseImage        String? @map("course_image")
+  category           String
+  difficulty         String  @default("beginner")
+  language           String  @default("en")
+  learningObjectives String? @map("learning_objectives") @db.Text
+  requirements       String? @default("[]")
+
+  price    Float   @default(0)
+  currency String  @default("USD")
+  isPaid   Boolean @default(false) @map("is_paid")
+
+  status  String  @default("draft")
+  isDraft Boolean @default(true) @map("is_draft")
+
+  enrollmentCount Int   @default(0) @map("enrollment_count")
+  averageRating   Float @default(0) @map("average_rating")
+  ratingCount     Int   @default(0) @map("rating_count")
+
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  instructor    User                 @relation("InstructorCourses", fields: [userId], references: [id], onDelete: Cascade)
+  modules       CourseModule[]
+  enrollments   CourseEnrollment[]
+  reviews       CourseReview[]
+  bookmarks     CourseBookmark[]
+  announcements CourseAnnouncement[]
+  achievements  CourseAchievement[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([difficulty])
+  @@map("courses")
+}
+
+model CourseModule {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  course   Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  chapters CourseChapter[]
+
+  @@unique([courseId, order])
+  @@index([courseId])
+  @@map("course_modules")
+}
+
+model CourseChapter {
+  id          String   @id @default(cuid())
+  moduleId    String   @map("module_id")
+  title       String
+  description String?  @db.Text
+  order       Int
+  isFree      Boolean  @default(false) @map("is_free")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  module      CourseModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  sections    CourseSection[]
+  discussions CourseDiscussion[]
+  progress    ChapterProgress[]
+
+  @@unique([moduleId, order])
+  @@index([moduleId])
+  @@map("course_chapters")
+}
+
+model CourseSection {
+  id          String   @id @default(cuid())
+  chapterId   String   @map("chapter_id")
+  title       String
+  contentType String   @map("content_type")
+  content     String?  @db.Text
+  videoUrl    String?  @map("video_url")
+  fileUrl     String?  @map("file_url")
+  fileName    String?  @map("file_name")
+  fileSize    Int?     @map("file_size")
+  filePath    String?  @map("file_path")
+  order       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  chapter CourseChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  quiz    Quiz?
+
+  @@unique([chapterId, order])
+  @@index([chapterId])
+  @@map("course_sections")
+}
+
+model Quiz {
+  id             String   @id @default(cuid())
+  sectionId      String   @unique @map("section_id")
+  title          String
+  description    String?
+  passingScore   Int?     @map("passing_score")
+  timeLimit      Int?     @map("time_limit")
+  showAnswers    Boolean  @default(true) @map("show_answers")
+  randomizeOrder Boolean  @default(true) @map("randomize_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  section   CourseSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id             String   @id @default(cuid())
+  quizId         String   @map("quiz_id")
+  question       String   @db.Text
+  questionType   String   @default("single") @map("question_type")
+  options        String   @db.Text
+  correctAnswers String   @map("correct_answers") @db.Text
+  explanation    String?  @db.Text
+  order          Int
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id             String   @id @default(cuid())
+  quizId         String   @map("quiz_id")
+  userId         String   @map("user_id")
+  answers        String   @db.Text
+  score          Float
+  totalQuestions Int      @map("total_questions")
+  correctAnswers Int      @map("correct_answers")
+  timeTaken      Int?     @map("time_taken")
+  completedAt    DateTime @default(now()) @map("completed_at")
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([quizId])
+  @@index([userId])
+  @@map("quiz_attempts")
+}
+
+model CourseEnrollment {
+  id             String    @id @default(cuid())
+  courseId       String    @map("course_id")
+  userId         String    @map("user_id")
+  progress       Float     @default(0)
+  completedAt    DateTime? @map("completed_at")
+  lastAccessedAt DateTime  @default(now()) @map("last_accessed_at")
+  enrolledAt     DateTime  @default(now()) @map("enrolled_at")
+
+  course          Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapterProgress ChapterProgress[]
+
+  @@unique([courseId, userId])
+  @@index([userId])
+  @@index([courseId])
+  @@map("course_enrollments")
+}
+
+model ChapterProgress {
+  id             String    @id @default(cuid())
+  enrollmentId   String    @map("enrollment_id")
+  chapterId      String    @map("chapter_id")
+  userId         String    @map("user_id")
+  isCompleted    Boolean   @default(false) @map("is_completed")
+  completedAt    DateTime? @map("completed_at")
+  lastAccessedAt DateTime  @default(now()) @map("last_accessed_at")
+
+  enrollment CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  chapter    CourseChapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, chapterId])
+  @@index([userId])
+  @@map("chapter_progress")
+}
+
+model CourseReview {
+  id        String   @id @default(cuid())
+  courseId  String   @map("course_id")
+  userId    String   @map("user_id")
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+  @@index([userId])
+  @@map("course_reviews")
+}
+
+model CourseBookmark {
+  id        String   @id @default(cuid())
+  courseId  String   @map("course_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([userId])
+  @@map("course_bookmarks")
+}
+
+model CourseDiscussion {
+  id           String   @id @default(cuid())
+  chapterId    String   @map("chapter_id")
+  userId       String   @map("user_id")
+  parentId     String?  @map("parent_id")
+  question     String   @db.Text
+  answer       String?  @db.Text
+  isInstructor Boolean  @default(false) @map("is_instructor")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  chapter CourseChapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  CourseDiscussion?  @relation("DiscussionReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies CourseDiscussion[] @relation("DiscussionReplies")
+
+  @@index([chapterId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("course_discussions")
+}
+
+model CourseAnnouncement {
+  id        String   @id @default(cuid())
+  courseId  String   @map("course_id")
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+  @@map("course_announcements")
+}
+
+model CourseAchievement {
+  id          String  @id @default(cuid())
+  courseId    String? @map("course_id")
+  badgeType   String  @map("badge_type")
+  title       String
+  description String
+  icon        String
+  criteria    String  @db.Text
+
+  course     Course?     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userBadges UserBadge[]
+
+  @@index([courseId])
+  @@map("course_achievements")
+}
+
+model UserBadge {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  achievementId String   @map("achievement_id")
+  isVisible     Boolean  @default(true) @map("is_visible")
+  earnedAt      DateTime @default(now()) @map("earned_at")
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement CourseAchievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("user_badges")
 }
