@@ -1,0 +1,99 @@
+/** @type {import('next').NextConfig} */
+// Restart trigger
+const nextConfig = {
+  // Production optimizations
+  reactStrictMode: true,
+  poweredByHeader: false,
+  output: 'standalone', // Required for Docker deployment
+
+  // Image optimization
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'utfs.io',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+    ],
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+  },
+
+  // Compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  // Performance optimizations
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+
+  // Ignore linting errors during build for cPanel deployment
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
+    ];
+  },
+
+  // Webpack configuration
+  webpack: (config, { isServer }) => {
+    // Ignore Windows system directories in file watching
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        '**/node_modules',
+        '**/.git',
+        '**/.next',
+        '**/System Volume Information', // Fix for Windows EINVAL error
+      ],
+    };
+
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        canvas: false, // Fix: Prevent bundling canvas on client-side
+      };
+    }
+    // Important: Return the modified config
+    config.externals = [...(config.externals || []), { canvas: 'canvas' }];
+    return config;
+  },
+};
+
+export default nextConfig;

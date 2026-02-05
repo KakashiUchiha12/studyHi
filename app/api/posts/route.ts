@@ -1,0 +1,211 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher";
+
+const POSTS_BATCH = 20;
+
+export async function GET(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        const { searchParams } = new URL(req.url);
+        const cursor = searchParams.get("cursor");
+        const communityId = searchParams.get("communityId");
+        const userId = searchParams.get("userId"); // View specific user's posts
+
+        const isAnnouncement = searchParams.get("isAnnouncement") === "true";
+
+        // Build where clause
+        let whereClause: any = {};
+        if (communityId) {
+            whereClause.communityId = communityId;
+        } else if (userId) {
+            whereClause.userId = userId;
+        } else if (session) {
+            // Global Feed: Posts from communities user follows OR people user follows?
+            // Simple v1: All posts from joined communities + global public posts?
+            // Or specific "My Feed" logic.
+            // Let's implement: All posts sorted by newest for now, or if scoped, scoped.
+            // If no params, global feed (all public posts).
+            // To strictly "Followed Feed", we'd need more complex query.
+            // Let's stick to Global view or Community view for simplicity first.
+        }
+
+        if (isAnnouncement) {
+            whereClause.isAnnouncement = true;
+        }
+
+        let posts;
+
+        if (cursor) {
+            posts = await prisma.post.findMany({
+                take: POSTS_BATCH,
+                skip: 1,
+                cursor: { id: cursor },
+                where: whereClause,
+                select: {
+                    id: true,
+                    content: true,
+                    isAnnouncement: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    user: {
+                        select: { name: true, image: true, id: true }
+                    },
+                    community: {
+                        select: { name: true, id: true }
+                    },
+                    _count: {
+                        select: { comments: true, likes: true }
+                    },
+                    likes: session ? {
+                        where: { userId: (session.user as any).id },
+                        select: { userId: true }
+                    } : false,
+                    attachments: {
+                        select: {
+                            id: true,
+                            url: true,
+                            name: true,
+                            type: true,
+                            size: true
+                        }
+                    }
+                },
+                orderBy: { createdAt: "desc" }
+            });
+        } else {
+            posts = await prisma.post.findMany({
+                take: POSTS_BATCH,
+                where: whereClause,
+                select: {
+                    id: true,
+                    content: true,
+                    isAnnouncement: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    user: {
+                        select: { name: true, image: true, id: true }
+                    },
+                    community: {
+                        select: { name: true, id: true }
+                    },
+                    _count: {
+                        select: { comments: true, likes: true }
+                    },
+                    likes: session ? {
+                        where: { userId: (session.user as any).id },
+                        select: { userId: true }
+                    } : false,
+                    attachments: {
+                        select: {
+                            id: true,
+                            url: true,
+                            name: true,
+                            type: true,
+                            size: true
+                        }
+                    }
+                },
+                orderBy: { createdAt: "desc" }
+            });
+        }
+
+        return NextResponse.json(posts, {
+            headers: {
+                'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
+            }
+        });
+    } catch (error) {
+        console.error("[POSTS_GET]", error);
+        return new NextResponse("Internal Error", { status: 500 });
+    }
+}
+
+export async function POST(req: Request) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+
+        const { content, communityId, attachments, isAnnouncement } = await req.json();
+
+        if (!content && (!attachments || attachments.length === 0)) {
+            return new NextResponse("Content or attachments missing", { status: 400 });
+        }
+
+        const post = await prisma.post.create({
+            data: {
+                content: content || "",
+                userId: (session.user as any).id,
+                communityId, // Optional
+                isAnnouncement: isAnnouncement || false,
+                attachments: {
+                    create: attachments?.map((att: any) => ({
+                        url: att.url,
+                        type: att.type,
+                        name: att.name,
+                        size: att.size
+                    }))
+                }
+            },
+            include: {
+                attachments: true
+            }
+        });
+
+        // Fetch complete post data for realtime update (including user relationships)
+        const completePost = await prisma.post.findUnique({
+            where: { id: post.id },
+            select: {
+                id: true,
+                content: true,
+                isAnnouncement: true,
+                createdAt: true,
+                updatedAt: true,
+                user: {
+                    select: { name: true, image: true, id: true }
+                },
+                community: {
+                    select: { name: true, id: true }
+                },
+                _count: {
+                    select: { comments: true, likes: true }
+                },
+                attachments: {
+                    select: {
+                        id: true,
+                        url: true,
+                        name: true,
+                        type: true,
+                        size: true
+                    }
+                },
+                likes: {
+                    select: { userId: true } // Empty initially but keeps structure consistent
+                }
+            }
+        });
+
+        // Trigger Pusher Event
+        if (pusherServer) {
+            try {
+                if (communityId) {
+                    await pusherServer.trigger(`community-${communityId}`, 'new-post', completePost);
+                } else {
+                    await pusherServer.trigger('global-feed', 'new-post', completePost);
+                }
+            } catch (pusherError) {
+                console.error("[PUSHER_TRIGGER_ERROR]", pusherError);
+                // We don't throw here so the post creation still succeeds even if realtime fails
+            }
+        }
+
+        return NextResponse.json(completePost);
+    } catch (error) {
+        console.error("[POSTS_CREATE]", error);
+        return new NextResponse("Internal Error", { status: 500 });
+    }
+}

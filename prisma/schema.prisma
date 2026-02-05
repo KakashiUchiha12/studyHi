@@ -1,0 +1,743 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-1.1.x"]
+}
+
+model Subject {
+  id                String         @id @default(cuid())
+  userId            String         @map("user_id")
+  name              String
+  color             String         @default("#3B82F6")
+  description       String?
+  code              String?
+  credits           Int            @default(3)
+  instructor        String?
+  totalChapters     Int            @default(0) @map("total_chapters")
+  completedChapters Int            @default(0) @map("completed_chapters")
+  progress          Float          @default(0.0)
+  nextExam          DateTime?      @map("next_exam")
+  assignmentsDue    Int            @default(0) @map("assignments_due")
+  order             Int            @default(0)
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  chapters          Chapter[]
+  studyGoals        StudyGoal[]
+  studySessions     StudySession[]
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files             SubjectFile[]
+  tasks             Task[]
+  testMarks         TestMark[]
+  materials         Material[]
+  driveFolders      DriveFolder[]
+}
+
+model SubjectFile {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  subjectId     String   @map("subject_id")
+  fileName      String   @map("file_name")
+  originalName  String   @map("original_name")
+  fileType      String   @map("file_type")
+  mimeType      String   @map("mime_type")
+  fileSize      Int      @map("file_size")
+  filePath      String   @map("file_path")
+  thumbnailPath String?  @map("thumbnail_path")
+  category      String   @default("OTHER")
+  tags          String   @default("[]")
+  description   String?
+  isPublic      Boolean  @default(false) @map("is_public")
+  downloadCount Int      @default(0) @map("download_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([userId])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  username     String?  @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  image        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Social Relations
+  socialProfile    SocialProfile?
+  followers        Follows[]         @relation("following")
+  following        Follows[]         @relation("follower")
+  ownedCommunities Community[]       @relation("CommunityOwner")
+  memberships      CommunityMember[]
+  posts            Post[]
+  comments         Comment[]
+  likes            Like[]
+  sentMessages     Message[]         @relation("MessageSender")
+  receivedMessages Message[]         @relation("MessageReceiver")
+  createdEvents    CommunityEvent[]
+  eventAttendances EventAttendee[]
+
+  calendarEvents    CalendarEvent[]
+  dashboardSections DashboardSection[]
+  documents         Document[]
+  goals             Goal[]
+  notifications     Notification[]
+  skills            Skill[]
+  studyGoals        StudyGoal[]
+  studySessions     StudySession[]
+  subjects          Subject[]
+  subjectFiles      SubjectFile[]
+  tasks             Task[]
+  testMarks         TestMark[]
+  profile           UserProfile?
+  userSettings      UserSettings?
+  
+  // Drive Relations
+  drive                 Drive?
+  driveActivities       DriveActivity[]
+  sentCopyRequests      CopyRequest[] @relation("SentCopyRequests")
+  receivedCopyRequests  CopyRequest[] @relation("ReceivedCopyRequests")
+}
+
+model UserProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  fullName       String   @map("full_name")
+  university     String?
+  program        String?
+  currentYear    String?  @map("current_year")
+  gpa            String?
+  bio            String?
+  profilePicture String?  @map("profile_picture")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  title       String
+  description String
+  targetDate  DateTime   @map("target_date")
+  category    String
+  status      String     @default("active")
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       GoalTask[]
+
+  @@index([userId])
+  @@index([userId, order])
+}
+
+model GoalTask {
+  id        String    @id @default(cuid())
+  goalId    String    @map("goal_id")
+  title     String
+  completed Boolean   @default(false)
+  dueDate   DateTime? @map("due_date")
+  priority  String    @default("medium")
+  order     Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  goal      Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@index([goalId, order])
+}
+
+model Skill {
+  id          String           @id @default(cuid())
+  userId      String           @map("user_id")
+  name        String
+  description String
+  resources   String           @default("[]")
+  order       Int              @default(0)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  objectives  SkillObjective[]
+
+  @@index([userId])
+  @@index([userId, order])
+}
+
+model SkillObjective {
+  id          String    @id @default(cuid())
+  skillId     String    @map("skill_id")
+  title       String
+  completed   Boolean   @default(false)
+  description String?
+  targetDate  DateTime? @map("target_date")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  skill       Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@index([skillId])
+  @@index([skillId, order])
+}
+
+model Document {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  name          String
+  originalName  String   @map("original_name")
+  type          String
+  mimeType      String   @map("mime_type")
+  size          Int      @map("file_size")
+  filePath      String   @map("file_path")
+  thumbnailPath String?  @map("thumbnail_path")
+  tags          String   @default("[]")
+  isPinned      Boolean  @default(false) @map("is_pinned")
+  order         Int      @default(0)
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, order])
+  @@index([userId, isPinned])
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  subjectId     String?   @map("subject_id")
+  title         String
+  description   String?
+  priority      String    @default("medium")
+  status        String    @default("pending")
+  dueDate       DateTime? @map("due_date")
+  completedAt   DateTime? @map("completed_at")
+  category      String    @default("general")
+  estimatedTime Int?      @map("estimated_time")
+  timeSpent     Int?      @map("time_spent")
+  tags          String    @default("[]")
+  progress      Float?
+  order         Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  subject       Subject?  @relation(fields: [subjectId], references: [id])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StudySession {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  subjectId       String?  @map("subject_id")
+  durationMinutes Int      @map("duration_minutes")
+  startTime       DateTime @map("start_time")
+  endTime         DateTime @map("end_time")
+  notes           String?
+  efficiency      Float?
+  sessionType     String?  @map("session_type")
+  productivity    Float?
+  topicsCovered   String?  @map("topics_covered")
+  materialsUsed   String?  @map("materials_used")
+  createdAt       DateTime @default(now()) @map("created_at")
+  subject         Subject? @relation(fields: [subjectId], references: [id])
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StudyGoal {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  subjectId    String?   @map("subject_id")
+  title        String
+  targetHours  Int       @map("target_hours")
+  currentHours Int       @default(0) @map("current_hours")
+  deadline     DateTime?
+  status       String    @default("active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  subject      Subject?  @relation(fields: [subjectId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TestMark {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  subjectId String   @map("subject_id")
+  testName  String   @map("test_name")
+  testType  String   @map("test_type")
+  score     Float
+  maxScore  Float    @map("max_score")
+  testDate  DateTime @map("test_date")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  mistakes  String?
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserSettings {
+  id                 String   @id @default(cuid())
+  userId             String   @unique @map("user_id")
+  taskReminders      Boolean  @default(true) @map("task_reminders")
+  emailNotifications Boolean  @default(false) @map("email_notifications")
+  pushNotifications  Boolean  @default(true) @map("push_notifications")
+  reminderTime       String   @default("09:00") @map("reminder_time")
+  studySessionAlerts Boolean  @default(true) @map("study_session_alerts")
+  defaultStudyGoal   Int      @default(240) @map("default_study_goal")
+  preferredStudyTime String   @default("18:00") @map("preferred_study_time")
+  breakReminders     Boolean  @default(true) @map("break_reminders")
+  breakDuration      Int      @default(15) @map("break_duration")
+  theme              String   @default("system")
+  dashboardLayout    String   @default("default") @map("dashboard_layout")
+  showProgressBars   Boolean  @default(true) @map("show_progress_bars")
+  compactMode        Boolean  @default(false) @map("compact_mode")
+  autoBackup         Boolean  @default(true) @map("auto_backup")
+  dataRetentionDays  Int      @default(365) @map("data_retention_days")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Chapter {
+  id             String     @id @default(cuid())
+  subjectId      String     @map("subject_id")
+  title          String
+  description    String?
+  order          Int
+  isCompleted    Boolean    @default(false) @map("is_completed")
+  estimatedHours Int        @default(2) @map("estimated_hours")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  subject        Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  materials      Material[]
+
+  @@unique([subjectId, order])
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  chapterId   String?  @map("chapter_id")
+  subjectId   String?  @map("subject_id")
+  title       String
+  type        String
+  content     String?  @db.Text
+  fileUrl     String?  @map("file_url")
+  fileSize    Int?
+  duration    Int?
+  isCompleted Boolean  @default(false) @map("is_completed")
+  order       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  chapter     Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId])
+  @@index([subjectId])
+}
+
+model DashboardSection {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  sectionKey   String   @map("section_key")
+  isExpanded   Boolean  @default(true) @map("is_expanded")
+  order        Int
+  isVisible    Boolean  @default(true) @map("is_visible")
+  customHeight Int?     @map("custom_height")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sectionKey])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      String
+  title     String
+  message   String
+  timestamp DateTime @default(now())
+  read      Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([timestamp])
+}
+
+model CalendarEvent {
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  title               String
+  start               DateTime
+  end                 DateTime
+  type                String
+  description         String?
+  location            String?
+  priority            String
+  completed           Boolean   @default(false)
+  notificationEnabled Boolean   @default(false)
+  notificationTime    Int       @default(15)
+  color               String?
+  recurringType       String?
+  recurringInterval   Int?
+  recurringEndDate    DateTime?
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([start])
+  @@index([type])
+  @@index([completed])
+}
+
+// Social Media Models
+
+model SocialProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  bio            String?
+  location       String?
+  banner         String?
+  
+  // Websites
+  website        String?
+  websiteLabel   String?  @map("website_label")
+  websiteUrl2    String?  @map("website_url_2")
+  websiteLabel2  String?  @map("website_label_2")
+  
+  // Social Media
+  githubUrl      String?  @map("github_url")
+  linkedinUrl    String?  @map("linkedin_url")
+  twitterUrl     String?  @map("twitter_url")
+  instagramUrl   String?  @map("instagram_url")
+  instagramLabel String?  @map("instagram_label")
+  youtubeUrl     String?  @map("youtube_url")
+  youtubeLabel   String?  @map("youtube_label")
+  whatsappUrl    String?  @map("whatsapp_url")
+  whatsappLabel  String?  @map("whatsapp_label")
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Follows {
+  followerId  String   @map("follower_id")
+  followingId String   @map("following_id")
+  follower    User     @relation("follower", fields: [followerId], references: [id])
+  following   User     @relation("following", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Community {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  ownerId      String   @map("owner_id")
+  icon         String?
+  coverImage   String?  @map("cover_image")
+  isPrivate    Boolean  @default(false) @map("is_private")
+  showInSearch Boolean  @default(true) @map("show_in_search")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  rules        String?
+
+  owner    User              @relation("CommunityOwner", fields: [ownerId], references: [id])
+  members  CommunityMember[]
+  channels Channel[]
+  posts    Post[]
+  events   CommunityEvent[]
+
+  @@index([ownerId])
+}
+
+model CommunityMember {
+  id          String   @id @default(cuid())
+  communityId String   @map("community_id")
+  userId      String   @map("user_id")
+  role        String   @default("member") // member, moderator, admin
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([communityId])
+  @@index([userId])
+}
+
+model CommunityEvent {
+  id          String    @id @default(cuid())
+  communityId String    @map("community_id")
+  creatorId   String    @map("creator_id")
+  title       String
+  description String?
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  location    String?
+  coverImage  String?   @map("cover_image")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  community Community       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  creator   User            @relation(fields: [creatorId], references: [id])
+  attendees EventAttendee[]
+
+  @@index([communityId])
+}
+
+model EventAttendee {
+  id        String   @id @default(cuid())
+  eventId   String   @map("event_id")
+  userId    String   @map("user_id")
+  status    String   @default("going") // going, maybe, not_going
+  createdAt DateTime @default(now()) @map("created_at")
+
+  event CommunityEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model Channel {
+  id          String   @id @default(cuid())
+  communityId String   @map("community_id")
+  name        String
+  type        String   @default("text") // text, voice, announcement
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@index([communityId])
+}
+
+model Post {
+  id             String   @id @default(cuid())
+  content        String
+  userId         String   @map("user_id")
+  communityId    String?  @map("community_id")
+  image          String?
+  isAnnouncement Boolean  @default(false) @map("is_announcement")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community   Community?   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  likes       Like[]
+  attachments Attachment[]
+
+  @@index([userId])
+  @@index([communityId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  url       String
+  name      String?
+  type      String // IMAGE, VIDEO, FILE
+  size      Int?
+  postId    String   @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade) // No, cascade might be tricky with self routing but let's try
+  replies Comment[] @relation("CommentToComment")
+  likes   Like[]
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String?  @map("post_id")
+  commentId String?  @map("comment_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@unique([commentId, userId]) // Ensure distinctness
+  @@index([postId])
+  @@index([commentId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  senderId   String   @map("sender_id")
+  channelId  String?  @map("channel_id") // For community channels
+  receiverId String?  @map("receiver_id") // For DMs
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  sender   User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User?    @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  channel  Channel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([channelId])
+}
+
+// Drive/Cloud Storage Models
+
+model Drive {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  storageUsed     BigInt    @default(0) @map("storage_used") // in bytes
+  storageLimit    BigInt    @default(10737418240) @map("storage_limit") // 10GB in bytes
+  bandwidthUsed   BigInt    @default(0) @map("bandwidth_used") // daily bandwidth
+  bandwidthLimit  BigInt    @default(10737418240) @map("bandwidth_limit") // 10GB daily
+  bandwidthReset  DateTime  @default(now()) @map("bandwidth_reset")
+  isPrivate       Boolean   @default(false) @map("is_private")
+  allowCopying    String    @default("REQUEST") // "ALLOW", "REQUEST", "DENY"
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files           DriveFile[]
+  folders         DriveFolder[]
+  activities      DriveActivity[]
+  copyRequests    CopyRequest[]
+  
+  @@map("drives")
+}
+
+model DriveFolder {
+  id              String          @id @default(cuid())
+  driveId         String          @map("drive_id")
+  parentId        String?         @map("parent_id")
+  name            String
+  path            String          // full path for easy querying
+  isPublic        Boolean         @default(false) @map("is_public")
+  subjectId       String?         @map("subject_id") // Link to Subject if folder represents a subject
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?       @map("deleted_at") // Soft delete for trash
+  
+  drive           Drive           @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  parent          DriveFolder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children        DriveFolder[]   @relation("FolderHierarchy")
+  subject         Subject?        @relation(fields: [subjectId], references: [id])
+  files           DriveFile[]
+  
+  @@index([driveId])
+  @@index([parentId])
+  @@index([subjectId])
+  @@map("drive_folders")
+}
+
+model DriveFile {
+  id              String       @id @default(cuid())
+  driveId         String       @map("drive_id")
+  folderId        String?      @map("folder_id")
+  originalName    String       @map("original_name")
+  storedName      String       @unique @map("stored_name") // UUID-based filename
+  fileSize        BigInt       @map("file_size") // in bytes
+  mimeType        String       @map("mime_type")
+  fileType        String       @map("file_type") // extension
+  fileHash        String       @map("file_hash") // MD5/SHA256 for duplicate detection
+  filePath        String       @map("file_path") // path on disk
+  thumbnailPath   String?      @map("thumbnail_path")
+  isPublic        Boolean      @default(false) @map("is_public")
+  downloadCount   Int          @default(0) @map("download_count")
+  description     String?
+  tags            String       @default("[]") // JSON array
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  deletedAt       DateTime?    @map("deleted_at") // Soft delete for trash
+  
+  drive           Drive        @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  folder          DriveFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  
+  @@index([driveId])
+  @@index([folderId])
+  @@index([fileHash]) // For duplicate detection
+  @@map("drive_files")
+}
+
+model DriveActivity {
+  id              String       @id @default(cuid())
+  driveId         String       @map("drive_id")
+  userId          String       @map("user_id")
+  action          String       // "upload", "download", "delete", "rename", "move", "copy", "import"
+  targetType      String       @map("target_type") // "file", "folder"
+  targetId        String       @map("target_id")
+  targetName      String       @map("target_name")
+  metadata        String?      @default("{}") // JSON for additional info
+  createdAt       DateTime     @default(now()) @map("created_at")
+  
+  drive           Drive        @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([driveId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("drive_activities")
+}
+
+model CopyRequest {
+  id              String       @id @default(cuid())
+  fromUserId      String       @map("from_user_id")
+  toUserId        String       @map("to_user_id")
+  fromDriveId     String       @map("from_drive_id")
+  toDriveId       String       @map("to_drive_id")
+  requestType     String       @map("request_type") // "subject", "file", "folder"
+  targetId        String       @map("target_id")
+  status          String       @default("PENDING") // "PENDING", "APPROVED", "DENIED"
+  message         String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  
+  fromUser        User         @relation("SentCopyRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser          User         @relation("ReceivedCopyRequests", fields: [toUserId], references: [id], onDelete: Cascade)
+  fromDrive       Drive        @relation(fields: [fromDriveId], references: [id], onDelete: Cascade)
+  
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([status])
+  @@map("copy_requests")
+}
