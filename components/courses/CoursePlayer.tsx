@@ -114,6 +114,7 @@ const CoursePlayer = memo(({ chapterInfo, enrollmentId, onComplete, onNavigate, 
 
   const TextContent = ({ text }: { text: string }) => (
     <div className="prose prose-slate dark:prose-invert max-w-none p-6 bg-muted/30 rounded-lg">
+      {/* Note: Content should be sanitized server-side before storage */}
       <div dangerouslySetInnerHTML={{ __html: text }} />
     </div>
   );
