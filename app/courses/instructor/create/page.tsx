@@ -43,15 +43,16 @@ export default function CourseCreationForm() {
       })
 
       const result = await response.json()
-      
+
       if (response.ok) {
         navigationRouter.push(`/courses/instructor/${result.id}/content`)
       } else {
-        alert("Failed to create course")
+        console.error("Failed to create course:", result)
+        alert(`Failed to create course: ${response.status} ${result.error || result.details || 'Unknown error'}`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Submission error:", error)
-      alert("An error occurred")
+      alert(`An error occurred: ${error.message}`)
     } finally {
       setSubmitting(false)
     }
@@ -173,59 +174,9 @@ export default function CourseCreationForm() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Pricing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="isPaid">Paid Course</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Enable this to charge for your course
-                  </p>
-                </div>
-                <Switch
-                  id="isPaid"
-                  checked={formInputs.isPaid}
-                  onCheckedChange={(checked) => handleInputChange("isPaid", checked)}
-                />
-              </div>
-
-              {formInputs.isPaid && (
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formInputs.price}
-                      onChange={(e) => handleInputChange("price", parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency *</Label>
-                    <Select
-                      value={formInputs.currency}
-                      onValueChange={(val) => handleInputChange("currency", val)}
-                    >
-                      <SelectTrigger id="currency">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="flex justify-end gap-3 text-muted-foreground italic text-sm py-4">
+            * All courses are free by default
+          </div>
 
           <div className="flex justify-end gap-3">
             <Link href="/courses/instructor">

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Hash, ArrowLeft, Settings, LogOut, Info, BookOpen, Users } from "lucide-react";
 import { JoinButton } from "@/components/community/join-button";
 import { ChannelList } from "@/components/community/channel-list";
-import ReactMarkdown from "react-markdown";
+
 
 export default async function CommunityLayout({
     children,
@@ -40,7 +40,7 @@ export default async function CommunityLayout({
         where: {
             communityId_userId: {
                 communityId: params.id,
-                userId: (session.user as any).id
+                userId: (session.user as { id: string }).id
             }
         }
     });
@@ -62,13 +62,13 @@ export default async function CommunityLayout({
             )}
 
             <header className="bg-white border-b border-border shadow-sm sticky top-0 z-10">
-                <div className="container mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                <div className="container mx-auto max-w-7xl px-4 py-6 flex items-center justify-between">
+                    <div className="flex items-center gap-6">
                         <Link href="/community" className="text-muted-foreground hover:text-foreground">
-                            <ArrowLeft className="w-5 h-5" />
+                            <ArrowLeft className="w-6 h-6" />
                         </Link>
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-lg overflow-hidden relative">
+                        <div className="flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl overflow-hidden relative shadow-sm">
                                 {community.icon ? (
                                     <img src={community.icon} alt="Icon" className="w-full h-full object-cover" />
                                 ) : (
@@ -77,9 +77,9 @@ export default async function CommunityLayout({
                             </div>
                             <div>
                                 <Link href={`/community/${community.id}`} className="hover:underline">
-                                    <h1 className="text-lg font-bold leading-tight">{community.name}</h1>
+                                    <h1 className="text-2xl font-bold leading-tight">{community.name}</h1>
                                 </Link>
-                                <div className="text-xs text-muted-foreground">{community._count.members} members</div>
+                                <div className="text-sm text-muted-foreground mt-1">{community._count.members} members</div>
                             </div>
                         </div>
                     </div>

@@ -23,6 +23,7 @@ interface ModuleGroup {
   title: string;
   order: number;
   chapters: ChapterItem[];
+  moduleImage?: string | null;
 }
 
 interface ChapterListProps {
@@ -60,7 +61,7 @@ const ChapterList = memo(({ moduleGroups, activeChapterId, onChapterSelect, user
   }, [moduleGroups]);
 
   const findActiveModule = useMemo(() => {
-    return moduleGroups.find(mod => 
+    return moduleGroups.find(mod =>
       mod.chapters.some(ch => ch.id === activeChapterId)
     )?.id;
   }, [moduleGroups, activeChapterId]);
@@ -103,9 +104,19 @@ const ChapterList = memo(({ moduleGroups, activeChapterId, onChapterSelect, user
                     )}
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                        {modIdx + 1}
-                      </div>
+                      {module.moduleImage ? (
+                        <div className="w-10 h-10 rounded-md overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+                          <img
+                            src={module.moduleImage}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-xs font-bold flex-shrink-0">
+                          {modIdx + 1}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-sm truncate">{module.title}</h4>
                         <p className="text-xs text-muted-foreground">
@@ -120,8 +131,8 @@ const ChapterList = memo(({ moduleGroups, activeChapterId, onChapterSelect, user
                         isExpanded && "rotate-180"
                       )} />
                     </div>
-                  </button>
-                </CollapsibleTrigger>
+                  </button >
+                </CollapsibleTrigger >
 
                 <CollapsibleContent className="pl-4 pr-2 mt-1 space-y-1">
                   {module.chapters.map((chapter, chIdx) => {
@@ -168,12 +179,12 @@ const ChapterList = memo(({ moduleGroups, activeChapterId, onChapterSelect, user
                     );
                   })}
                 </CollapsibleContent>
-              </Collapsible>
+              </Collapsible >
             );
           })}
-        </div>
-      </ScrollArea>
-    </Card>
+        </div >
+      </ScrollArea >
+    </Card >
   );
 });
 

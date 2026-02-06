@@ -11,6 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import ReactMarkdown from "react-markdown";
 import { format } from "date-fns";
+import { useEffect } from "react";
+import { pusherClient } from "@/lib/pusher";
 
 interface Message {
     id: string;
@@ -67,6 +69,77 @@ export function ChatInterface({ channelId, channelName }: ChatInterfaceProps) {
         staleTime: 10000,
     });
 
+    // Subscribe to Pusher channel
+    useEffect(() => {
+        pusherClient.subscribe(`chat-${channelId}`);
+
+        const messageHandler = (message: Message) => {
+            queryClient.setQueryData(['messages', channelId], (old: any) => {
+                if (!old) return { pages: [[message]], pageParams: [undefined] };
+
+                // Add to the first page (newest messages are at the end of the flattened array, 
+                // but in the pages structure, usually page[0] is the newest fetch depending on implementation.
+                // Our flatMap acts on data.pages. 
+                // Let's look at how we process it: const messages = data?.pages.flatMap(page => page).reverse() ?? [];
+
+                // InfiniteQuery pages are typically [newest_batch, older_batch, ...] if we prepend.
+                // But here we're fetching with cursor. 
+
+                // Simplest approach for optimistic UI + real-time:
+                // We just need to ensure this message is in the cache.
+                // React Query's infinite query data structure is { pages: [Array(50), Array(50)], pageParams: [...] }
+
+                const newPages = [...old.pages];
+
+                // If the message already exists (from optimistic update), don't add it again
+                // We might need a temp ID for optimistic updates to handle this perfectly, 
+                // but for now let's just check if ID matches (if optimistic update used real ID? No, it doesn't know it yet).
+                // Optimistic updates usually don't have the real DB ID. 
+                // However, since we are using pusher, we get the real DB message. 
+
+                // Let's just prepend to the first page if we want it to show up as newest.
+                // Since we reverse() the flat list for display, adding to the START of the first page array 
+                // means it will be at the END of the reversed array? No.
+                // flatMap: [p1, p2] -> [p1_items, p2_items]
+                // reverse: [p2_items_reversed, p1_items_reversed] ... wait.
+                // const messages = data?.pages.flatMap(page => page).reverse() ?? [];
+                // API returns: orderBy createdAt desc. So page[0] has NEWEST messages.
+                // page[0] = [Msg_Newest, Msg_Older, ...]
+                // flatMap -> [Msg_Newest, Msg_Older, ..., Msg_EvenOlder]
+                // reverse -> [Msg_EvenOlder, ..., Msg_Older, Msg_Newest]
+
+                // So to add a NEW message, we should UNSHIFT it into page[0].
+                // page[0] becomes [Msg_BrandNew, Msg_Newest, ...]
+
+                if (newPages.length > 0) {
+                    // Check if message already exists in the first page (to avoid duplication if re-fetching or optimistic)
+                    const exists = newPages[0].some((m: Message) => m.id === message.id);
+                    if (!exists) {
+                        newPages[0] = [message, ...newPages[0]];
+                    }
+                } else {
+                    newPages.push([message]);
+                }
+
+                return {
+                    ...old,
+                    pages: newPages,
+                };
+            });
+
+            // Also scroll to bottom if near bottom? Or just notify?
+            // For now, let's just scroll if reasonable.
+            setTimeout(scrollToBottom, 100);
+        };
+
+        pusherClient.bind('new-message', messageHandler);
+
+        return () => {
+            pusherClient.unsubscribe(`chat-${channelId}`);
+            pusherClient.unbind('new-message', messageHandler);
+        };
+    }, [channelId, queryClient]);
+
     // Flatten all pages and reverse to show newest at bottom
     const messages = data?.pages.flatMap(page => page).reverse() ?? [];
 
@@ -82,10 +155,23 @@ export function ChatInterface({ channelId, channelName }: ChatInterfaceProps) {
             return res.json();
         },
         onSuccess: (sentMessage) => {
-            // Optimistic update - add message to cache immediately
-            queryClient.setQueryData(['messages', channelId], (old: Message[] = []) => [...old, sentMessage]);
+            // Update cache - InfiniteQuery structure
+            queryClient.setQueryData(['messages', channelId], (old: any) => {
+                if (!old) return { pages: [[sentMessage]], pageParams: [undefined] };
+                const newPages = [...old.pages];
+                if (newPages.length > 0) {
+                    const exists = newPages[0].some((m: Message) => m.id === sentMessage.id);
+                    if (!exists) {
+                        newPages[0] = [sentMessage, ...newPages[0]];
+                    }
+                } else {
+                    newPages.push([sentMessage]);
+                }
+                return { ...old, pages: newPages };
+            });
+
             setNewMessage("");
-            scrollToBottom();
+            setTimeout(scrollToBottom, 100);
         },
         onError: () => {
             toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
@@ -144,15 +230,16 @@ export function ChatInterface({ channelId, channelName }: ChatInterfaceProps) {
     const renderMessageContent = (content: string) => {
         // Custom renderers could be added here for specific styling
         return (
-            <ReactMarkdown
-                className="prose prose-sm dark:prose-invert break-words max-w-none"
-                components={{
-                    a: ({ node, ...props }) => <a {...props} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer" />,
-                    img: ({ node, ...props }) => <img {...props} className="rounded-lg max-h-60 max-w-full my-2" />
-                }}
-            >
-                {content}
-            </ReactMarkdown>
+            <div className="prose prose-sm dark:prose-invert break-words max-w-none">
+                <ReactMarkdown
+                    components={{
+                        a: ({ node, ...props }) => <a {...props} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer" />,
+                        img: ({ node, ...props }) => <img {...props} className="rounded-lg max-h-60 max-w-full my-2" />
+                    }}
+                >
+                    {content}
+                </ReactMarkdown>
+            </div>
         );
     };
 
@@ -192,30 +279,23 @@ export function ChatInterface({ channelId, channelName }: ChatInterfaceProps) {
 
                     {messages.map((message, index) => {
                         const isMe = message.senderId === (session?.user as any)?.id;
-                        const showAvatar = index === 0 || messages[index - 1].senderId !== message.senderId;
 
                         return (
                             <div key={message.id} className={`flex gap-3 ${isMe ? "flex-row-reverse" : ""}`}>
-                                {showAvatar ? (
-                                    <Avatar className="w-8 h-8 mt-1">
-                                        <AvatarImage src={message.sender.image || ""} />
-                                        <AvatarFallback>{message.sender.name[0]?.toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                ) : (
-                                    <div className="w-8" />
-                                )}
+                                <Avatar className="w-8 h-8 mt-1">
+                                    <AvatarImage src={message.sender.image || ""} />
+                                    <AvatarFallback>{message.sender.name[0]?.toUpperCase()}</AvatarFallback>
+                                </Avatar>
 
                                 <div className={`flex flex-col max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
-                                    {showAvatar && (
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs font-semibold text-foreground">
-                                                {message.sender.name}
-                                            </span>
-                                            <span className="text-[10px] text-muted-foreground">
-                                                {format(new Date(message.createdAt), "p")}
-                                            </span>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xs font-semibold text-foreground">
+                                            {message.sender.name}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground">
+                                            {format(new Date(message.createdAt), "p")}
+                                        </span>
+                                    </div>
                                     <div className={`px-4 py-2 rounded-2xl ${isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted rounded-tl-none"}`}>
                                         {renderMessageContent(message.content)}
                                     </div>

@@ -8,6 +8,7 @@ export interface CourseFilters {
   status?: string
   instructorId?: string
   search?: string
+  slug?: string
   minPrice?: number
   maxPrice?: number
   rating?: number
@@ -37,6 +38,10 @@ const buildCourseWhereClause = (filters: CourseFilters) => {
 
   if (filters.status) {
     conditions.push({ status: filters.status })
+  }
+
+  if (filters.slug) {
+    conditions.push({ slug: filters.slug })
   }
 
   if (filters.instructorId) {
@@ -195,8 +200,23 @@ export const retrieveCourseDetails = async (courseId: string, userId?: string) =
     })
   }
 
+  const completedChapterIds = new Set(
+    enrollmentInfo?.chapterProgress
+      ?.filter(p => p.isCompleted)
+      ?.map(p => p.chapterId) || []
+  )
+
+  const enrichedModules = courseData.modules.map(mod => ({
+    ...mod,
+    chapters: mod.chapters.map(ch => ({
+      ...ch,
+      isCompleted: completedChapterIds.has(ch.id)
+    }))
+  }))
+
   return {
     ...courseData,
+    modules: enrichedModules,
     isEnrolled: !!enrollmentInfo,
     userProgress: enrollmentInfo?.progress || 0,
     enrollmentDetails: enrollmentInfo
@@ -326,4 +346,32 @@ export const calculateChapterCount = async (courseId: string) => {
   })
 
   return moduleList.reduce((sum, mod) => sum + mod.chapters.length, 0)
+}
+
+export const getUserEnrollments = async (userId: string) => {
+  const enrollments = await dbService.getPrisma().courseEnrollment.findMany({
+    where: { userId },
+    include: {
+      course: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          courseImage: true,
+          category: true,
+          instructor: {
+            select: { name: true }
+          },
+          modules: {
+            select: {
+              chapters: true // Needed for lesson counting logic
+            }
+          }
+        }
+      }
+    },
+    orderBy: { lastAccessedAt: 'desc' }
+  })
+
+  return enrollments
 }

@@ -26,18 +26,32 @@ export default function LearningInterface() {
   }, [urlData.slug])
 
   useEffect(() => {
-    urlData.chapterId && courseStructure && selectChapter(urlData.chapterId as string)
+    urlData.chapterId && courseStructure && findAndSetActiveChapter(courseStructure, urlData.chapterId as string)
   }, [urlData.chapterId, courseStructure])
 
   const loadCourseStructure = async () => {
     try {
-      const apiEndpoint = `/api/courses?slug=${urlData.slug}`
-      const response = await fetch(apiEndpoint)
-      const data = await response.json()
-      
-      if (response.ok && data.courses?.[0]) {
-        setCourseStructure(data.courses[0])
-        fetchProgress(data.courses[0].id)
+      setDataLoading(true)
+      // First get the course by slug to find the ID
+      const listRes = await fetch(`/api/courses?slug=${urlData.slug}`)
+      const listData = await listRes.json()
+
+      if (listRes.ok && listData.courses?.[0]) {
+        const briefCourse = listData.courses[0]
+
+        // Now get full details including sections and quizzes
+        const detailsRes = await fetch(`/api/courses/${briefCourse.id}`)
+        const fullData = await detailsRes.json()
+
+        if (detailsRes.ok) {
+          setCourseStructure(fullData)
+          setProgressData(fullData.enrollmentDetails)
+
+          // Select correct chapter if chapterId is in URL
+          if (urlData.chapterId) {
+            findAndSetActiveChapter(fullData, urlData.chapterId as string)
+          }
+        }
       }
     } catch (err) {
       console.error("Failed to load:", err)
@@ -46,43 +60,35 @@ export default function LearningInterface() {
     }
   }
 
-  const fetchProgress = async (courseId: string) => {
-    try {
-      const response = await fetch(`/api/courses/${courseId}`)
-      const data = await response.json()
-      setProgressData(data.enrollmentDetails)
-    } catch (err) {
-      console.error("Progress fetch error:", err)
-    }
-  }
-
-  const selectChapter = (chapterId: string) => {
-    if (!courseStructure) return
-    
-    for (const mod of courseStructure.modules) {
+  const findAndSetActiveChapter = (structure: any, chapterId: string) => {
+    for (const mod of structure.modules) {
       const found = mod.chapters.find((ch: any) => ch.id === chapterId)
       if (found) {
         setActiveChapter(found)
-        break
+        return found
       }
     }
-  }
-
-  const markComplete = async () => {
-    if (!activeChapter || !courseStructure) return
-    
-    try {
-      await fetch(`/api/courses/${courseStructure.id}/chapters/${activeChapter.id}/complete`, {
-        method: "POST"
-      })
-      fetchProgress(courseStructure.id)
-    } catch (err) {
-      console.error("Mark complete error:", err)
-    }
+    return null
   }
 
   const navigateToChapter = (chapterId: string) => {
     navigateControl.push(`/courses/${urlData.slug}/learn/${chapterId}`)
+  }
+
+  const handleNextPrev = (direction: 'prev' | 'next') => {
+    if (!courseStructure || !activeChapter) return
+
+    const allChapters: any[] = []
+    courseStructure.modules.forEach((m: any) => {
+      allChapters.push(...m.chapters)
+    })
+
+    const currentIndex = allChapters.findIndex(ch => ch.id === activeChapter.id)
+    if (direction === 'next' && currentIndex < allChapters.length - 1) {
+      navigateToChapter(allChapters[currentIndex + 1].id)
+    } else if (direction === 'prev' && currentIndex > 0) {
+      navigateToChapter(allChapters[currentIndex - 1].id)
+    }
   }
 
   if (dataLoading) {
@@ -107,10 +113,14 @@ export default function LearningInterface() {
     )
   }
 
+  const allChaptersList: any[] = []
+  courseStructure.modules.forEach((m: any) => {
+    allChaptersList.push(...m.chapters)
+  })
+  const currentChapterIndex = allChaptersList.findIndex(ch => ch.id === activeChapter?.id)
+
   const completedChapters = progressData?.chapterProgress?.length || 0
-  const totalChapters = courseStructure.modules.reduce(
-    (sum: number, m: any) => sum + m.chapters.length, 0
-  )
+  const totalChapters = allChaptersList.length
   const progressPercent = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0
 
   return (
@@ -146,26 +156,15 @@ export default function LearningInterface() {
       <div className="flex-1 flex overflow-hidden">
         <main className="flex-1 overflow-auto">
           {activeChapter ? (
-            <div className="h-full flex flex-col">
-              <CoursePlayer chapterId={activeChapter.id} />
-              
-              <div className="p-6 border-t bg-card">
-                <div className="max-w-4xl mx-auto">
-                  <div className="flex items-start justify-between gap-6 mb-6">
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold mb-2">{activeChapter.title}</h2>
-                      {activeChapter.description && (
-                        <p className="text-muted-foreground">{activeChapter.description}</p>
-                      )}
-                    </div>
-                    <Button onClick={markComplete} className="gap-2 shrink-0">
-                      <CheckSquare className="h-4 w-4" />
-                      Mark Complete
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CoursePlayer
+              chapterInfo={activeChapter}
+              courseId={courseStructure.id}
+              enrollmentId={progressData?.id || ""}
+              onComplete={loadCourseStructure}
+              onNavigate={handleNextPrev}
+              hasNext={currentChapterIndex < allChaptersList.length - 1}
+              hasPrev={currentChapterIndex > 0}
+            />
           ) : (
             <div className="h-full flex items-center justify-center">
               <p className="text-muted-foreground">Select a chapter to begin</p>
@@ -177,9 +176,9 @@ export default function LearningInterface() {
           <div className="p-6">
             <h3 className="font-bold text-lg mb-4">Course Content</h3>
             <ChapterList
-              modules={courseStructure.modules}
-              currentChapterId={activeChapter?.id}
-              completedChapterIds={progressData?.chapterProgress?.map((cp: any) => cp.chapterId) || []}
+              moduleGroups={courseStructure.modules}
+              activeChapterId={activeChapter?.id}
+              userEnrolled={true}
               onChapterSelect={navigateToChapter}
             />
           </div>

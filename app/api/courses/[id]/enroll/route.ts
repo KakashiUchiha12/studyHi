@@ -12,7 +12,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -43,16 +43,9 @@ export async function POST(
       )
     }
 
-    if (courseRecord.isDraft) {
-      return NextResponse.json(
-        { error: 'Cannot enroll in draft course' },
-        { status: 400 }
-      )
-    }
-
     const enrollment = await registerStudentEnrollment(courseId, studentId)
     await updateCourseStatistics(courseId)
-    
+
     await checkEnrollmentBadge(studentId, courseId)
 
     await dbService.getPrisma().notification.create({
@@ -61,7 +54,7 @@ export async function POST(
         type: 'course_enrollment',
         title: 'Course Enrollment',
         message: `You have successfully enrolled in ${courseRecord.title}`,
-        link: `/courses/${courseId}`
+        actionUrl: `/courses/${courseId}`
       }
     })
 
@@ -73,7 +66,7 @@ export async function POST(
         { status: 400 }
       )
     }
-    
+
     console.error('Failed to enroll in course:', error)
     return NextResponse.json(
       { error: 'Failed to enroll in course' },

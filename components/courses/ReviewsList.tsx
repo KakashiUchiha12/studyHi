@@ -20,15 +20,17 @@ interface ReviewEntry {
 }
 
 interface ReviewsListProps {
-  reviewEntries: ReviewEntry[];
+  reviews: ReviewEntry[];
   emptyText?: string;
 }
 
-const ReviewsList = memo(({ reviewEntries, emptyText = "No reviews yet. Be the first to share your thoughts!" }: ReviewsListProps) => {
-  const sortedByRecency = useMemo(() => 
-    [...reviewEntries].sort((a, b) => 
+const ReviewsList = memo(({ reviews = [], emptyText = "No reviews yet. Be the first to share your thoughts!" }: ReviewsListProps) => {
+  const sortedByRecency = useMemo(() => {
+    const list = Array.isArray(reviews) ? reviews : [];
+    return [...list].sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ), [reviewEntries]);
+    );
+  }, [reviews]);
 
   const calculateStarFill = (targetRating: number, position: number) => {
     const difference = targetRating - position;
@@ -46,8 +48,8 @@ const ReviewsList = memo(({ reviewEntries, emptyText = "No reviews yet. Be the f
           return (
             <div key={pos} className="relative w-4 h-4">
               <Star className="w-full h-full text-slate-200 dark:text-slate-700 absolute inset-0" strokeWidth={1} />
-              <div 
-                className="overflow-hidden absolute inset-0" 
+              <div
+                className="overflow-hidden absolute inset-0"
                 style={{ width: `${fillPercent}%` }}
               >
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500 absolute left-0" strokeWidth={1} />

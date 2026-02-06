@@ -17,9 +17,11 @@ interface Community {
     name: string;
     description: string;
     coverImage: string | null;
+    icon: string | null;
     _count: {
         members: number;
     };
+    members?: { userId: string }[];
     isPrivate: boolean;
 }
 
@@ -112,7 +114,7 @@ export default function CommunityPage() {
                             <div key={community.id} className="block group">
                                 <Card className="h-full hover:shadow-lg transition-all border-border hover:border-primary/50 overflow-hidden flex flex-col p-0 border">
                                     <Link href={`/community/${community.id}`} className="flex-1 flex flex-col">
-                                        <div className="h-48 bg-gray-100 relative w-full">
+                                        <div className="h-32 bg-gray-100 relative w-full">
                                             {community.coverImage ? (
                                                 <img
                                                     src={community.coverImage}
@@ -132,13 +134,26 @@ export default function CommunityPage() {
                                                 </div>
                                             )}
                                         </div>
-                                        <CardHeader className="pb-2 flex-1">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <div className="flex-1">
-                                                    <CardTitle className="text-xl line-clamp-1 text-foreground" title={community.name}>
-                                                        {community.name}
-                                                    </CardTitle>
+                                        <CardHeader className="pb-2 flex-1 pt-0 relative">
+                                            <div className="flex justify-between items-start mb-1 mt-[-24px]">
+                                                <div className="h-16 w-16 rounded-xl border-4 border-white overflow-hidden bg-white shadow-sm flex items-center justify-center text-primary/80 font-bold text-xl relative z-10 mx-4">
+                                                    {community.icon ? (
+                                                        <img
+                                                            src={community.icon}
+                                                            alt={community.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                                            {community.name[0]?.toUpperCase()}
+                                                        </div>
+                                                    )}
                                                 </div>
+                                            </div>
+                                            <div className="mt-2 text-center px-2">
+                                                <CardTitle className="text-lg line-clamp-1 text-foreground" title={community.name}>
+                                                    {community.name}
+                                                </CardTitle>
                                             </div>
                                             <div className="text-sm text-muted-foreground line-clamp-2 h-[40px] prose prose-sm max-w-none">
                                                 {community.description ? (
@@ -161,7 +176,7 @@ export default function CommunityPage() {
                                             <div className="flex items-center gap-3">
                                                 <JoinButton
                                                     communityId={community.id}
-                                                    isMember={(community as any).members?.length > 0}
+                                                    isMember={!!community.members?.length}
                                                     description=""
                                                 />
                                             </div>

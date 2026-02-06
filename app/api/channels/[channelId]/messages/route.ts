@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { pusherServer } from "@/lib/pusher";
 
 export async function GET(
     req: Request,
@@ -127,6 +128,8 @@ export async function POST(
                 }
             }
         });
+
+        await pusherServer.trigger(`chat-${params.channelId}`, "new-message", message);
 
         return NextResponse.json(message);
 

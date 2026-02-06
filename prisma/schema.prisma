@@ -804,6 +804,8 @@ model CourseModule {
   title       String
   description String?
   order       Int
+  duration    Int?     // Total duration in minutes
+  moduleImage String?  @map("module_image") // Module thumbnail URL
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -821,6 +823,7 @@ model CourseChapter {
   title       String
   description String?  @db.Text
   order       Int
+  duration    Int?     // Chapter duration in minutes
   isFree      Boolean  @default(false) @map("is_free")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -847,6 +850,12 @@ model CourseSection {
   fileSize    Int?     @map("file_size")
   filePath    String?  @map("file_path")
   order       Int
+  duration    Int?     // Section duration in minutes
+  sectionType String?  @map("section_type") // video, text, quiz, assignment
+  imageUrl    String?  @map("image_url") // Section image/thumbnail
+  images      String?  @db.Text // JSON array of image URLs
+  attachments String?  @db.Text // JSON array of attachment URLs
+  isPreview   Boolean  @default(false) @map("is_preview") // Free preview section
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

@@ -9,18 +9,12 @@ import { useRouter } from "next/navigation";
 interface EnrollButtonProps {
   courseIdentifier: string;
   isCurrentlyEnrolled: boolean;
-  isPaidCourse: boolean;
-  courseAmount?: number;
-  courseCurrency?: string;
   onEnrollmentChange?: (enrolled: boolean) => void;
 }
 
-const EnrollButton = memo(({ 
+const EnrollButton = memo(({
   courseIdentifier,
   isCurrentlyEnrolled,
-  isPaidCourse,
-  courseAmount = 0,
-  courseCurrency = "USD",
   onEnrollmentChange
 }: EnrollButtonProps) => {
   const [processingAction, setProcessingAction] = useState(false);
@@ -47,7 +41,7 @@ const EnrollButton = memo(({
 
       setEnrollmentState(true);
       setActionComplete(true);
-      
+
       toast({
         title: "Successfully Enrolled!",
         description: "You now have access to this course content.",
@@ -55,7 +49,7 @@ const EnrollButton = memo(({
       });
 
       onEnrollmentChange?.(true);
-      
+
       setTimeout(() => {
         router.push(`/courses/${courseIdentifier}/learn`);
       }, 1200);
@@ -90,7 +84,7 @@ const EnrollButton = memo(({
 
       setEnrollmentState(false);
       setActionComplete(true);
-      
+
       toast({
         title: "Unenrolled Successfully",
         description: "You have been removed from this course.",
@@ -113,7 +107,7 @@ const EnrollButton = memo(({
 
   const handleButtonClick = useCallback(() => {
     if (processingAction) return;
-    
+
     if (enrollmentState) {
       performUnenrollment();
     } else {
@@ -168,12 +162,8 @@ const EnrollButton = memo(({
         </>
       ) : (
         <>
-          {isPaidCourse && <Lock className="w-5 h-5" />}
-          {!isPaidCourse && <UserPlus className="w-5 h-5" />}
-          {isPaidCourse 
-            ? `Enroll for ${courseCurrency} ${courseAmount.toFixed(2)}`
-            : "Enroll Now - Free"
-          }
+          <UserPlus className="w-5 h-5" />
+          Enroll Now - Free
         </>
       )}
     </Button>

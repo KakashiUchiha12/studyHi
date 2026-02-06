@@ -6,15 +6,29 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { BookMarked, Users, TrendingUp, PlusCircle, Edit, BarChart3, RefreshCw, ChevronLeft } from "lucide-react"
+import { BookMarked, Users, TrendingUp, PlusCircle, Edit, BarChart3, RefreshCw, ChevronLeft, Trash2, Loader2 } from "lucide-react"
 import Link from "next/link"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function InstructorHub() {
   const { data: userAuth, status } = useSession()
   const routerNav = useRouter()
+  const { toast } = useToast()
   const [myCourses, setMyCourses] = useState<any[]>([])
   const [stats, setStats] = useState({ total: 0, published: 0, students: 0 })
   const [loadingData, setLoadingData] = useState(true)
+  const [courseToDelete, setCourseToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     status === "unauthenticated" && routerNav.push("/auth/login")
@@ -29,16 +43,16 @@ export default function InstructorHub() {
       const userId = (userAuth?.user as any)?.id
       const coursesResponse = await fetch(`/api/courses?instructorId=${userId}`)
       const coursesData = await coursesResponse.json()
-      
+
       if (coursesResponse.ok) {
         const coursesList = coursesData.courses || []
         setMyCourses(coursesList)
-        
+
         const totalStudents = coursesList.reduce(
           (sum: number, c: any) => sum + (c.enrollmentCount || 0), 0
         )
         const publishedCount = coursesList.filter((c: any) => c.status === "published").length
-        
+
         setStats({
           total: coursesList.length,
           published: publishedCount,
@@ -49,6 +63,48 @@ export default function InstructorHub() {
       console.error("Loading failed:", err)
     } finally {
       setLoadingData(false)
+    }
+  }
+
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/courses/${courseToDelete}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Course deleted successfully",
+        })
+        setMyCourses((prev) => prev.filter((c) => c.id !== courseToDelete))
+        // Update stats
+        setStats((prev) => ({
+          ...prev,
+          total: prev.total - 1,
+          published: myCourses.find((c) => c.id === courseToDelete)?.status === "published"
+            ? prev.published - 1
+            : prev.published
+        }))
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete course",
+        })
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Something went wrong",
+      })
+    } finally {
+      setIsDeleting(false)
+      setCourseToDelete(null)
     }
   }
 
@@ -132,7 +188,7 @@ export default function InstructorHub() {
             <CardContent>
               <div className="text-3xl font-bold">
                 {myCourses.length > 0
-                  ? (myCourses.reduce((sum, c) => sum + c.averageRating, 0) / myCourses.length).toFixed(1)
+                  ? (myCourses.reduce((sum: number, c: any) => sum + c.averageRating, 0) / myCourses.length).toFixed(1)
                   : "0.0"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -144,7 +200,7 @@ export default function InstructorHub() {
 
         <div>
           <h2 className="text-2xl font-bold mb-6">Your Courses</h2>
-          
+
           {myCourses.length === 0 ? (
             <Card className="text-center py-16 border-dashed border-2">
               <CardContent>
@@ -181,15 +237,15 @@ export default function InstructorHub() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <p className="text-2xl font-bold text-primary">{course.enrollmentCount}</p>
+                        <p className="text-2xl font-bold text-primary">{course.enrollmentCount || 0}</p>
                         <p className="text-xs text-muted-foreground">Students</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-primary">{course.averageRating.toFixed(1)}</p>
+                        <p className="text-2xl font-bold text-primary">{(course.averageRating || 0).toFixed(1)}</p>
                         <p className="text-xs text-muted-foreground">Rating</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-primary">{course.ratingCount}</p>
+                        <p className="text-2xl font-bold text-primary">{course.ratingCount || 0}</p>
                         <p className="text-xs text-muted-foreground">Reviews</p>
                       </div>
                     </div>
@@ -207,6 +263,14 @@ export default function InstructorHub() {
                           Stats
                         </Button>
                       </Link>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0"
+                        onClick={() => setCourseToDelete(course.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -215,6 +279,38 @@ export default function InstructorHub() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={!!courseToDelete} onOpenChange={(open) => !open && setCourseToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the course
+              and all associated content, including modules, chapters, and lessons.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteCourse()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Course"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

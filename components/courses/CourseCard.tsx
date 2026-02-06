@@ -71,8 +71,8 @@ const CourseCard = memo(({ courseData }: LearningCardProps) => {
         <span key={keyId} className="relative inline-block w-4 h-4">
           <Star className="w-full h-full text-slate-300 dark:text-slate-600" strokeWidth={1.5} />
           {coverage > 0 && (
-            <span 
-              className="absolute top-0 left-0 h-full overflow-hidden" 
+            <span
+              className="absolute top-0 left-0 h-full overflow-hidden"
               style={{ width: `${coverage * 100}%` }}
             >
               <Star className="w-4 h-4 text-amber-400 fill-amber-400" strokeWidth={1.5} />
@@ -94,78 +94,69 @@ const CourseCard = memo(({ courseData }: LearningCardProps) => {
 
   return (
     <Link href={`/courses/${courseData.slug}`} className="block group">
-      <Card className="overflow-hidden transition-all duration-200 group-hover:shadow-2xl group-hover:scale-[1.02] h-full flex flex-col border-2">
-        <div className="relative aspect-video w-full bg-gradient-to-tr from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950">
+      <Card className="overflow-hidden transition-all duration-200 group-hover:shadow-xl group-hover:translate-y-[-4px] h-full flex flex-col border-border/40 bg-card p-0 gap-0">
+        <div className="relative aspect-video w-full bg-muted/30 overflow-hidden">
           {courseData.courseImage ? (
             <Image
               src={courseData.courseImage}
               alt={courseData.title}
               fill
-              className="object-cover"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              priority={false}
+              priority={true}
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <BookOpen className="w-20 h-20 text-indigo-300 dark:text-indigo-700" strokeWidth={1.5} />
+            <div className="flex items-center justify-center h-full w-full">
+              <BookOpen className="w-10 h-10 text-muted-foreground/20" strokeWidth={1.5} />
             </div>
           )}
-          <div className="absolute top-2.5 right-2.5">
-            <Badge variant="secondary" className={`${levelBadgeStyle} text-xs font-medium border`}>
+          <div className="absolute top-2 right-2 z-10">
+            <Badge variant="secondary" className={`${levelBadgeStyle} text-[10px] px-2 py-0 h-5 font-medium border-none shadow-sm`}>
               {courseData.difficulty.charAt(0).toUpperCase() + courseData.difficulty.slice(1)}
             </Badge>
           </div>
         </div>
 
-        <div className="p-4 flex-1 flex flex-col space-y-3">
-          <Badge variant="outline" className="text-xs w-fit font-medium">
+        <div className="p-3.5 flex-1 flex flex-col space-y-2.5">
+          <Badge variant="outline" className="text-[10px] w-fit font-medium py-0 h-4 px-1.5 opacity-70">
             {courseData.category}
           </Badge>
 
-          <h3 className="font-semibold text-base leading-snug line-clamp-2 min-h-[2.5rem]">
+          <h3 className="font-bold text-sm leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-primary transition-colors">
             {courseData.title}
           </h3>
 
-          {courseData.shortDescription && (
-            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-              {courseData.shortDescription}
-            </p>
-          )}
-
           <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-500 flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
+            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold border border-border">
               {teacherInitial}
             </div>
-            <span className="text-sm text-muted-foreground truncate">
+            <span className="text-xs text-muted-foreground truncate font-medium">
               {courseData.instructor.name}
             </span>
           </div>
 
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-1">
             {buildRatingVisual()}
-            <span className="ml-1.5 text-sm font-semibold text-foreground">
+            <span className="ml-1 text-xs font-bold text-foreground">
               {courseData.averageRating.toFixed(1)}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              ({courseData.ratingCount})
             </span>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-            <span className="flex items-center space-x-1.5">
-              <Users className="w-3.5 h-3.5" strokeWidth={2} />
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
+            <span className="flex items-center space-x-1">
+              <Users className="w-3 h-3" />
               <span>{courseData.enrollmentCount}</span>
             </span>
             {contentMetrics.lessonTotal > 0 && (
-              <span className="flex items-center space-x-1.5">
-                <Clock className="w-3.5 h-3.5" strokeWidth={2} />
+              <span className="flex items-center space-x-1">
+                <Clock className="w-3 h-3" />
                 <span>{contentMetrics.lessonTotal} chapters</span>
               </span>
             )}
           </div>
 
-          <div className="mt-auto pt-3 border-t flex items-center justify-between">
-            <span className="text-xl font-bold text-primary">
+          <div className="mt-auto pt-2 flex items-center justify-between">
+            <span className="text-base font-black text-primary tracking-tight">
               {costLabel}
             </span>
           </div>

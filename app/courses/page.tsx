@@ -35,12 +35,12 @@ export default function ExploreCoursesPage() {
         pageSize: "12",
         status: "published"
       })
-      
+
       queryText && urlBuilder.set("search", queryText)
       refinementOptions.categorySelected !== "all" && urlBuilder.set("category", refinementOptions.categorySelected)
       refinementOptions.levelSelected !== "all" && urlBuilder.set("difficulty", refinementOptions.levelSelected)
       refinementOptions.ratingMin > 0 && urlBuilder.set("rating", String(refinementOptions.ratingMin))
-      
+
       if (refinementOptions.costRange === "free") {
         urlBuilder.set("minPrice", "0")
         urlBuilder.set("maxPrice", "0")
@@ -51,7 +51,7 @@ export default function ExploreCoursesPage() {
       try {
         const serverCall = await fetch(`/api/courses?${urlBuilder}`)
         const payload = await serverCall.json()
-        
+
         if (serverCall.ok) {
           setCatalogItems(payload.courses || [])
           setMaxPages(payload.totalPages || 1)
@@ -165,8 +165,8 @@ export default function ExploreCoursesPage() {
               </div>
             ) : (
               <>
-                <div className={displayLayout === "grid" 
-                  ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6" 
+                <div className={displayLayout === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
                   : "space-y-4"}>
                   {catalogItems.map((item) => (
                     <CourseCard key={item.id} courseData={item} />

@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Play, FileText, Download, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import QuizComponent from "./QuizComponent";
+import { ImageViewer } from "@/components/ui/image-viewer";
 
 interface LessonContent {
   id: string;
@@ -17,6 +19,9 @@ interface LessonContent {
   fileUrl?: string;
   fileName?: string;
   order: number;
+  quiz?: any;
+  imageUrl?: string | null;
+  images?: string | null;
 }
 
 interface PlayerProps {
@@ -25,7 +30,8 @@ interface PlayerProps {
     title: string;
     description?: string;
     sections: LessonContent[];
-  };
+  } | null;
+  courseId: string;
   enrollmentId: string;
   onComplete: () => void;
   onNavigate: (direction: 'prev' | 'next') => void;
@@ -33,11 +39,24 @@ interface PlayerProps {
   hasPrev: boolean;
 }
 
-const CoursePlayer = memo(({ chapterInfo, enrollmentId, onComplete, onNavigate, hasNext, hasPrev }: PlayerProps) => {
+const CoursePlayer = memo(({ chapterInfo, courseId, enrollmentId, onComplete, onNavigate, hasNext, hasPrev }: PlayerProps) => {
   const [activeSection, setActiveSection] = useState(0);
   const [completionTracker, setCompletionTracker] = useState<Set<string>>(new Set());
   const [markingComplete, setMarkingComplete] = useState(false);
   const { toast } = useToast();
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  if (!chapterInfo || !chapterInfo.sections || chapterInfo.sections.length === 0) {
+    return (
+      <Card className="h-full flex items-center justify-center p-12 bg-muted/30">
+        <div className="text-center">
+          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-lg font-medium">No content available for this chapter</p>
+        </div>
+      </Card>
+    );
+  }
 
   const currentLesson = chapterInfo.sections[activeSection];
   const sectionProgress = `${activeSection + 1}/${chapterInfo.sections.length}`;
@@ -61,7 +80,7 @@ const CoursePlayer = memo(({ chapterInfo, enrollmentId, onComplete, onNavigate, 
   const triggerChapterComplete = useCallback(async () => {
     setMarkingComplete(true);
     try {
-      const res = await fetch(`/api/courses/${enrollmentId}/chapters/${chapterInfo.id}/complete`, {
+      const res = await fetch(`/api/courses/${courseId}/chapters/${chapterInfo!.id}/complete`, {
         method: "POST"
       });
       if (res.ok) {
@@ -88,10 +107,32 @@ const CoursePlayer = memo(({ chapterInfo, enrollmentId, onComplete, onNavigate, 
       return null;
     };
 
+    const extractStartTime = (rawUrl: string) => {
+      // 1. Try standard URL parsing to get 't' or 'start'
+      try {
+        const urlObj = new URL(rawUrl);
+        const timeParams = ['t', 'start'];
+        for (const param of timeParams) {
+          const val = urlObj.searchParams.get(param);
+          if (val) return val.replace('s', ''); // Handle "120s" -> "120"
+        }
+      } catch (e) {
+        // Ignore parsing errors, proceed to fallback
+      }
+
+      // 2. Fallback regex for malformed URLs (e.g. ?v=id?t=123) or just lazy matching
+      const match = rawUrl.match(/[?&](t|start)=(\d+)/);
+      if (match) return match[2];
+
+      return null;
+    };
+
     const videoId = extractVideoId(url);
+    const startTime = extractStartTime(url);
     const isYT = url.includes('youtube') || url.includes('youtu.be');
-    const embedUrl = isYT 
-      ? `https://www.youtube.com/embed/${videoId}?rel=0`
+
+    const embedUrl = isYT
+      ? `https://www.youtube.com/embed/${videoId}?rel=0${startTime ? `&start=${startTime}` : ''}`
       : `https://player.vimeo.com/video/${videoId}`;
 
     return (
@@ -142,18 +183,104 @@ const CoursePlayer = memo(({ chapterInfo, enrollmentId, onComplete, onNavigate, 
   const renderCurrentContent = () => {
     if (!currentLesson) return null;
 
+    let content;
     switch (currentLesson.contentType) {
       case 'video':
-        return currentLesson.videoUrl && <VideoPlayer url={currentLesson.videoUrl} />;
+        content = currentLesson.videoUrl && <VideoPlayer url={currentLesson.videoUrl} />;
+        break;
       case 'text':
-        return currentLesson.content && <TextContent text={currentLesson.content} />;
+        content = currentLesson.content && <TextContent text={currentLesson.content} />;
+        break;
       case 'file':
-        return currentLesson.fileUrl && currentLesson.fileName && (
+        content = currentLesson.fileUrl && currentLesson.fileName && (
           <FileDownload url={currentLesson.fileUrl} name={currentLesson.fileName} />
         );
+        break;
+      case 'quiz':
+        content = currentLesson.quiz && (
+          <QuizComponent
+            quizData={currentLesson.quiz}
+            onSubmitComplete={(score, passed) => {
+              if (passed) {
+                recordSectionView(currentLesson.id);
+                toast({ title: "Quiz Passed!", description: `Score: ${score}%` });
+              }
+            }}
+          />
+        );
+        break;
       default:
-        return <div className="text-center text-muted-foreground py-12">Content not available</div>;
+        content = <div className="text-center text-muted-foreground py-12">Content not available</div>;
     }
+
+    const additionalImages = currentLesson.images ? (() => {
+      try {
+        const parsed = typeof currentLesson.images === 'string'
+          ? JSON.parse(currentLesson.images)
+          : currentLesson.images;
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    })() : [];
+
+    // Prepare images for the viewer
+    const allImages = [
+      ...(currentLesson.imageUrl ? [{ url: currentLesson.imageUrl }] : []),
+      ...additionalImages.map((img: string) => ({ url: img }))
+    ];
+
+    const handleImageClick = (index: number) => {
+      setCurrentImageIndex(index);
+      setIsViewerOpen(true);
+    };
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 md:px-8 py-6">
+        {currentLesson.imageUrl && (
+          <div
+            className="mb-8 rounded-xl overflow-hidden shadow-sm border aspect-video max-h-[400px] relative bg-muted cursor-pointer hover:opacity-95 transition-opacity"
+            onClick={() => handleImageClick(0)}
+          >
+            <img
+              src={currentLesson.imageUrl}
+              alt={currentLesson.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
+        {content}
+
+        {additionalImages.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <h3 className="text-lg font-semibold">Image Gallery</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {additionalImages.map((img: string, idx: number) => (
+                <div
+                  key={idx}
+                  className="rounded-lg overflow-hidden border shadow-sm aspect-video bg-muted relative group cursor-pointer"
+                  onClick={() => handleImageClick(currentLesson.imageUrl ? idx + 1 : idx)}
+                >
+                  <img
+                    src={img}
+                    alt={`Gallery image ${idx + 1}`}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <ImageViewer
+          images={allImages}
+          initialIndex={currentImageIndex}
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+        />
+      </div>
+    );
   };
 
   return (

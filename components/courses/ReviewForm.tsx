@@ -11,19 +11,19 @@ import { cn } from "@/lib/utils";
 
 interface ReviewFormProps {
   courseId: string;
-  enrollmentProgress: number;
+  enrollmentProgress?: number;
   existingReview?: {
     id: string;
     rating: number;
     comment: string;
   };
-  onReviewSaved: () => void;
+  onReviewSubmitted: () => void;
 }
 
 const RATING_LABELS = ["Poor", "Fair", "Good", "Very Good", "Excellent"];
 const MIN_PROGRESS_REQUIRED = 30;
 
-const ReviewForm = memo(({ courseId, enrollmentProgress, existingReview, onReviewSaved }: ReviewFormProps) => {
+const ReviewForm = memo(({ courseId, enrollmentProgress = 100, existingReview, onReviewSubmitted }: ReviewFormProps) => {
   const [selectedRating, setSelectedRating] = useState(existingReview?.rating || 0);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewText, setReviewText] = useState(existingReview?.comment || "");
@@ -63,7 +63,7 @@ const ReviewForm = memo(({ courseId, enrollmentProgress, existingReview, onRevie
       const endpoint = existingReview
         ? `/api/courses/${courseId}/reviews/${existingReview.id}`
         : `/api/courses/${courseId}/reviews`;
-      
+
       const method = existingReview ? "PUT" : "POST";
 
       const response = await fetch(endpoint, {
@@ -86,7 +86,7 @@ const ReviewForm = memo(({ courseId, enrollmentProgress, existingReview, onRevie
         variant: "default"
       });
 
-      onReviewSaved();
+      onReviewSubmitted();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -96,7 +96,7 @@ const ReviewForm = memo(({ courseId, enrollmentProgress, existingReview, onRevie
     } finally {
       setSubmissionInProgress(false);
     }
-  }, [courseId, selectedRating, reviewText, existingReview, validationErrors, toast, onReviewSaved]);
+  }, [courseId, selectedRating, reviewText, existingReview, validationErrors, toast, onReviewSubmitted]);
 
   const StarRatingInput = () => {
     return (
@@ -149,7 +149,7 @@ const ReviewForm = memo(({ courseId, enrollmentProgress, existingReview, onRevie
                 Review Locked
               </h4>
               <p className="text-sm text-amber-800 dark:text-amber-200">
-                Complete {MIN_PROGRESS_REQUIRED}% of the course to unlock reviews. 
+                Complete {MIN_PROGRESS_REQUIRED}% of the course to unlock reviews.
                 Your current progress: {enrollmentProgress.toFixed(0)}%
               </p>
             </div>

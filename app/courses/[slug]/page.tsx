@@ -11,9 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EnrollButton from "@/components/courses/EnrollButton"
 import ReviewsList from "@/components/courses/ReviewsList"
 import ReviewForm from "@/components/courses/ReviewForm"
-import { 
-  GraduationCap, UsersRound, StarIcon, TimerIcon, LanguagesIcon, 
-  CircleCheckBig, Video, RefreshCw, ChevronLeft, Trophy 
+import {
+  GraduationCap, UsersRound, StarIcon, TimerIcon, LanguagesIcon,
+  CircleCheckBig, Video, RefreshCw, ChevronLeft, Trophy
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -25,6 +25,7 @@ export default function CourseDetailsView() {
   const [courseInfo, setCourseInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isStudentEnrolled, setIsStudentEnrolled] = useState(false)
+  const [enrollmentProgress, setEnrollmentProgress] = useState<number>(0)
   const [initialChapter, setInitialChapter] = useState<string>("")
 
   useEffect(() => {
@@ -36,12 +37,12 @@ export default function CourseDetailsView() {
       const endpoint = `/api/courses?slug=${routeParams.slug}`
       const serverResponse = await fetch(endpoint)
       const jsonPayload = await serverResponse.json()
-      
+
       if (serverResponse.ok && jsonPayload.courses?.[0]) {
         const fetchedCourse = jsonPayload.courses[0]
         setCourseInfo(fetchedCourse)
-        
-        fetchedCourse.modules?.[0]?.chapters?.[0] && 
+
+        fetchedCourse.modules?.[0]?.chapters?.[0] &&
           setInitialChapter(fetchedCourse.modules[0].chapters[0].id)
 
         sessionData?.user && verifyEnrollment(fetchedCourse.id)
@@ -58,6 +59,7 @@ export default function CourseDetailsView() {
       const checkResponse = await fetch(`/api/courses/${courseIdentifier}`)
       const checkData = await checkResponse.json()
       setIsStudentEnrolled(checkData.isEnrolled || false)
+      setEnrollmentProgress(checkData.userProgress || 0)
     } catch (problem) {
       console.error("Enrollment check error:", problem)
     }
@@ -100,19 +102,35 @@ export default function CourseDetailsView() {
 
   const chapterTotal = getTotalChapterCount()
   const teacherData = courseInfo.instructor
-  const objectives = courseInfo.learningObjectives 
-    ? JSON.parse(courseInfo.learningObjectives) 
-    : []
-  const requiredKnowledge = courseInfo.requirements
-    ? JSON.parse(courseInfo.requirements)
-    : []
+
+  // Helper to safely parse JSON or return original value
+  const safeParse = (data: any) => {
+    if (!data) return []
+    if (Array.isArray(data)) return data
+    try {
+      const parsed = JSON.parse(data)
+      return Array.isArray(parsed) ? parsed : [parsed]
+    } catch (e) {
+      // Fallback: If it's a multiline string with hyphens, convert to array
+      if (typeof data === 'string' && data.includes('\n')) {
+        return data
+          .split('\n')
+          .map(line => line.replace(/^-\s*/, '').trim())
+          .filter(Boolean)
+      }
+      return [data]
+    }
+  }
+
+  const objectives = safeParse(courseInfo.learningObjectives)
+  const requiredKnowledge = safeParse(courseInfo.requirements)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg">
+    <div className="min-h-screen bg-background">
+      <div className="bg-muted/30 border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-10">
           <Link href="/courses">
-            <Button variant="ghost" className="text-white hover:bg-white/20 mb-6 gap-2">
+            <Button variant="ghost" className="hover:bg-muted/50 mb-6 gap-2 text-muted-foreground">
               <ChevronLeft className="h-4 w-4" />
               Back to catalog
             </Button>
@@ -121,102 +139,99 @@ export default function CourseDetailsView() {
           <div className="grid lg:grid-cols-[2fr_1fr] gap-10">
             <div className="space-y-5">
               <div className="flex items-center gap-3 flex-wrap">
-                <Badge variant="secondary" className="bg-white/25 text-white backdrop-blur">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-none">
                   {courseInfo.category}
                 </Badge>
-                <Badge variant="secondary" className="bg-white/25 text-white backdrop-blur">
+                <Badge variant="secondary" className="bg-primary/10 text-primary border-none lowercase">
                   {courseInfo.difficulty}
                 </Badge>
               </div>
 
-              <h1 className="text-5xl font-extrabold tracking-tight">{courseInfo.title}</h1>
-              <p className="text-xl text-white/95 leading-relaxed">{courseInfo.shortDescription}</p>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">{courseInfo.title}</h1>
+              <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-2xl">{courseInfo.shortDescription}</p>
 
-              <div className="flex items-center gap-8 flex-wrap pt-2">
-                <div className="flex items-center gap-2.5">
-                  <StarIcon className="h-6 w-6 fill-amber-400 text-amber-400" />
-                  <span className="font-bold text-lg">{courseInfo.averageRating.toFixed(1)}</span>
-                  <span className="text-white/85 text-sm">({courseInfo.ratingCount} reviews)</span>
+              <div className="flex items-center gap-6 flex-wrap pt-2">
+                <div className="flex items-center gap-2">
+                  <StarIcon className="h-5 w-5 fill-amber-400 text-amber-400" />
+                  <span className="font-bold text-base">{courseInfo.averageRating.toFixed(1)}</span>
+                  <span className="text-muted-foreground text-sm">({courseInfo.ratingCount} reviews)</span>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <UsersRound className="h-6 w-6" />
-                  <span className="font-medium">{courseInfo.enrollmentCount} learners</span>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <UsersRound className="h-5 w-5" />
+                  <span className="font-medium text-sm">{courseInfo.enrollmentCount} learners</span>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <TimerIcon className="h-6 w-6" />
-                  <span className="font-medium">{chapterTotal} lessons</span>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <TimerIcon className="h-5 w-5" />
+                  <span className="font-medium text-sm">{chapterTotal} lessons</span>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <LanguagesIcon className="h-6 w-6" />
-                  <span className="font-medium uppercase">{courseInfo.language}</span>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <LanguagesIcon className="h-5 w-5" />
+                  <span className="font-medium text-sm uppercase">{courseInfo.language}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 pt-3">
-                <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-indigo-600 font-bold text-xl shadow-lg">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shadow-sm">
                   {teacherData.name.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-sm text-white/80">Taught by</p>
-                  <p className="font-semibold text-lg">{teacherData.name}</p>
+                  <p className="text-xs text-muted-foreground">Taught by</p>
+                  <p className="font-bold text-foreground">{teacherData.name}</p>
                 </div>
               </div>
             </div>
 
-            <div>
-              <Card className="shadow-2xl">
+            <div className="lg:-mb-24 relative z-10">
+              <Card className="shadow-2xl border-border/50 overflow-hidden">
                 {courseInfo.courseImage ? (
-                  <div className="relative aspect-video">
+                  <div className="relative aspect-video w-full bg-muted">
                     <Image
                       src={courseInfo.courseImage}
                       alt={courseInfo.title}
                       fill
-                      className="object-cover rounded-t-lg"
+                      className="object-cover"
+                      priority
                     />
                   </div>
                 ) : (
-                  <div className="aspect-video bg-gradient-to-tr from-indigo-100 via-purple-100 to-pink-100 dark:from-indigo-950 dark:via-purple-950 dark:to-pink-950 flex items-center justify-center rounded-t-lg">
-                    <GraduationCap className="h-24 w-24 text-indigo-300 dark:text-indigo-700" />
+                  <div className="aspect-video bg-muted flex items-center justify-center">
+                    <GraduationCap className="h-16 w-16 text-muted-foreground/30" />
                   </div>
                 )}
-                <div className="p-7 space-y-5">
+                <div className="p-7 space-y-5 bg-card">
                   <div className="text-center">
-                    <p className="text-4xl font-extrabold text-primary">
-                      {courseInfo.isPaid 
-                        ? `${courseInfo.currency} ${courseInfo.price.toFixed(2)}` 
-                        : "Free Course"}
+                    <p className="text-3xl font-black text-primary">
+                      Free Course
                     </p>
                   </div>
 
                   {isStudentEnrolled ? (
                     <Link href={`/courses/${courseInfo.slug}/learn/${initialChapter}`}>
-                      <Button className="w-full gap-2" size="lg">
+                      <Button className="w-full gap-2 h-12 text-base font-bold" size="lg">
                         <Video className="h-5 w-5" />
                         Access Course
                       </Button>
                     </Link>
                   ) : (
                     <EnrollButton
-                      courseId={courseInfo.id}
-                      isPaid={courseInfo.isPaid}
-                      price={courseInfo.price}
-                      currency={courseInfo.currency}
-                      onEnrollSuccess={onSuccessfulEnrollment}
+                      courseIdentifier={courseInfo.id}
+                      isCurrentlyEnrolled={isStudentEnrolled}
+                      onEnrollmentChange={onSuccessfulEnrollment}
                     />
                   )}
 
                   <div className="space-y-3 text-sm border-t pt-5">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Level</span>
-                      <span className="font-semibold capitalize">{courseInfo.difficulty}</span>
+                      <span className="font-bold capitalize">{courseInfo.difficulty}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Language</span>
-                      <span className="font-semibold uppercase">{courseInfo.language}</span>
+                      <span className="font-bold uppercase text-xs tracking-wider">{courseInfo.language}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Enrolled</span>
-                      <span className="font-semibold">{courseInfo.enrollmentCount}</span>
+                      <span className="font-bold">{courseInfo.enrollmentCount}</span>
                     </div>
                   </div>
                 </div>
@@ -276,12 +291,25 @@ export default function CourseDetailsView() {
             <Card className="p-8">
               <h2 className="text-2xl font-bold mb-5">Meet Your Instructor</h2>
               <div className="flex items-center gap-5">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-400 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                  {teacherData.name.substring(0, 2).toUpperCase()}
-                </div>
+                {teacherData.image ? (
+                  <div className="relative w-20 h-20 rounded-full overflow-hidden shadow-lg border-2 border-background">
+                    <Image
+                      src={teacherData.image}
+                      alt={teacherData.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-400 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                    {teacherData.name.substring(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <div>
-                  <h3 className="font-bold text-xl">{teacherData.name}</h3>
-                  <p className="text-muted-foreground">{teacherData.email}</p>
+                  <Link href={`/profile/${teacherData.id}`} className="hover:underline">
+                    <h3 className="font-bold text-xl">{teacherData.name}</h3>
+                  </Link>
+                  <p className="text-muted-foreground text-sm">ID: {teacherData.id}</p>
                 </div>
               </div>
             </Card>
@@ -337,11 +365,10 @@ export default function CourseDetailsView() {
                     {[1, 2, 3, 4, 5].map((starNum) => (
                       <StarIcon
                         key={starNum}
-                        className={`h-6 w-6 ${
-                          starNum <= courseInfo.averageRating
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-muted"
-                        }`}
+                        className={`h-6 w-6 ${starNum <= courseInfo.averageRating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-muted"
+                          }`}
                       />
                     ))}
                   </div>
@@ -356,11 +383,15 @@ export default function CourseDetailsView() {
               {isStudentEnrolled && (
                 <div className="mb-8">
                   <h3 className="font-bold text-lg mb-4">Share Your Experience</h3>
-                  <ReviewForm courseId={courseInfo.id} onReviewSubmitted={fetchCourseData} />
+                  <ReviewForm
+                    courseId={courseInfo.id}
+                    enrollmentProgress={enrollmentProgress}
+                    onReviewSubmitted={fetchCourseData}
+                  />
                 </div>
               )}
 
-              <ReviewsList courseId={courseInfo.id} reviews={courseInfo.reviews || []} />
+              <ReviewsList reviews={courseInfo.reviews || []} />
             </Card>
           </TabsContent>
         </Tabs>

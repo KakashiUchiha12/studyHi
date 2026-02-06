@@ -10,6 +10,8 @@ import { EventCard } from "@/components/community/event-card";
 import { CreateEventDialog } from "@/components/community/create-event-dialog";
 import { Loader2 } from "lucide-react";
 
+import { MembersList } from "@/components/community/members-list";
+
 export default function CommunityHome() {
     const params = useParams();
     const { data: session } = useSession();
@@ -32,9 +34,6 @@ export default function CommunityHome() {
     };
 
     useEffect(() => {
-        // Initial fetch for events only when tab might be visited? 
-        // For now, let's fetch on mount or we can lazy load.
-        // Let's fetch on mount for simplicity.
         fetchEvents();
     }, [communityId]);
 
@@ -60,10 +59,6 @@ export default function CommunityHome() {
                     <div className="mb-4 text-sm text-muted-foreground">
                         Official updates from community admins.
                     </div>
-                    {/* Reuse FeedView but filter for announcements. 
-                        We need to update FeedView to accept filters or just pass a special prop.
-                        Update FeedView to accept 'isAnnouncement' prop.
-                    */}
                     <FeedView
                         communityId={communityId}
                         currentUser={session?.user}
@@ -99,10 +94,8 @@ export default function CommunityHome() {
                     )}
                 </TabsContent>
 
-                <TabsContent value="members">
-                    <div className="text-center py-20 text-muted-foreground bg-white rounded-xl border border-dashed">
-                        <p>Member list coming soon.</p>
-                    </div>
+                <TabsContent value="members" className="mt-6">
+                    <MembersList communityId={communityId} />
                 </TabsContent>
             </Tabs>
         </div>

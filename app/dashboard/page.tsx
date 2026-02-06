@@ -1359,7 +1359,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions - Minimal - Mobile Optimized */}
-          <div className="grid grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-5 gap-3 sm:gap-4">
             <Button
               variant="outline"
               className="h-16 sm:h-20 flex-col space-y-1 sm:space-y-2 p-2 sm:p-3"
@@ -1394,6 +1394,15 @@ export default function DashboardPage() {
             >
               <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="text-xs sm:text-sm">Social</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-16 sm:h-20 flex-col space-y-1 sm:space-y-2 p-2 sm:p-3"
+              onClick={() => router.push('/courses')}
+            >
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-xs sm:text-sm">Courses</span>
             </Button>
           </div>
 
