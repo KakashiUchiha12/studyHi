@@ -1485,9 +1485,8 @@ export default function DashboardPage() {
                     </div>
                   </CardContent>
                 </Card>
-
                 {/* Profile */}
-                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/profile')}>
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/profile/${(session?.user as any)?.id || ''}`)}>
                   <CardContent className="p-4 sm:p-6">
                     <div className="flex items-center space-x-3 sm:space-x-4">
                       <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
