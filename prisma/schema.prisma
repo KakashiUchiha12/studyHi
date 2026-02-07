@@ -136,7 +136,7 @@ model Goal {
   id          String     @id @default(cuid())
   userId      String     @map("user_id")
   title       String
-  description String
+  description String     @db.Text
   targetDate  DateTime   @map("target_date")
   category    String
   status      String     @default("active")
@@ -170,7 +170,7 @@ model Skill {
   id          String           @id @default(cuid())
   userId      String           @map("user_id")
   name        String
-  description String
+  description String           @db.Text
   resources   String           @default("[]")
   order       Int              @default(0)
   createdAt   DateTime         @default(now()) @map("created_at")
@@ -187,7 +187,7 @@ model SkillObjective {
   skillId     String    @map("skill_id")
   title       String
   completed   Boolean   @default(false)
-  description String?
+  description String?   @db.Text
   targetDate  DateTime? @map("target_date")
   order       Int       @default(0)
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -226,7 +226,7 @@ model Task {
   userId        String    @map("user_id")
   subjectId     String?   @map("subject_id")
   title         String
-  description   String?
+  description   String?   @db.Text
   priority      String    @default("medium")
   status        String    @default("pending")
   dueDate       DateTime? @map("due_date")
@@ -250,7 +250,7 @@ model StudySession {
   durationMinutes Int      @map("duration_minutes")
   startTime       DateTime @map("start_time")
   endTime         DateTime @map("end_time")
-  notes           String?
+  notes           String?  @db.Text
   efficiency      Float?
   sessionType     String?  @map("session_type")
   productivity    Float?
@@ -285,10 +285,10 @@ model TestMark {
   score     Float
   maxScore  Float    @map("max_score")
   testDate  DateTime @map("test_date")
-  notes     String?
+  notes     String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  mistakes  String?
+  mistakes  String?  @db.Text
   subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -320,7 +320,7 @@ model Chapter {
   id             String     @id @default(cuid())
   subjectId      String     @map("subject_id")
   title          String
-  description    String?
+  description    String?    @db.Text
   order          Int
   isCompleted    Boolean    @default(false) @map("is_completed")
   estimatedHours Int        @default(2) @map("estimated_hours")
