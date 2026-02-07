@@ -2,8 +2,10 @@ import { createServer } from "http";
 import next from "next";
 import { Server } from "socket.io";
 import { parse } from "url";
-import { dbService } from "./lib/database/database-service";
-import { createNotification, notifyCommunityMembers } from "./lib/notifications-server";
+import { loadEnvConfig } from "@next/env";
+
+// Load environment variables immediately before anything else
+loadEnvConfig(process.cwd());
 
 const port = parseInt(process.env.PORT || "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -22,8 +24,6 @@ app.prepare().then(() => {
     });
 
     io.on("connection", (socket) => {
-        // console.log("Socket connected:", socket.id);
-
         socket.on("join-channel", (channelId: string) => {
             socket.join(channelId);
         });
@@ -37,6 +37,8 @@ app.prepare().then(() => {
         });
 
         socket.on("send-message", async (message) => {
+            // Use dynamic imports to ensure env is loaded
+            const { dbService } = await import("./lib/database/database-service");
             const prisma = dbService.getPrisma();
 
             try {
@@ -65,6 +67,7 @@ app.prepare().then(() => {
                     });
 
                     if (channel) {
+                        const { notifyCommunityMembers } = await import("./lib/notifications-server");
                         await notifyCommunityMembers({
                             communityId: channel.communityId,
                             senderId: message.senderId,
@@ -95,6 +98,7 @@ app.prepare().then(() => {
                     io.to(`user:${message.senderId}`).emit("new-dm", savedMessage);
 
                     // Create real-time notification for receiver
+                    const { createNotification } = await import("./lib/notifications-server");
                     await createNotification({
                         userId: message.receiverId,
                         senderId: message.senderId,
