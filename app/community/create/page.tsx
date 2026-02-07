@@ -241,7 +241,7 @@ export default function CreateCommunityPage() {
                                                             <Upload className="h-5 w-5" />
                                                         </div>
                                                         <div className="text-sm">Click to upload banner</div>
-                                                        <p className="text-xs text-muted-foreground">16:9 recommended</p>
+                                                        <p className="text-xs text-muted-foreground">4:1 recommended (Panoramic)</p>
                                                     </>
                                                 )}
                                                 <Input id="cover-upload" type="file" accept="image/*" className="hidden" onChange={onFileSelect("cover")} />
@@ -265,7 +265,7 @@ export default function CreateCommunityPage() {
                                     }
                                 }}
                                 onCropComplete={handleCropComplete}
-                                aspectRatio={activeCropType === "cover" ? 16 / 9 : 1}
+                                aspectRatio={activeCropType === "cover" ? 4 / 1 : 1}
                             />
                         </div>
 

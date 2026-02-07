@@ -411,7 +411,7 @@ export default function CommunitySettingsPage() {
                         onOpenChange={setCoverCropperOpen}
                         imageSrc={selectedImageSrc}
                         onCropComplete={(blob) => handleCropComplete(blob, 'cover')}
-                        aspectRatio={16 / 9}
+                        aspectRatio={4 / 1}
                     />
                 </>
             )}
