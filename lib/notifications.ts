@@ -129,7 +129,7 @@ class NotificationManager {
   private async updateNotification(id: string, updates: Partial<StudyNotification>) {
     try {
       const response = await fetch(`/api/notifications/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },

@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Bell, Check, X, ExternalLink, MessageSquare, Heart, MessageCircle } from "lucide-react"
+import { Bell, Check, X, ExternalLink, MessageSquare, Heart, MessageCircle, UserCircle } from "lucide-react"
 import { notificationManager, type StudyNotification } from "@/lib/notifications"
 import { format } from "date-fns"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<StudyNotification[]>([])
@@ -218,6 +219,3 @@ export function NotificationCenter() {
   )
 }
 
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(" ")
-}
