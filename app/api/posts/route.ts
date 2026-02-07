@@ -20,11 +20,7 @@ export async function GET(req: Request) {
         // Build where clause
         let whereClause: any = {};
         if (status === "published") {
-            whereClause.OR = [
-                { status: "published" },
-                { status: null },
-                { status: "" }
-            ];
+            whereClause.status = "published";
         } else {
             whereClause.status = status;
         }
