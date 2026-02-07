@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { Hash, Plus, MoreVertical, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Hash, Plus, MoreVertical, Pencil, Trash2, Loader2, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -171,16 +171,21 @@ export function ChannelList({ communityId, initialChannels, isAdmin }: ChannelLi
                     )}
                 </CardHeader>
                 <CardContent className="space-y-1 p-2">
-                    {/* Home Link - Redirects to first channel or community root */}
-                    <Link href={channels.length > 0 ? `/community/${communityId}/channel/${channels[0].id}` : `/community/${communityId}`}>
-                        <Button
-                            variant={pathname === `/community/${communityId}` || (channels.length > 0 && pathname.includes(channels[0].id)) ? "secondary" : "ghost"}
-                            className="w-full justify-start font-medium text-foreground mb-1"
-                        >
-                            <Hash className="w-4 h-4 mr-2" />
-                            Home
-                        </Button>
-                    </Link>
+                    {/* Home Link - Points to Feed */}
+                    <div className="mb-4">
+                        <Link href={`/community/${communityId}`}>
+                            <Button
+                                variant={pathname === `/community/${communityId}` ? "secondary" : "ghost"}
+                                className="w-full justify-start font-semibold text-foreground"
+                            >
+                                <LayoutDashboard className="w-4 h-4 mr-2 text-primary" />
+                                Community Home
+                            </Button>
+                        </Link>
+                        <div className="px-2 mt-4 mb-2">
+                            <div className="h-px bg-border w-full" />
+                        </div>
+                    </div>
                     {channels.map((channel) => (
                         <div key={channel.id} className="group relative flex items-center">
                             <Link

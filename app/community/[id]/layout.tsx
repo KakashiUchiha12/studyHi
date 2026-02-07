@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Hash, ArrowLeft, Settings, LogOut, Info, BookOpen, Users } from "lucide-react";
 import { JoinButton } from "@/components/community/join-button";
 import { ChannelList } from "@/components/community/channel-list";
+import { MobileNav } from "@/components/community/mobile-nav";
 
 
 export default async function CommunityLayout({
@@ -62,29 +63,54 @@ export default async function CommunityLayout({
             )}
 
             <header className="bg-white border-b border-border shadow-sm sticky top-0 z-10">
-                <div className="container mx-auto max-w-7xl px-4 py-6 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        <Link href="/community" className="text-muted-foreground hover:text-foreground">
+                <div className="container mx-auto max-w-7xl px-4 py-4 md:py-6 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 md:gap-6 min-w-0">
+                        {/* Mobile Menu Toggle */}
+                        <MobileNav
+                            communityId={community.id}
+                            channels={community.channels}
+                            isAdmin={isAdmin}
+                            communityName={community.name}
+                        >
+                            {/* Pass redundant but necessary sidebar info for mobile users */}
+                            <div className="space-y-6 pt-2">
+                                <Link href={`/community/${community.id}/members`}>
+                                    <Button variant="outline" className="w-full justify-start text-muted-foreground">
+                                        <Users className="w-4 h-4 mr-2" />
+                                        Members ({community._count.members})
+                                    </Button>
+                                </Link>
+                                <div className="p-4 rounded-xl bg-slate-50 border text-sm">
+                                    <h4 className="font-semibold mb-2 flex items-center gap-2 italic">
+                                        <Info className="w-4 h-4" /> About
+                                    </h4>
+                                    <div dangerouslySetInnerHTML={{ __html: community.description || "No description." }} className="prose prose-sm" />
+                                </div>
+                            </div>
+                        </MobileNav>
+
+                        <Link href="/community" className="text-muted-foreground hover:text-foreground hidden md:block">
                             <ArrowLeft className="w-6 h-6" />
                         </Link>
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl overflow-hidden relative shadow-sm">
+
+                        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                            <div className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xl md:text-2xl overflow-hidden shrink-0 shadow-sm border border-primary/5">
                                 {community.icon ? (
                                     <img src={community.icon} alt="Icon" className="w-full h-full object-cover" />
                                 ) : (
                                     community.name[0].toUpperCase()
                                 )}
                             </div>
-                            <div>
-                                <Link href={`/community/${community.id}`} className="hover:underline">
-                                    <h1 className="text-2xl font-bold leading-tight">{community.name}</h1>
+                            <div className="min-w-0">
+                                <Link href={`/community/${community.id}`} className="hover:underline block">
+                                    <h1 className="text-lg md:text-2xl font-bold leading-tight truncate">{community.name}</h1>
                                 </Link>
-                                <div className="text-sm text-muted-foreground mt-1">{community._count.members} members</div>
+                                <div className="text-xs md:text-sm text-muted-foreground mt-0.5">{community._count.members} members</div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 md:gap-2 shrink-0">
                         <JoinButton
                             communityId={community.id}
                             isMember={!!membership}
@@ -92,7 +118,7 @@ export default async function CommunityLayout({
                         />
                         {isAdmin && (
                             <Link href={`/community/${community.id}/settings`}>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" className="h-9 w-9">
                                     <Settings className="w-5 h-5 text-muted-foreground" />
                                 </Button>
                             </Link>
@@ -102,7 +128,7 @@ export default async function CommunityLayout({
             </header>
 
             <div className="flex-1 container mx-auto max-w-7xl p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Persistent Sidebar */}
+                {/* Persistent Sidebar (Desktop Only) */}
                 <aside className="hidden lg:block lg:col-span-3 space-y-6">
                     <ChannelList
                         communityId={community.id}
