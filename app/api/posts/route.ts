@@ -55,6 +55,7 @@ export async function GET(req: Request) {
                     id: true,
                     content: true,
                     isAnnouncement: true,
+                    status: true,
                     createdAt: true,
                     updatedAt: true,
                     user: {
@@ -90,6 +91,7 @@ export async function GET(req: Request) {
                     id: true,
                     content: true,
                     isAnnouncement: true,
+                    status: true,
                     createdAt: true,
                     updatedAt: true,
                     user: {
