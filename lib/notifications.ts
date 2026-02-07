@@ -1,21 +1,28 @@
 "use client"
 
 import { toast } from "react-hot-toast"
+import { pusherClient } from "./pusher"
 
 export interface StudyNotification {
   id: string
-  type: "reminder" | "achievement" | "deadline" | "goal"
+  type: "message" | "channel_message" | "like" | "comment" | "reminder" | "achievement" | "deadline" | "goal"
   title: string
   message: string
   timestamp: Date
   read: boolean
   actionUrl?: string
+  sender?: {
+    id: string
+    name: string
+    image: string | null
+  }
 }
 
 class NotificationManager {
   private subscribers: ((notifications: StudyNotification[]) => void)[] = []
   private notifications: StudyNotification[] = []
   private initialized = false
+  private pusherChannel: any = null
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -29,10 +36,10 @@ class NotificationManager {
     }
   }
 
-  // Initialize notifications from database (call this once on app startup)
-  async initialize() {
-    if (this.initialized) return
-    
+  // Initialize notifications from database and setup Pusher
+  async initialize(userId?: string) {
+    if (this.initialized && !userId) return
+
     try {
       const response = await fetch('/api/notifications')
       if (response.ok) {
@@ -43,11 +50,51 @@ class NotificationManager {
         }))
         this.notifySubscribers()
       }
+
+      if (userId) {
+        this.setupPusher(userId)
+      }
     } catch (error) {
       console.error('Failed to load notifications:', error)
     }
-    
+
     this.initialized = true
+  }
+
+  private setupPusher(userId: string) {
+    if (this.pusherChannel) return
+
+    this.pusherChannel = pusherClient.subscribe(`user-${userId}`)
+    this.pusherChannel.bind("new-notification", (notification: any) => {
+      this.handleNewRealtimeNotification(notification)
+    })
+  }
+
+  private handleNewRealtimeNotification(notification: any) {
+    const formattedNotification = {
+      ...notification,
+      timestamp: new Date(notification.timestamp)
+    }
+
+    // Check for duplicates
+    if (this.notifications.some(n => n.id === formattedNotification.id)) return
+
+    this.notifications.unshift(formattedNotification)
+    this.notifySubscribers()
+
+    // Show toast
+    toast(formattedNotification.message, {
+      duration: 5000,
+      icon: this.getNotificationIcon(formattedNotification.type)
+    })
+
+    // Show browser notification
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(formattedNotification.title, {
+        body: formattedNotification.message,
+        icon: formattedNotification.sender?.image || "/placeholder-logo.png"
+      })
+    }
   }
 
   private async saveNotification(notification: Omit<StudyNotification, "id" | "timestamp" | "read">) {
@@ -59,9 +106,13 @@ class NotificationManager {
         },
         body: JSON.stringify(notification),
       })
-      
+
       if (response.ok) {
         const savedNotification = await response.json()
+        // We don't unshift here if we expect Pusher to handle it for the sender too?
+        // Actually, normally the sender doesn't send a notification to themselves via Pusher 
+        // if they are the one creating the action. 
+        // But for local actions like "Goals", we might want it.
         this.notifications.unshift({
           ...savedNotification,
           timestamp: new Date(savedNotification.timestamp)
@@ -84,10 +135,10 @@ class NotificationManager {
         },
         body: JSON.stringify(updates),
       })
-      
+
       if (response.ok) {
         const updatedNotification = await response.json()
-        this.notifications = this.notifications.map(n => 
+        this.notifications = this.notifications.map(n =>
           n.id === id ? { ...n, ...updatedNotification, timestamp: new Date(updatedNotification.timestamp) } : n
         )
         this.notifySubscribers()
@@ -104,7 +155,7 @@ class NotificationManager {
       const response = await fetch(`/api/notifications/${id}`, {
         method: 'DELETE',
       })
-      
+
       if (response.ok) {
         this.notifications = this.notifications.filter(n => n.id !== id)
         this.notifySubscribers()
@@ -120,46 +171,40 @@ class NotificationManager {
     this.subscribers.forEach(callback => callback([...this.notifications]))
   }
 
-  subscribe(callback: (notifications: StudyNotification[]) => void) {
+  subscribe(callback: (notifications: StudyNotification[]) => void, userId?: string) {
     this.subscribers.push(callback)
-    
-    // Initialize if not already done
-    if (!this.initialized) {
-      this.initialize()
+
+    // Initialize if not already done or if userId provided
+    if (!this.initialized || userId) {
+      this.initialize(userId)
     }
-    
+
     // Return current notifications immediately
     callback([...this.notifications])
-    
+
     return () => {
       this.subscribers = this.subscribers.filter(sub => sub !== callback)
     }
   }
 
   async addNotification(notification: Omit<StudyNotification, "id" | "timestamp" | "read">) {
-    // Check if this notification already exists to prevent duplicates
-    const existingNotification = this.notifications.find(n => 
-      n.type === notification.type && 
-      n.title === notification.title && 
+    const existingNotification = this.notifications.find(n =>
+      n.type === notification.type &&
+      n.title === notification.title &&
       n.message === notification.message &&
       !n.read
     )
-    
-    if (existingNotification) {
-      console.log('Notification already exists, skipping duplicate:', notification.title)
-      return existingNotification
-    }
+
+    if (existingNotification) return existingNotification
 
     const savedNotification = await this.saveNotification(notification)
-    
+
     if (savedNotification) {
-      // Show toast notification
       toast(notification.message, {
         duration: 5000,
         icon: this.getNotificationIcon(notification.type)
       })
 
-      // Show browser notification if permission granted
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(notification.title, {
           body: notification.message,
@@ -167,7 +212,7 @@ class NotificationManager {
         })
       }
     }
-    
+
     return savedNotification
   }
 
@@ -180,7 +225,7 @@ class NotificationManager {
       const response = await fetch('/api/notifications/mark-all-read', {
         method: 'PUT',
       })
-      
+
       if (response.ok) {
         this.notifications.forEach(n => n.read = true)
         this.notifySubscribers()
@@ -200,6 +245,10 @@ class NotificationManager {
 
   private getNotificationIcon(type: StudyNotification["type"]): string {
     switch (type) {
+      case "message": return "💬"
+      case "channel_message": return "📢"
+      case "like": return "❤️"
+      case "comment": return "📝"
       case "reminder": return "⏰"
       case "achievement": return "🎉"
       case "deadline": return "⚠️"
@@ -208,7 +257,7 @@ class NotificationManager {
     }
   }
 
-  // Study-specific notification methods (now properly managed)
+  // Study-specific notification methods
   async scheduleStudyReminder(subject: string, time: Date) {
     const now = new Date()
     const timeUntilReminder = time.getTime() - now.getTime()
@@ -266,9 +315,6 @@ class NotificationManager {
       actionUrl: "/test-marks"
     })
   }
-
-  // Remove the automatic notification creation on page load
-  // This was causing duplicate notifications
 }
 
 export const notificationManager = new NotificationManager()

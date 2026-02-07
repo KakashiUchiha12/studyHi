@@ -86,6 +86,24 @@ export async function POST(
             }
         }
 
+        // Trigger notification for post owner
+        const post = await prisma.post.findUnique({
+            where: { id: postId },
+            select: { userId: true, content: true }
+        });
+
+        if (post && post.userId !== userId) {
+            const { createNotification } = await import("@/lib/notifications-server");
+            await createNotification({
+                userId: post.userId,
+                senderId: userId,
+                type: "like",
+                title: "New Like",
+                message: `${session.user.name} liked your post: "${post.content.substring(0, 30)}${post.content.length > 30 ? "..." : ""}"`,
+                actionUrl: `/feed` // Adjust if you have a specific post URL
+            });
+        }
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error("[LIKE_TOGGLE]", error);

@@ -111,6 +111,44 @@ export async function POST(
             }
         }
 
+        // Trigger notification for post owner
+        const post = await prisma.post.findUnique({
+            where: { id: params.id },
+            select: { userId: true, content: true }
+        });
+
+        if (post && post.userId !== (session?.user as any).id) {
+            const { createNotification } = await import("@/lib/notifications-server");
+            await createNotification({
+                userId: post.userId,
+                senderId: (session?.user as any).id,
+                type: "comment",
+                title: "New Comment",
+                message: `${session?.user?.name} commented on your post: "${post.content.substring(0, 30)}${post.content.length > 30 ? "..." : ""}"`,
+                actionUrl: `/feed` // Adjust if you have a specific post URL
+            });
+        }
+
+        // Trigger notification for parent comment owner if it's a reply
+        if (parentId) {
+            const parentComment = await prisma.comment.findUnique({
+                where: { id: parentId },
+                select: { userId: true, content: true }
+            });
+
+            if (parentComment && parentComment.userId !== (session?.user as any).id && parentComment.userId !== post?.userId) {
+                const { createNotification } = await import("@/lib/notifications-server");
+                await createNotification({
+                    userId: parentComment.userId,
+                    senderId: (session?.user as any).id,
+                    type: "comment",
+                    title: "New Reply",
+                    message: `${session?.user?.name} replied to your comment: "${parentComment.content.substring(0, 30)}${parentComment.content.length > 30 ? "..." : ""}"`,
+                    actionUrl: `/feed` // Adjust if you have a specific post URL
+                });
+            }
+        }
+
         return NextResponse.json(comment);
     } catch (error) {
         console.error("[COMMENT_CREATE]", error);

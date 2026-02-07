@@ -14,18 +14,16 @@ export function SocialSidebar() {
     const { data: session } = useSession();
     const userId = (session?.user as any)?.id;
 
-    // Fetch unread counts with React Query - automatic polling
-    const { data: unread = { notifications: 0, messages: 0 } } = useQuery({
-        queryKey: ['unread-counts', userId],
-        queryFn: async () => {
-            const res = await fetch("/api/notifications/unread-count");
-            if (!res.ok) return { notifications: 0, messages: 0 };
-            return res.json();
-        },
-        enabled: !!userId, // Only run if user is logged in
-        refetchInterval: 60000, // Poll every 60s
-        staleTime: 45000, // Consider fresh for 45s
-    });
+    const [notifications, setNotifications] = useState<any[]>([])
+
+    // Subscribe to notificationManager for real-time counts
+    useEffect(() => {
+        const unsubscribe = notificationManager.subscribe(setNotifications, userId)
+        return unsubscribe
+    }, [userId])
+
+    // Filter notifications for messages and channel messages
+    const unreadMessageCount = notifications.filter(n => !n.read && (n.type === "message" || n.type === "channel_message")).length
 
     const navItems = [
         {
@@ -44,7 +42,7 @@ export function SocialSidebar() {
             title: "Messages",
             href: "/messages",
             icon: MessageSquare,
-            count: unread.messages
+            count: unreadMessageCount
         },
         {
             title: "Study Drive",
@@ -59,6 +57,11 @@ export function SocialSidebar() {
             count: 0
         }
     ];
+
+    useEffect(() => {
+        // We still keep the query for other things if needed, 
+        // but for now we prioritize the real-time count if it's available.
+    }, [])
 
     return (
         <Card className="h-fit sticky top-24 w-full md:w-56 lg:w-64 hidden md:block border-0 shadow-none bg-transparent">

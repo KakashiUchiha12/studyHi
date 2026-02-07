@@ -89,7 +89,8 @@ model User {
   dashboardSections DashboardSection[]
   documents         Document[]
   goals             Goal[]
-  notifications     Notification[]
+  notifications     Notification[] @relation("NotificationRecipient")
+  sentNotifications Notification[] @relation("NotificationSender")
   skills            Skill[]
   studyGoals        StudyGoal[]
   studySessions     StudySession[]
@@ -379,7 +380,10 @@ model Notification {
   actionUrl String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  user      User     @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  senderId  String?  @map("sender_id")
+  sender    User?    @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([read])

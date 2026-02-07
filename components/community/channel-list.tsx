@@ -4,6 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Hash, Plus, MoreVertical, Pencil, Trash2, Loader2, LayoutDashboard } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { notificationManager } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -58,6 +61,15 @@ export function ChannelList({ communityId, initialChannels, isAdmin }: ChannelLi
     const pathname = usePathname();
     const router = useRouter();
     const { toast } = useToast();
+    const { data: session } = useSession();
+    const userId = (session?.user as any)?.id;
+
+    const [notifications, setNotifications] = useState<any[]>([]);
+
+    useEffect(() => {
+        const unsubscribe = notificationManager.subscribe(setNotifications, userId);
+        return unsubscribe;
+    }, [userId]);
 
     const handleCreate = async () => {
         if (!channelName.trim()) return;
@@ -186,44 +198,57 @@ export function ChannelList({ communityId, initialChannels, isAdmin }: ChannelLi
                             <div className="h-px bg-border w-full" />
                         </div>
                     </div>
-                    {channels.map((channel) => (
-                        <div key={channel.id} className="group relative flex items-center">
-                            <Link
-                                href={`/community/${communityId}/channel/${channel.id}`}
-                                className="flex-1"
-                            >
-                                <Button
-                                    variant={pathname.includes(channel.id) ? "secondary" : "ghost"}
-                                    className="w-full justify-start text-muted-foreground group-hover:text-foreground pr-8"
-                                >
-                                    <Hash className="w-4 h-4 mr-2 opacity-70" />
-                                    <span className="truncate">{channel.name}</span>
-                                </Button>
-                            </Link>
+                    {channels.map((channel) => {
+                        const unreadCount = notifications.filter(n =>
+                            !n.read &&
+                            n.type === "channel_message" &&
+                            n.actionUrl?.includes(channel.id)
+                        ).length;
 
-                            {isAdmin && (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <MoreVertical className="w-3 h-3" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={(e) => openEdit(channel, e)}>
-                                            <Pencil className="w-4 h-4 mr-2" /> Rename
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => openDelete(channel, e)}>
-                                            <Trash2 className="w-4 h-4 mr-2" /> Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
-                        </div>
-                    ))}
+                        return (
+                            <div key={channel.id} className="group relative flex items-center">
+                                <Link
+                                    href={`/community/${communityId}/channel/${channel.id}`}
+                                    className="flex-1"
+                                >
+                                    <Button
+                                        variant={pathname.includes(channel.id) ? "secondary" : "ghost"}
+                                        className="w-full justify-start text-muted-foreground group-hover:text-foreground pr-8 relative"
+                                    >
+                                        <Hash className="w-4 h-4 mr-2 opacity-70" />
+                                        <span className="truncate">{channel.name}</span>
+                                        {unreadCount > 0 && (
+                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center border-2 border-background">
+                                                {unreadCount > 9 ? "9+" : unreadCount}
+                                            </span>
+                                        )}
+                                    </Button>
+                                </Link>
+
+                                {isAdmin && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <MoreVertical className="w-3 h-3" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={(e) => openEdit(channel, e)}>
+                                                <Pencil className="w-4 h-4 mr-2" /> Rename
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={(e) => openDelete(channel, e)}>
+                                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
+                            </div>
+                        );
+                    })}
                 </CardContent>
             </Card>
 
