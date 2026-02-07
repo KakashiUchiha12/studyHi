@@ -19,4 +19,4 @@ docker compose exec -T app sh -c "export HOME=/tmp && npx prisma migrate deploy"
 # Prune unused images to save space
 docker image prune -f
 
-echo "Deployment complete! Application should be running at http://139.59.93.248.nip.io"
+echo "Deployment complete! Application should be running at https://studyhi.me"
