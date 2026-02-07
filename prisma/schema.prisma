@@ -407,10 +407,10 @@ model CalendarEvent {
   updatedAt           DateTime  @updatedAt @map("updated_at")
   user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([start])
-  @@index([type])
-  @@index([completed])
+  @@index([userId], map: "CalendarEvent_user_id_idx")
+  @@index([start], map: "CalendarEvent_start_idx")
+  @@index([type], map: "CalendarEvent_type_idx")
+  @@index([completed], map: "CalendarEvent_completed_idx")
 }
 
 // Social Media Models
