@@ -87,7 +87,7 @@ export async function POST(req: Request) {
             return new NextResponse("User not found", { status: 404 });
         }
 
-        // Removed unique name check as per new requirement
+        console.log("[COMMUNITIES_POST] Creating community for user:", user.id);
 
         const community = await prisma.community.create({
             data: {
@@ -114,9 +114,13 @@ export async function POST(req: Request) {
             } as any
         });
 
+        console.log("[COMMUNITIES_POST] Success:", community.id);
         return NextResponse.json(community);
-    } catch (error) {
-        console.error("[COMMUNITIES_POST]", error);
-        return new NextResponse("Internal Error", { status: 500 });
+    } catch (error: any) {
+        console.error("[COMMUNITIES_POST] Error type:", typeof error);
+        console.error("[COMMUNITIES_POST] Complete Error:", error);
+        if (error.message) console.error("[COMMUNITIES_POST] Message:", error.message);
+        if (error.code) console.error("[COMMUNITIES_POST] Code:", error.code);
+        return new NextResponse("Internal Error: " + (error.message || "Unknown"), { status: 500 });
     }
 }
