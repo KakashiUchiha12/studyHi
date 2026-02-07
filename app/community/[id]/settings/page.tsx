@@ -161,7 +161,7 @@ export default function CommunitySettingsPage() {
         setSaving(true);
         try {
             const res = await fetch(`/api/communities/${params.id}`, {
-                method: "PUT",
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...data,

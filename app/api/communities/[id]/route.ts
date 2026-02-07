@@ -56,6 +56,7 @@ export async function PATCH(
         const { name, description, isPrivate, showInSearch, coverImage, icon, rules } = await req.json();
 
         const userId = (session.user as any).id;
+        console.log("[COMMUNITY_PATCH] Updating community:", id, "by user:", userId);
 
         // Check if user is admin of the community
         const membership = await prisma.communityMember.findUnique({
@@ -68,6 +69,7 @@ export async function PATCH(
         });
 
         if (!membership || membership.role !== "admin") {
+            console.warn("[COMMUNITY_PATCH] Forbidden: User is not an admin", { userId, communityId: id });
             return new NextResponse("Forbidden", { status: 403 });
         }
 
@@ -84,10 +86,13 @@ export async function PATCH(
             } as any
         });
 
+        console.log("[COMMUNITY_PATCH] Success:", community.id);
         return NextResponse.json(community);
-    } catch (error) {
-        console.error("[COMMUNITY_PUT]", error);
-        return new NextResponse("Internal Error", { status: 500 });
+    } catch (error: any) {
+        console.error("[COMMUNITY_PATCH] Error type:", typeof error);
+        console.error("[COMMUNITY_PATCH] Complete Error:", error);
+        if (error.message) console.error("[COMMUNITY_PATCH] Message:", error.message);
+        return new NextResponse("Internal Error: " + (error.message || "Unknown"), { status: 500 });
     }
 }
 
