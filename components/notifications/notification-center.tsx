@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils"
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<StudyNotification[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
   const { data: session } = useSession()
   const userId = (session?.user as any)?.id
 
@@ -121,9 +123,10 @@ export function NotificationCenter() {
                     <div
                       key={notification.id}
                       onClick={() => {
+                        notificationManager.markAsRead(notification.id)
+                        setIsOpen(false)
                         if (notification.actionUrl) {
-                          notificationManager.markAsRead(notification.id)
-                          setIsOpen(false)
+                          router.push(notification.actionUrl)
                         }
                       }}
                       className={cn(
@@ -169,8 +172,14 @@ export function NotificationCenter() {
                                 {getNotificationIcon(notification.type)}
                               </div>
                               {notification.actionUrl && (
-                                <Link href={notification.actionUrl} className="text-[11px] font-medium text-primary hover:underline">
+                                <Link
+                                  href={notification.actionUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1"
+                                >
                                   View details
+                                  <ExternalLink className="h-2.5 w-2.5" />
                                 </Link>
                               )}
                             </div>

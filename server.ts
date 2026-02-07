@@ -59,7 +59,7 @@ app.prepare().then(() => {
                     io.to(message.channelId).emit("new-message", savedMessage);
 
                     // Notify all community members
-                    const { notifyCommunityMembers } = require("./lib/notifications-server");
+                    const { notifyCommunityMembers } = await import("./lib/notifications-server");
                     const channel = await prisma.channel.findUnique({
                         where: { id: message.channelId },
                         select: { communityId: true, name: true }
@@ -96,7 +96,7 @@ app.prepare().then(() => {
                     io.to(`user:${message.senderId}`).emit("new-dm", savedMessage);
 
                     // Create real-time notification for receiver
-                    const { createNotification } = require("./lib/notifications-server");
+                    const { createNotification } = await import("./lib/notifications-server");
                     await createNotification({
                         userId: message.receiverId,
                         senderId: message.senderId,
