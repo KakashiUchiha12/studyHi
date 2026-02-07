@@ -536,6 +536,7 @@ model Channel {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
   messages  Message[]
 
   @@index([communityId])
