@@ -14,6 +14,7 @@
   },
   "include": [
     "server.ts",
+    "lib/**/*.ts",
     "next-auth.d.ts"
   ]
 }
