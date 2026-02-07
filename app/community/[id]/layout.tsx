@@ -51,7 +51,7 @@ export default async function CommunityLayout({
         <div className="min-h-screen bg-slate-50 flex flex-col">
             {/* Community Header */}
             {community.coverImage && (
-                <div className="w-full h-48 md:h-64 relative bg-slate-200">
+                <div className="w-full aspect-[3/1] md:aspect-[4/1] lg:aspect-[5/1] xl:aspect-[6/1] relative bg-slate-200 overflow-hidden">
                     <img
                         src={community.coverImage}
                         alt="Cover"

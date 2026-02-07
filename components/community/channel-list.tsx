@@ -171,9 +171,10 @@ export function ChannelList({ communityId, initialChannels, isAdmin }: ChannelLi
                     )}
                 </CardHeader>
                 <CardContent className="space-y-1 p-2">
-                    <Link href={`/community/${communityId}`}>
+                    {/* Home Link - Redirects to first channel or community root */}
+                    <Link href={channels.length > 0 ? `/community/${communityId}/channel/${channels[0].id}` : `/community/${communityId}`}>
                         <Button
-                            variant={pathname === `/community/${communityId}` ? "secondary" : "ghost"}
+                            variant={pathname === `/community/${communityId}` || (channels.length > 0 && pathname.includes(channels[0].id)) ? "secondary" : "ghost"}
                             className="w-full justify-start font-medium text-foreground mb-1"
                         >
                             <Hash className="w-4 h-4 mr-2" />

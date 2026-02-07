@@ -64,21 +64,30 @@ export default async function getCroppedImg(
     // draw rotated image
     ctx.drawImage(image, 0, 0)
 
-    // croppedAreaPixels values are bounding box relative
-    // extract the cropped image using these values
-    const data = ctx.getImageData(
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height
-    )
-
-    // set canvas width to final desired crop size - this will clear existing context
+    // Set canvas size to the desired crop size
     canvas.width = pixelCrop.width
     canvas.height = pixelCrop.height
 
-    // paste generated rotate image at the top left corner
-    ctx.putImageData(data, 0, 0)
+    // Draw the cropped and transformed image onto the canvas
+    // We use the 9-argument version of drawImage to crop FROM the rotated/scaled source
+    // But wait, the source canvas already has the rotation applied.
+    // Simpler: Draw the image with all transforms, then copy the specific pixel area.
+
+    // Clear and reset for final draw
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    // We draw the source image onto the final canvas, but offset by the crop coordinates
+    ctx.save()
+    ctx.translate(-pixelCrop.x, -pixelCrop.y)
+
+    // Re-apply rotation/scale from earlier (centered on source image)
+    ctx.translate(bBoxWidth / 2, bBoxHeight / 2)
+    ctx.rotate(rotRad)
+    ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1)
+    ctx.translate(-image.width / 2, -image.height / 2)
+
+    ctx.drawImage(image, 0, 0)
+    ctx.restore()
 
     // As a blob
     return new Promise((resolve, reject) => {
