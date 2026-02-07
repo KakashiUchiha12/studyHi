@@ -40,7 +40,6 @@ RUN npm install
 # Generate Prisma Client
 RUN npx prisma generate
 
-
 # We need to set dummy environment variables so the build doesn't fail on validation
 ENV DATABASE_URL="mysql://root:password@localhost:3306/studyhi"
 ENV NEXTAUTH_SECRET="dummy_secret_for_build_must_be_32_chars_long"
@@ -53,6 +52,8 @@ ENV NEXT_PUBLIC_PUSHER_KEY=$NEXT_PUBLIC_PUSHER_KEY
 ENV NEXT_PUBLIC_PUSHER_CLUSTER=$NEXT_PUBLIC_PUSHER_CLUSTER
 
 RUN npm run build:production
+# Compile the custom server
+RUN npm run build:server
 
 # Production image, copy all the files and run next
 FROM node:20-slim AS runner
@@ -89,8 +90,14 @@ RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
 # Automatically leverage output traces to reduce image size
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# We are using custom server, so we copy the build output normally
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
+# We need node_modules for the custom server dependencies
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
@@ -102,4 +109,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Run the custom server
+CMD ["node", "dist/server.js"]
