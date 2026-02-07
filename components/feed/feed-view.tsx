@@ -42,7 +42,7 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
         hasNextPage,
         fetchNextPage
     } = useInfiniteQuery({
-        queryKey: ['posts', communityId, userId, isAnnouncement],
+        queryKey: ['posts', communityId, userId, isAnnouncement, 'published'],
         queryFn: async ({ pageParam }) => {
             const params = new URLSearchParams();
             if (communityId) params.append("communityId", communityId);
@@ -68,7 +68,7 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
             return undefined;
         },
         initialPageParam: undefined,
-        staleTime: 30000,
+        staleTime: 10000,
     });
 
     // Flatten all pages into single array
@@ -121,7 +121,7 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
             // Check if post already exists (prevent duplicates from own creation or double firing)
             // But actually, we want to see other people's posts.
 
-            queryClient.setQueryData(['posts', communityId, userId, isAnnouncement], (oldData: any) => {
+            queryClient.setQueryData(['posts', communityId, userId, isAnnouncement, 'published'], (oldData: any) => {
                 if (!oldData || !oldData.pages) return oldData;
 
                 // Create a new first page with the new post prepended
@@ -145,7 +145,7 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
         channel.bind('post-updated', (updatedData: { id: string, _count: any }) => {
             console.log("Real-time post update received:", updatedData);
 
-            queryClient.setQueryData(['posts', communityId, userId, isAnnouncement], (oldData: any) => {
+            queryClient.setQueryData(['posts', communityId, userId, isAnnouncement, 'published'], (oldData: any) => {
                 if (!oldData || !oldData.pages) return oldData;
 
                 return {
@@ -171,7 +171,7 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
         // Optimistically add to cache immediately
         console.log("Optimistically adding new post to top of feed:", post.id);
 
-        queryClient.setQueryData(['posts', communityId, userId, isAnnouncement], (oldData: any) => {
+        queryClient.setQueryData(['posts', communityId, userId, isAnnouncement, 'published'], (oldData: any) => {
             if (!oldData || !oldData.pages) return { pages: [[post]], pageParams: [undefined] };
 
             // Create a new first page with the new post prepended

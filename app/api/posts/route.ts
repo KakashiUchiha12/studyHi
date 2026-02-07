@@ -22,7 +22,8 @@ export async function GET(req: Request) {
         if (status === "published") {
             whereClause.OR = [
                 { status: "published" },
-                { status: null }
+                { status: null },
+                { status: "" }
             ];
         } else {
             whereClause.status = status;
