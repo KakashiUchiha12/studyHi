@@ -549,6 +549,7 @@ model Post {
   communityId    String?  @map("community_id")
   image          String?
   isAnnouncement Boolean  @default(false) @map("is_announcement")
+  status         String   @default("published") // published, archived, draft
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

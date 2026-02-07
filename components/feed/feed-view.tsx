@@ -48,6 +48,12 @@ export function FeedView({ communityId, userId, currentUser, isAnnouncement }: F
             if (communityId) params.append("communityId", communityId);
             if (userId) params.append("userId", userId);
             if (isAnnouncement) params.append("isAnnouncement", "true");
+
+            // On feeds, only show published posts. 
+            // Note: Profile page will pass a different status via searchParams in the future if we want more control,
+            // but for now, the PostCard already handles hiding based on URL.
+            params.append("status", "published");
+
             if (pageParam) params.append("cursor", pageParam);
 
             const res = await fetch(`/api/posts?${params.toString()}`);

@@ -11,7 +11,8 @@ import { useSession } from "next-auth/react";
 import { ProfilePostGrid } from "@/components/profile/profile-post-grid";
 import { ProfileSubjects } from "@/components/profile/profile-subjects";
 import { ProfileDocuments } from "@/components/profile/profile-documents";
-import { ProfileSocialLinks } from "@/components/profile/profile-social-links"; // Added import
+import { ProfileSocialLinks } from "@/components/profile/profile-social-links";
+import { cn } from "@/lib/utils";
 
 import { UserListDialog } from "@/components/profile/user-list-dialog";
 
@@ -27,6 +28,7 @@ export default function UserProfilePage() {
     // Dialog States
     const [followersOpen, setFollowersOpen] = useState(false);
     const [followingOpen, setFollowingOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState("published");
 
     useEffect(() => {
         if (params.id) {
@@ -144,14 +146,44 @@ export default function UserProfilePage() {
                 {/* Content Side */}
                 <div className="w-full md:w-2/3 space-y-6">
                     {/* Subjects Section */}
-                    <ProfileSubjects userId={profile.id} isOwnProfile={isMe} />
+                    <ProfileSubjects userId={profile.id} isOwnProfile={!!isMe} />
 
                     {/* Public Documents Section */}
-                    <ProfileDocuments userId={profile.id} isOwnProfile={isMe} />
+                    <ProfileDocuments userId={profile.id} isOwnProfile={!!isMe} />
 
                     {/* Posts Grid */}
-                    <div className="px-4 sm:px-0">
-                        <ProfilePostGrid userId={profile.id} currentUserId={(session?.user as any)?.id} />
+                    <div className="px-4 sm:px-0 space-y-4">
+                        {isMe && (
+                            <div className="flex border-b">
+                                <Button
+                                    variant="ghost"
+                                    className={cn("rounded-none border-b-2 px-6", activeTab === "published" ? "border-primary text-primary" : "border-transparent text-muted-foreground")}
+                                    onClick={() => setActiveTab("published")}
+                                >
+                                    Posts
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className={cn("rounded-none border-b-2 px-6", activeTab === "archived" ? "border-primary text-primary" : "border-transparent text-muted-foreground")}
+                                    onClick={() => setActiveTab("archived")}
+                                >
+                                    Archived
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className={cn("rounded-none border-b-2 px-6", activeTab === "draft" ? "border-primary text-primary" : "border-transparent text-muted-foreground")}
+                                    onClick={() => setActiveTab("draft")}
+                                >
+                                    Drafts
+                                </Button>
+                            </div>
+                        )}
+
+                        <ProfilePostGrid
+                            userId={profile.id}
+                            currentUserId={(session?.user as any)?.id}
+                            status={activeTab}
+                        />
                     </div>
                 </div>
             </div>

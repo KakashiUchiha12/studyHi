@@ -15,9 +15,12 @@ export async function GET(req: Request) {
         const userId = searchParams.get("userId"); // View specific user's posts
 
         const isAnnouncement = searchParams.get("isAnnouncement") === "true";
+        const status = searchParams.get("status") || "published";
 
         // Build where clause
         let whereClause: any = {};
+        whereClause.status = status;
+
         if (communityId) {
             whereClause.communityId = communityId;
         } else if (userId) {

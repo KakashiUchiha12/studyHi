@@ -12,7 +12,14 @@ import { cn } from "@/lib/utils";
 import { CommentItem } from "./comment-item";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, LayoutDashboard } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface PostCardProps {
     post: any;
@@ -31,6 +38,46 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     const [commentCount, setCommentCount] = useState(post._count.comments);
     const { toast } = useToast();
     const [isSavingInProgress, setIsSavingInProgress] = useState<string | null>(null);
+    const [isDeleted, setIsDeleted] = useState(false);
+    const [currentStatus, setCurrentStatus] = useState(post.status || "published");
+
+    const handleStatusChange = async (newStatus: string) => {
+        try {
+            const res = await fetch(`/api/posts/${post.id}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (res.ok) {
+                setCurrentStatus(newStatus);
+                toast({ title: `Post ${newStatus === "archived" ? "archived" : (newStatus === "draft" ? "saved as draft" : "published")}` });
+                // Note: In a real app, we might want to trigger a refresh of the feed
+            }
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to update post status", variant: "destructive" });
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm("Are you sure you want to delete this post?")) return;
+        try {
+            const res = await fetch(`/api/posts/${post.id}/status`, {
+                method: "DELETE"
+            });
+
+            if (res.ok) {
+                setIsDeleted(true);
+                toast({ title: "Post deleted" });
+            }
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to delete post", variant: "destructive" });
+        }
+    };
+
+    if (isDeleted) return null;
+    if (currentStatus === "archived" && !window.location.pathname.includes("/profile")) return null;
+    if (currentStatus === "draft" && !window.location.pathname.includes("/profile")) return null;
 
     // Sync state with props when they change (real-time updates from FeedView)
     useEffect(() => {
@@ -150,9 +197,35 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                         {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
                     </span>
                 </div>
-                <Button variant="ghost" size="icon" className="ml-auto">
-                    <MoreHorizontal className="w-4 h-4" />
-                </Button>
+                <div className="ml-auto">
+                    {currentUserId === post.user.id && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleStatusChange(post.status === "archived" ? "published" : "archived")}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    {post.status === "archived" ? "Restore" : "Archive"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(post.status === "draft" ? "published" : "draft")}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    {post.status === "draft" ? "Publish" : "Set as Draft"}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className="text-red-600 focus:text-red-600"
+                                    onClick={handleDelete}
+                                >
+                                    <X className="w-4 h-4 mr-2" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="p-4 py-2 space-y-3">
                 <p className="whitespace-pre-wrap">{post.content}</p>

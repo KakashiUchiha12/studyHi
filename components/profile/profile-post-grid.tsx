@@ -9,19 +9,21 @@ import { cn } from "@/lib/utils";
 interface ProfilePostGridProps {
     userId: string;
     currentUserId?: string;
+    status?: string;
 }
 
-export function ProfilePostGrid({ userId, currentUserId }: ProfilePostGridProps) {
+export function ProfilePostGrid({ userId, currentUserId, status = "published" }: ProfilePostGridProps) {
     const [posts, setPosts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchPosts();
-    }, [userId]);
+    }, [userId, status]);
 
     const fetchPosts = async () => {
+        setLoading(true);
         try {
-            const res = await fetch(`/api/posts?userId=${userId}`);
+            const res = await fetch(`/api/posts?userId=${userId}&status=${status}`);
             if (res.ok) {
                 setPosts(await res.json());
             }
