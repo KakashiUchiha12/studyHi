@@ -125,11 +125,7 @@ export async function GET(req: Request) {
             });
         }
 
-        return NextResponse.json(posts, {
-            headers: {
-                'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30'
-            }
-        });
+        return NextResponse.json(posts);
     } catch (error) {
         console.error("[POSTS_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
