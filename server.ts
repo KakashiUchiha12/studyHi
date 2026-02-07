@@ -2,6 +2,7 @@ import { createServer } from "http";
 import next from "next";
 import { Server } from "socket.io";
 import { parse } from "url";
+import path from "path";
 
 const port = parseInt(process.env.PORT || "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -35,8 +36,11 @@ app.prepare().then(() => {
         });
 
         socket.on("send-message", async (message) => {
-            // Use the singleton instance to prevent multiple connections
-            const { dbService } = await import("./lib/database/database-service");
+            // Robust path resolution for both dev (root) and prod (dist)
+            const libPath = __dirname.endsWith('dist') ? path.join(__dirname, '..', 'lib') : path.join(__dirname, 'lib');
+
+            // Use dynamic import with absolute path
+            const { dbService } = await import(path.join(libPath, "database", "database-service"));
             const prisma = dbService.getPrisma();
 
             try {
@@ -59,7 +63,7 @@ app.prepare().then(() => {
                     io.to(message.channelId).emit("new-message", savedMessage);
 
                     // Notify all community members
-                    const { notifyCommunityMembers } = await import("./lib/notifications-server");
+                    const { notifyCommunityMembers } = await import(path.join(libPath, "notifications-server"));
                     const channel = await prisma.channel.findUnique({
                         where: { id: message.channelId },
                         select: { communityId: true, name: true }
@@ -96,7 +100,7 @@ app.prepare().then(() => {
                     io.to(`user:${message.senderId}`).emit("new-dm", savedMessage);
 
                     // Create real-time notification for receiver
-                    const { createNotification } = await import("./lib/notifications-server");
+                    const { createNotification } = await import(path.join(libPath, "notifications-server"));
                     await createNotification({
                         userId: message.receiverId,
                         senderId: message.senderId,

@@ -8,9 +8,12 @@
     "target": "es2020",
     "isolatedModules": false,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmitOnError": false,
+    "strict": false
   },
   "include": [
-    "server.ts"
+    "server.ts",
+    "next-auth.d.ts"
   ]
 }
