@@ -1,7 +1,7 @@
 import { prisma } from "./prisma";
 import { pusherServer } from "./pusher";
 
-export type NotificationType = "message" | "channel_message" | "like" | "comment" | "reminder" | "achievement" | "deadline" | "goal";
+export type NotificationType = "message" | "channel_message" | "like" | "comment" | "follow" | "reminder" | "achievement" | "deadline" | "goal";
 
 interface CreateNotificationParams {
     userId: string;

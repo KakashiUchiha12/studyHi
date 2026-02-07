@@ -27,7 +27,7 @@ export async function POST(
             return new NextResponse("Cannot follow yourself", { status: 400 });
         }
 
-        await prisma.follows.upsert({
+        const follow = await prisma.follows.upsert({
             where: {
                 followerId_followingId: {
                     followerId: currentUser.id,
@@ -40,6 +40,19 @@ export async function POST(
                 followingId: id
             }
         });
+
+        // Trigger notification for the followed user
+        if (follow) {
+            const { createNotification } = await import("@/lib/notifications-server");
+            await createNotification({
+                userId: id,
+                senderId: currentUser.id,
+                type: "follow",
+                title: "New Follower",
+                message: `${session.user.name} started following you!`,
+                actionUrl: `/profile/${currentUser.id}`
+            });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

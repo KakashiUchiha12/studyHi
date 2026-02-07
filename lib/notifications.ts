@@ -5,7 +5,7 @@ import { pusherClient } from "./pusher"
 
 export interface StudyNotification {
   id: string
-  type: "message" | "channel_message" | "like" | "comment" | "reminder" | "achievement" | "deadline" | "goal"
+  type: "message" | "channel_message" | "like" | "comment" | "follow" | "reminder" | "achievement" | "deadline" | "goal"
   title: string
   message: string
   timestamp: Date
@@ -249,6 +249,7 @@ class NotificationManager {
       case "channel_message": return "📢"
       case "like": return "❤️"
       case "comment": return "📝"
+      case "follow": return "👤"
       case "reminder": return "⏰"
       case "achievement": return "🎉"
       case "deadline": return "⚠️"

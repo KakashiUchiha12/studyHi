@@ -47,6 +47,7 @@ export function NotificationCenter() {
       case "channel_message": return <MessageSquare className="h-4 w-4 text-indigo-500" />
       case "like": return <Heart className="h-4 w-4 text-red-500 fill-red-500" />
       case "comment": return <MessageCircle className="h-4 w-4 text-green-500" />
+      case "follow": return <UserCircle className="h-4 w-4 text-purple-500" />
       case "reminder": return "⏰"
       case "achievement": return "🎉"
       case "deadline": return "⚠️"
@@ -61,6 +62,7 @@ export function NotificationCenter() {
       case "channel_message": return "border-blue-200 bg-blue-50/50 dark:bg-blue-950/20"
       case "like": return "border-red-200 bg-red-50/50 dark:bg-red-950/20"
       case "comment": return "border-green-200 bg-green-50/50 dark:bg-green-950/20"
+      case "follow": return "border-purple-200 bg-purple-50/50 dark:bg-purple-950/20"
       case "reminder": return "border-blue-200 bg-blue-50 dark:bg-blue-950/20"
       case "achievement": return "border-green-200 bg-green-50 dark:bg-green-950/20"
       case "deadline": return "border-red-200 bg-red-50 dark:bg-red-950/20"

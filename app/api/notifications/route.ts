@@ -15,6 +15,15 @@ export async function GET() {
 
     const notifications = await dbService.getPrisma().notification.findMany({
       where: { userId },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          }
+        }
+      },
       orderBy: { timestamp: 'desc' },
       take: 50 // Limit to last 50 notifications
     })
@@ -40,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    
+
     const notification = await dbService.getPrisma().notification.create({
       data: {
         userId,
