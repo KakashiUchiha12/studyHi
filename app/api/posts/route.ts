@@ -19,7 +19,11 @@ export async function GET(req: Request) {
 
         // Build where clause
         let whereClause: any = {};
-        whereClause.status = status;
+        if (status === "published") {
+            whereClause.status = { in: ["published", null] as any };
+        } else {
+            whereClause.status = status;
+        }
 
         if (communityId) {
             whereClause.communityId = communityId;
@@ -145,6 +149,7 @@ export async function POST(req: Request) {
                 userId: (session.user as any).id,
                 communityId, // Optional
                 isAnnouncement: isAnnouncement || false,
+                status: "published",
                 attachments: {
                     create: attachments?.map((att: any) => ({
                         url: att.url,
@@ -166,6 +171,7 @@ export async function POST(req: Request) {
                 id: true,
                 content: true,
                 isAnnouncement: true,
+                status: true,
                 createdAt: true,
                 updatedAt: true,
                 user: {
