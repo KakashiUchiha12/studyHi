@@ -8,6 +8,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Bell, MessageSquare, Users, UserCircle, Globe, Settings2, Home, User, LayoutDashboard, HardDrive } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { notificationManager } from "@/lib/notifications";
 
 export function SocialSidebar() {
     const pathname = usePathname();
