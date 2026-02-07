@@ -36,7 +36,7 @@ app.prepare().then(() => {
 
         socket.on("send-message", async (message) => {
             // Use the singleton instance to prevent multiple connections
-            const { dbService } = require("./lib/database/database-service");
+            const { dbService } = await import("./lib/database/database-service");
             const prisma = dbService.getPrisma();
 
             try {

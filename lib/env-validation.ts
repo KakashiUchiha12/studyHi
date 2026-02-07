@@ -57,13 +57,6 @@ const uploadThingSchema = z.object({
   UPLOADTHING_APP_ID: z.string(),
 }).or(z.object({})).optional()
 
-// Combine all validations
-const fullEnvSchema = z.object({
-  ...envSchema.shape,
-  ...oauthDependencySchema.shape,
-  ...pusherSchema.shape,
-  ...uploadThingSchema.shape,
-}).strict()
 
 // Cache validation result
 let validatedEnv: z.infer<typeof envSchema> | null = null

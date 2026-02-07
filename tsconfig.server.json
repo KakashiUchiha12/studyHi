@@ -7,7 +7,10 @@
     "moduleResolution": "node",
     "target": "es2020",
     "isolatedModules": false,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
-  "include": ["server.ts", "lib/**/*"]
+  "include": [
+    "server.ts"
+  ]
 }
