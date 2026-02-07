@@ -459,7 +459,7 @@ model Follows {
 model Community {
   id           String   @id @default(cuid())
   name         String
-  description  String?
+  description  String?  @db.Text
   ownerId      String   @map("owner_id")
   icon         String?
   coverImage   String?  @map("cover_image")
@@ -467,7 +467,7 @@ model Community {
   showInSearch Boolean  @default(true) @map("show_in_search")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-  rules        String?
+  rules        String?  @db.Text
 
   owner    User              @relation("CommunityOwner", fields: [ownerId], references: [id])
   members  CommunityMember[]
@@ -544,7 +544,7 @@ model Channel {
 
 model Post {
   id             String   @id @default(cuid())
-  content        String
+  content        String   @db.Text
   userId         String   @map("user_id")
   communityId    String?  @map("community_id")
   image          String?
@@ -578,7 +578,7 @@ model Attachment {
 
 model Comment {
   id        String   @id @default(cuid())
-  content   String
+  content   String   @db.Text
   postId    String   @map("post_id")
   userId    String   @map("user_id")
   parentId  String?  @map("parent_id")
@@ -615,7 +615,7 @@ model Like {
 
 model Message {
   id         String   @id @default(cuid())
-  content    String
+  content    String @db.Text
   senderId   String   @map("sender_id")
   channelId  String?  @map("channel_id") // For community channels
   receiverId String?  @map("receiver_id") // For DMs
