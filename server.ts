@@ -2,10 +2,14 @@ import { createServer } from "http";
 import next from "next";
 import { Server } from "socket.io";
 import { parse } from "url";
+import path from "path";
 import { loadEnvConfig } from "@next/env";
 
-// Load environment variables immediately before anything else
-loadEnvConfig(process.cwd());
+// Load environment variables immediately
+const { combinedEnv } = loadEnvConfig(process.cwd());
+console.log("[SERVER] Environment variables loaded");
+
+import { dbService } from "./lib/database/database-service";
 
 const port = parseInt(process.env.PORT || "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -37,8 +41,7 @@ app.prepare().then(() => {
         });
 
         socket.on("send-message", async (message) => {
-            // Use dynamic imports to ensure env is loaded
-            const { dbService } = await import("./lib/database/database-service");
+            console.log(`[SOCKET] send-message received from ${message.senderId}`);
             const prisma = dbService.getPrisma();
 
             try {
@@ -67,15 +70,22 @@ app.prepare().then(() => {
                     });
 
                     if (channel) {
-                        const { notifyCommunityMembers } = await import("./lib/notifications-server");
-                        await notifyCommunityMembers({
-                            communityId: channel.communityId,
-                            senderId: message.senderId,
-                            type: "channel_message",
-                            title: `New message in #${channel.name}`,
-                            message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
-                            actionUrl: `/community/${channel.communityId}`
-                        });
+                        try {
+                            const libPath = __dirname.endsWith('dist') ? path.join(__dirname, 'lib') : path.join(__dirname, 'lib');
+                            const { notifyCommunityMembers } = await import(path.join(libPath, "notifications-server"));
+
+                            await notifyCommunityMembers({
+                                communityId: channel.communityId,
+                                senderId: message.senderId,
+                                type: "channel_message",
+                                title: `New message in #${channel.name}`,
+                                message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
+                                actionUrl: `/community/${channel.communityId}`
+                            });
+                            console.log(`[SOCKET] Channel notification triggered for ${channel.name}`);
+                        } catch (err) {
+                            console.error("[SOCKET] Failed to trigger community notification:", err);
+                        }
                     }
                 } else if (message.receiverId && message.senderId && message.content) {
                     // Direct Message
@@ -93,23 +103,31 @@ app.prepare().then(() => {
                         }
                     });
 
-                    // Emit to both sender and receiver so it updates instantly for both
+                    // Emit to both sender and receiver
                     io.to(`user:${message.receiverId}`).emit("new-dm", savedMessage);
                     io.to(`user:${message.senderId}`).emit("new-dm", savedMessage);
+                    console.log(`[SOCKET] DM saved and emitted to user:${message.receiverId}`);
 
                     // Create real-time notification for receiver
-                    const { createNotification } = await import("./lib/notifications-server");
-                    await createNotification({
-                        userId: message.receiverId,
-                        senderId: message.senderId,
-                        type: "message",
-                        title: "New Message",
-                        message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
-                        actionUrl: `/messages/${message.senderId}`
-                    });
+                    try {
+                        const libPath = __dirname.endsWith('dist') ? path.join(__dirname, 'lib') : path.join(__dirname, 'lib');
+                        const { createNotification } = await import(path.join(libPath, "notifications-server"));
+
+                        await createNotification({
+                            userId: message.receiverId,
+                            senderId: message.senderId,
+                            type: "message",
+                            title: "New Message",
+                            message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
+                            actionUrl: `/messages/${message.senderId}`
+                        });
+                        console.log(`[SOCKET] Notification entry created for DM to ${message.receiverId}`);
+                    } catch (err) {
+                        console.error("[SOCKET] Failed to create DM notification record:", err);
+                    }
                 }
             } catch (error) {
-                console.error("Error saving message:", error);
+                console.error("[SOCKET] Error in send-message handler:", error);
             }
         });
 
