@@ -4,13 +4,20 @@ import { Server } from "socket.io";
 import { parse } from "url";
 
 // Simple text sanitization to prevent XSS in notifications
-function sanitizeText(text: string): string {
+function sanitizeText(text: string | null | undefined): string {
+    if (!text) return '';
     return text
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#x27;')
         .replace(/\//g, '&#x2F;');
+}
+
+// Truncate message content for notifications
+function truncateMessage(content: string, maxLength: number = 50): string {
+    if (content.length <= maxLength) return content;
+    return `${content.substring(0, maxLength)}...`;
 }
 
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -87,12 +94,13 @@ app.prepare().then(() => {
 
                     if (memberIds.length > 0) {
                         const sanitizedContent = sanitizeText(message.content);
+                        const truncatedContent = truncateMessage(sanitizedContent);
                         await prisma.notification.createMany({
                             data: memberIds.map(userId => ({
                                 userId,
                                 type: 'message',
                                 title: `New message in #${savedMessage.channel.name}`,
-                                message: `${savedMessage.sender.name || 'Someone'}: ${sanitizedContent.substring(0, 50)}${sanitizedContent.length > 50 ? '...' : ''}`,
+                                message: `${savedMessage.sender.name || 'Someone'}: ${truncatedContent}`,
                                 actionUrl: '/social',
                                 timestamp: new Date(),
                                 read: false
@@ -119,12 +127,13 @@ app.prepare().then(() => {
 
                     // Create a notification for the receiver about the new message
                     const sanitizedContent = sanitizeText(message.content);
+                    const truncatedContent = truncateMessage(sanitizedContent);
                     await prisma.notification.create({
                         data: {
                             userId: message.receiverId,
                             type: 'message',
                             title: 'New Message',
-                            message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${sanitizedContent.substring(0, 50)}${sanitizedContent.length > 50 ? '...' : ''}`,
+                            message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${truncatedContent}`,
                             actionUrl: '/social',
                             timestamp: new Date(),
                             read: false
