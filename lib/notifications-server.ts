@@ -51,6 +51,15 @@ export async function createNotification({
             });
         }
 
+        // 3. Trigger real-time update via Socket.io (if available)
+        const io = (global as any).io;
+        if (io) {
+            io.to(`user:${userId}`).emit("new-notification", {
+                ...notification,
+                timestamp: notification.timestamp.toISOString(),
+            });
+        }
+
         return notification;
     } catch (error) {
         console.error("[CREATE_NOTIFICATION_ERROR]", error);

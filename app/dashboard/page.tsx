@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { TimePicker } from '@/components/ui/time-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Clock, BookOpen, Target, TrendingUp, TrendingDown, Plus, ArrowRight, CheckCircle, CheckCircle2, Circle, AlertTriangle, Award, Users, FileText, BarChart3, Flag, Search, Bell, Settings, LogOut, ChevronDown, X, User, CalendarIcon, Timer, CheckSquare, Square, Zap, Download, Globe, HardDrive } from 'lucide-react'
+import { Clock, BookOpen, Target, TrendingUp, TrendingDown, Plus, ArrowRight, CheckCircle, CheckCircle2, Circle, AlertTriangle, Award, Users, FileText, BarChart3, Flag, Search, Bell, Settings, LogOut, ChevronDown, X, User, CalendarIcon, Timer, CheckSquare, Square, Zap, Download, Globe, HardDrive, Home } from 'lucide-react'
 import { useSubjects, useTasks, useStudySessions, useTestMarks } from '@/hooks'
 import { useUserSettings } from '@/hooks/useUserSettings'
 
@@ -1113,22 +1113,13 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <NotificationCenter />
-
-            <Link href="/settings">
-              <Button variant="ghost" size="icon" className="h-9 w-9 focus-ring active:scale-95 transition-transform">
-                <Settings className="h-4 w-4" />
+            <Link href="/dashboard">
+              <Button variant="ghost" size="icon" className="h-9 w-9 focus-ring active:scale-95 transition-transform" title="Dashboard">
+                <Home className="h-4 w-4" />
               </Button>
             </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className="h-9 w-9 focus-ring active:scale-95 transition-transform"
-              title="Logout"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            
+            <NotificationCenter />
           </div>
         </div>
 
@@ -1898,6 +1889,24 @@ export default function DashboardPage() {
                     View Full Analytics
                   </Button>
                 </Link>
+              </div>
+
+              {/* Settings and Logout - Moved from top navigation */}
+              <div className="pt-4 border-t border-border/30 space-y-2">
+                <Link href="/settings" className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
               </div>
             </div>
           </ExpandableSection>

@@ -44,6 +44,9 @@ app.prepare().then(() => {
         addTrailingSlash: false,
     });
 
+    // Share io instance globally for API routes and utility functions
+    (global as any).io = io;
+
     io.on("connection", (socket) => {
         socket.on("join-channel", (channelId: string) => {
             socket.join(channelId);
@@ -92,61 +95,25 @@ app.prepare().then(() => {
                         }
                     });
 
-                    // Create notifications for all community members except the sender
-                    const memberIds = savedMessage.channel.community.members
-                        .map(m => m.userId)
-                        .filter(userId => userId !== message.senderId);
-
-                    if (memberIds.length > 0) {
-                        const truncatedContent = truncateMessage(message.content || '');
-                        const sanitizedContent = sanitizeText(truncatedContent);
-                        await prisma.notification.createMany({
-                            data: memberIds.map(userId => ({
-                                userId,
-                                type: 'message',
-                                title: `New message in #${savedMessage.channel.name}`,
-                                message: `${savedMessage.sender.name || 'Someone'}: ${sanitizedContent}`,
-                                actionUrl: '/social',
-                                timestamp: new Date(),
-                                read: false
-                            }))
-                        });
-
-                        // Emit notification event to each member
-                        memberIds.forEach(userId => {
-                            io.to(`user:${userId}`).emit("new-notification", {
-                                type: 'message',
-                                title: `New message in #${savedMessage.channel.name}`,
-                                message: `${savedMessage.sender.name || 'Someone'}: ${sanitizedContent}`,
-                                actionUrl: '/social'
-                            });
-                        });
-                    }
-
                     io.to(message.channelId).emit("new-message", savedMessage);
 
-                    // Notify all community members
-                    const channel = await prisma.channel.findUnique({
-                        where: { id: message.channelId },
-                        select: { communityId: true, name: true }
-                    });
-
-                    if (channel) {
+                    // Notify all community members via unified logic
+                    if (savedMessage.channel) {
                         try {
                             const libPath = __dirname.endsWith('dist') ? path.join(__dirname, 'lib') : path.join(__dirname, 'lib');
                             const { notifyCommunityMembers } = await import(path.join(libPath, "notifications-server"));
 
                             await notifyCommunityMembers({
-                                communityId: channel.communityId,
+                                communityId: savedMessage.channel.communityId,
                                 senderId: message.senderId,
                                 type: "channel_message",
-                                title: `New message in #${channel.name}`,
+                                title: `New message in #${savedMessage.channel.name}`,
                                 message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
-                                actionUrl: `/community/${channel.communityId}`
+                                actionUrl: `/community/${savedMessage.channel.communityId}`
                             });
-                            console.log(`[SOCKET] Channel notification triggered for ${channel.name}`);
+                            console.log(`[SOCKET] Channel notifications triggered for ${savedMessage.channel.name}`);
                         } catch (err) {
-                            console.error("[SOCKET] Failed to trigger community notification:", err);
+                            console.error("[SOCKET] Failed to trigger community notifications:", err);
                         }
                     }
                 } else if (message.receiverId && message.senderId && message.content) {
@@ -165,35 +132,12 @@ app.prepare().then(() => {
                         }
                     });
 
-                    // Create a notification for the receiver about the new message
-                    const truncatedContent = truncateMessage(message.content || '');
-                    const sanitizedContent = sanitizeText(truncatedContent);
-                    await prisma.notification.create({
-                        data: {
-                            userId: message.receiverId,
-                            type: 'message',
-                            title: 'New Message',
-                            message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${sanitizedContent}`,
-                            actionUrl: '/social',
-                            timestamp: new Date(),
-                            read: false
-                        }
-                    });
-
-                    // Emit notification event to receiver
-                    io.to(`user:${message.receiverId}`).emit("new-notification", {
-                        type: 'message',
-                        title: 'New Message',
-                        message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${sanitizedContent}`,
-                        actionUrl: '/social'
-                    });
-
-                    // Emit to both sender and receiver so it updates instantly for both
+                    // Emit to both sender and receiver for instant chat update
                     io.to(`user:${message.receiverId}`).emit("new-dm", savedMessage);
                     io.to(`user:${message.senderId}`).emit("new-dm", savedMessage);
-                    console.log(`[SOCKET] DM saved and emitted to user:${message.receiverId}`);
+                    console.log(`[SOCKET] DM saved and emitted to users`);
 
-                    // Create real-time notification for receiver
+                    // Create real-time notification for receiver via unified logic
                     try {
                         const libPath = __dirname.endsWith('dist') ? path.join(__dirname, 'lib') : path.join(__dirname, 'lib');
                         const { createNotification } = await import(path.join(libPath, "notifications-server"));
@@ -206,9 +150,9 @@ app.prepare().then(() => {
                             message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
                             actionUrl: `/messages/${message.senderId}`
                         });
-                        console.log(`[SOCKET] Notification entry created for DM to ${message.receiverId}`);
+                        console.log(`[SOCKET] DM notification triggered for ${message.receiverId}`);
                     } catch (err) {
-                        console.error("[SOCKET] Failed to create DM notification record:", err);
+                        console.error("[SOCKET] Failed to create DM notification:", err);
                     }
                 }
             } catch (error) {
