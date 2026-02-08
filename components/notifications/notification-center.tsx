@@ -20,14 +20,14 @@ export function NotificationCenter() {
     return unsubscribe
   }, [])
 
+  const unreadCount = notifications.filter(n => !n.read).length
+
   // Auto-mark all notifications as read when dropdown opens
   useEffect(() => {
     if (isOpen && unreadCount > 0) {
       notificationManager.markAllAsRead()
     }
-  }, [isOpen])
-
-  const unreadCount = notifications.filter(n => !n.read).length
+  }, [isOpen, unreadCount])
 
   const handleMarkAsRead = (id: string) => {
     notificationManager.markAsRead(id)

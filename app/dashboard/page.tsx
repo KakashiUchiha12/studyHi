@@ -1114,7 +1114,7 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2">
             <Link href="/dashboard">
-              <Button variant="ghost" size="icon" className="h-9 w-9 focus-ring active:scale-95 transition-transform" title="Home">
+              <Button variant="ghost" size="icon" className="h-9 w-9 focus-ring active:scale-95 transition-transform" title="Dashboard">
                 <Home className="h-4 w-4" />
               </Button>
             </Link>
