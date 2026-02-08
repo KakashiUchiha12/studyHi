@@ -4,7 +4,7 @@ import { toast } from "react-hot-toast"
 
 export interface StudyNotification {
   id: string
-  type: "reminder" | "achievement" | "deadline" | "goal"
+  type: "reminder" | "achievement" | "deadline" | "goal" | "message"
   title: string
   message: string
   timestamp: Date
@@ -204,6 +204,7 @@ class NotificationManager {
       case "achievement": return "🎉"
       case "deadline": return "⚠️"
       case "goal": return "🎯"
+      case "message": return "💬"
       default: return "📚"
     }
   }
