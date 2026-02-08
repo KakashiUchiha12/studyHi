@@ -254,6 +254,7 @@ class NotificationManager {
       case "achievement": return "🎉"
       case "deadline": return "⚠️"
       case "goal": return "🎯"
+      case "message": return "💬"
       default: return "📚"
     }
   }
