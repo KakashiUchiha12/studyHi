@@ -116,6 +116,18 @@ model User {
   quizAttempts      QuizAttempt[]
   chapterProgress   ChapterProgress[]
   userBadges        UserBadge[]
+
+  // Classes Relations
+  createdClasses          Class[]           @relation("ClassCreator")
+  classMemberships        ClassMember[]     @relation("ClassMemberships")
+  classPosts              ClassPost[]       @relation("ClassPostAuthor")
+  postComments            PostComment[]     @relation("PostCommentAuthor")
+  postLikes               PostLike[]        @relation("PostLikeUser")
+  assignmentsCreated      Assignment[]      @relation("AssignmentTeacher")
+  submissions             Submission[]      @relation("SubmissionStudent")
+  gradedSubmissions       Submission[]      @relation("SubmissionGrader")
+  classNotifications      ClassNotification[] @relation("ClassNotificationCreator")
+  classResourcesUploaded  ClassResource[]   @relation("ClassResourceUploader")
 }
 
 model UserProfile {
@@ -757,6 +769,7 @@ model CopyRequest {
   @@map("copy_requests")
 }
 
+<<<<<<< HEAD
 // Course Management Models
 
 model Course {
@@ -1059,6 +1072,7 @@ model UserBadge {
   achievement CourseAchievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([userId, achievementId])
-  @@index([userId])
-  @@map("user_badges")
+  @@index([uploadedBy])
+  @@map("class_resources")
+}
 }
