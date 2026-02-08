@@ -60,10 +60,10 @@ export default function CommunityPage() {
 
     return (
         <div className="min-h-screen bg-background text-foreground">
-            {/* Header */}
-            <header className="border-b border-border bg-white px-4 py-4 sticky top-0 z-10">
+            {/* Social Header - Replaces global AppHeader on this route */}
+            <header className="border-b border-border bg-background/95 backdrop-blur px-4 py-3 sticky top-0 z-50">
                 <div className="container mx-auto max-w-6xl flex items-center justify-between">
-                    <Link href="/dashboard">
+                    <Link href="/dashboard" className="flex items-center gap-2">
                         <StudyHiLogo size="sm" />
                     </Link>
                     <div className="flex items-center gap-2">

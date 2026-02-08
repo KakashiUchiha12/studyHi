@@ -1105,42 +1105,23 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Enhanced Minimal Header with Glass Effect - Mobile Optimized */}
-      <header className="glass-effect border-b border-border/50 sticky top-0 z-40">
-        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex justify-between items-center">
-          <div className="flex items-center animate-slide-in-right">
-            <StudyHiLogoCompact />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="icon" className="h-9 w-9 focus-ring active:scale-95 transition-transform" title="Dashboard">
-                <Home className="h-4 w-4" />
-              </Button>
-            </Link>
-            
-            <NotificationCenter />
-          </div>
-        </div>
-
-        {/* Enhanced Search Bar - Mobile Optimized */}
-        <div className="border-t border-border/30 bg-gradient-to-r from-muted/20 to-muted/10">
-          <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2 sm:py-3">
-            <div className="relative animate-fade-in-up max-w-2xl mx-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tasks, subjects, study sessions..."
-                className="input-enhanced pl-10 shadow-sm h-10 sm:h-11 text-sm sm:text-base"
-                onChange={(e) => {
-                  // Implement search functionality
-                  const query = e.target.value.toLowerCase()
-                  // You can add search logic here to filter content
-                }}
-              />
-            </div>
+      {/* Search Bar - Integrated as Page Header */}
+      <div className="border-b border-border/30 bg-gradient-to-r from-muted/20 to-muted/10">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="relative animate-fade-in-up max-w-2xl mx-auto">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Search tasks, subjects, study sessions..."
+              className="input-enhanced pl-11 shadow-md h-12 sm:h-14 text-base sm:text-lg border-2 focus:border-primary/50"
+              onChange={(e) => {
+                // Implement search functionality
+                const query = e.target.value.toLowerCase()
+                // You can add search logic here to filter content
+              }}
+            />
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
         {/* Enhanced Primary Focus View - Mobile Optimized */}
@@ -1899,8 +1880,8 @@ export default function DashboardPage() {
                     Settings
                   </Button>
                 </Link>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={handleLogout}
                 >

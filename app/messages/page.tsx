@@ -93,14 +93,15 @@ export default function MessagesPage() {
 
     return (
         <>
-            {/* Mobile Header */}
-            <header className="md:hidden border-b border-border bg-white px-4 py-3 sticky top-0 z-10">
-                <div className="flex items-center justify-between">
-                    <Link href="/dashboard">
+            {/* Social Header - Replaces global AppHeader on this route */}
+            <header className="border-b border-border bg-background/95 backdrop-blur px-4 py-3 sticky top-0 z-50">
+                <div className="container max-w-6xl mx-auto flex items-center justify-between">
+                    <Link href="/dashboard" className="flex items-center gap-2">
                         <StudyHiLogo size="sm" />
                     </Link>
-                    {/* Mobile nav menu */}
-                    <MobileNavMenu />
+                    <div className="flex items-center gap-4">
+                        <MobileNavMenu />
+                    </div>
                 </div>
             </header>
 

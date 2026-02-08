@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { usePathname } from "next/navigation"
 import { NotificationCenter } from "@/components/notifications/notification-center"
 import { StudyHiLogoCompact } from "@/components/ui/studyhi-logo"
 import { Button } from "@/components/ui/button"
@@ -9,9 +10,16 @@ import { Home } from "lucide-react"
 
 export function AppHeader() {
   const { data: session } = useSession()
+  const pathname = usePathname()
 
-  // Only show header if user is logged in
-  if (!session) {
+  // Define routes where the global header should be hidden
+  const isSocialRoute = pathname?.startsWith("/feed") ||
+    pathname?.startsWith("/community") ||
+    pathname?.startsWith("/messages") ||
+    pathname?.startsWith("/profile")
+
+  // Only show header if user is logged in and not on a social route
+  if (!session || isSocialRoute) {
     return null
   }
 

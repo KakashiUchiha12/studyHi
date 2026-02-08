@@ -165,7 +165,7 @@ app.prepare().then(() => {
         });
     });
 
-    httpServer.listen(port, () => {
-        console.log(`> Ready on http://localhost:${port}`);
+    httpServer.listen(port, "0.0.0.0", () => {
+        console.log(`> Ready on http://192.168.1.3:${port} (Network access enabled)`);
     });
 });
