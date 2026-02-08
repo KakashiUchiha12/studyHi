@@ -3,6 +3,16 @@ import next from "next";
 import { Server } from "socket.io";
 import { parse } from "url";
 
+// Simple text sanitization to prevent XSS in notifications
+function sanitizeText(text: string): string {
+    return text
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+}
+
 const port = parseInt(process.env.PORT || "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -76,12 +86,13 @@ app.prepare().then(() => {
                         .filter(userId => userId !== message.senderId);
 
                     if (memberIds.length > 0) {
+                        const sanitizedContent = sanitizeText(message.content);
                         await prisma.notification.createMany({
                             data: memberIds.map(userId => ({
                                 userId,
                                 type: 'message',
                                 title: `New message in #${savedMessage.channel.name}`,
-                                message: `${savedMessage.sender.name || 'Someone'}: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+                                message: `${savedMessage.sender.name || 'Someone'}: ${sanitizedContent.substring(0, 50)}${sanitizedContent.length > 50 ? '...' : ''}`,
                                 actionUrl: '/social',
                                 timestamp: new Date(),
                                 read: false
@@ -107,12 +118,13 @@ app.prepare().then(() => {
                     });
 
                     // Create a notification for the receiver about the new message
+                    const sanitizedContent = sanitizeText(message.content);
                     await prisma.notification.create({
                         data: {
                             userId: message.receiverId,
                             type: 'message',
                             title: 'New Message',
-                            message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`,
+                            message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${sanitizedContent.substring(0, 50)}${sanitizedContent.length > 50 ? '...' : ''}`,
                             actionUrl: '/social',
                             timestamp: new Date(),
                             read: false
