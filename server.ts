@@ -93,14 +93,14 @@ app.prepare().then(() => {
                         .filter(userId => userId !== message.senderId);
 
                     if (memberIds.length > 0) {
-                        const sanitizedContent = sanitizeText(message.content);
-                        const truncatedContent = truncateMessage(sanitizedContent);
+                        const truncatedContent = truncateMessage(message.content || '');
+                        const sanitizedContent = sanitizeText(truncatedContent);
                         await prisma.notification.createMany({
                             data: memberIds.map(userId => ({
                                 userId,
                                 type: 'message',
                                 title: `New message in #${savedMessage.channel.name}`,
-                                message: `${savedMessage.sender.name || 'Someone'}: ${truncatedContent}`,
+                                message: `${savedMessage.sender.name || 'Someone'}: ${sanitizedContent}`,
                                 actionUrl: '/social',
                                 timestamp: new Date(),
                                 read: false
@@ -126,14 +126,14 @@ app.prepare().then(() => {
                     });
 
                     // Create a notification for the receiver about the new message
-                    const sanitizedContent = sanitizeText(message.content);
-                    const truncatedContent = truncateMessage(sanitizedContent);
+                    const truncatedContent = truncateMessage(message.content || '');
+                    const sanitizedContent = sanitizeText(truncatedContent);
                     await prisma.notification.create({
                         data: {
                             userId: message.receiverId,
                             type: 'message',
                             title: 'New Message',
-                            message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${truncatedContent}`,
+                            message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${sanitizedContent}`,
                             actionUrl: '/social',
                             timestamp: new Date(),
                             read: false
