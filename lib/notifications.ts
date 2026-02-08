@@ -22,11 +22,39 @@ class NotificationManager {
   private subscribers: ((notifications: StudyNotification[]) => void)[] = []
   private notifications: StudyNotification[] = []
   private initialized = false
-  private pusherChannel: any = null
+  private socket: any = null
 
   constructor() {
     if (typeof window !== "undefined") {
       this.requestPermission()
+    }
+  }
+
+  // Set socket instance for real-time updates
+  setSocket(socket: any) {
+    this.socket = socket
+    if (socket) {
+      socket.on("new-notification", () => {
+        // Refresh notifications when a new notification event is received
+        this.refreshNotifications()
+      })
+    }
+  }
+
+  // Refresh notifications from the server
+  async refreshNotifications() {
+    try {
+      const response = await fetch('/api/notifications')
+      if (response.ok) {
+        const data = await response.json()
+        this.notifications = data.map((n: any) => ({
+          ...n,
+          timestamp: new Date(n.timestamp)
+        }))
+        this.notifySubscribers()
+      }
+    } catch (error) {
+      console.error('Failed to refresh notifications:', error)
     }
   }
 
@@ -36,7 +64,7 @@ class NotificationManager {
     }
   }
 
-  // Initialize notifications from database and setup Pusher
+  // Initialize notifications from database
   async initialize(userId?: string) {
     if (this.initialized && !userId) return
 
@@ -50,24 +78,11 @@ class NotificationManager {
         }))
         this.notifySubscribers()
       }
-
-      if (userId) {
-        this.setupPusher(userId)
-      }
     } catch (error) {
       console.error('Failed to load notifications:', error)
     }
 
     this.initialized = true
-  }
-
-  private setupPusher(userId: string) {
-    if (this.pusherChannel) return
-
-    this.pusherChannel = pusherClient.subscribe(`user-${userId}`)
-    this.pusherChannel.bind("new-notification", (notification: any) => {
-      this.handleNewRealtimeNotification(notification)
-    })
   }
 
   private handleNewRealtimeNotification(notification: any) {

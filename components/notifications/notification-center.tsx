@@ -14,11 +14,13 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { useSocket } from "@/components/providers/socket-provider"
 
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<StudyNotification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
+  const { socket, isConnected } = useSocket()
   const { data: session } = useSession()
   const userId = (session?.user as any)?.id
 
@@ -27,6 +29,18 @@ export function NotificationCenter() {
     const unsubscribe = notificationManager.subscribe(setNotifications, userId)
     return unsubscribe
   }, [userId])
+
+  // Connect socket to notification manager for real-time updates
+  useEffect(() => {
+    if (socket && isConnected) {
+      notificationManager.setSocket(socket)
+
+      // Join user room for notifications
+      if (userId) {
+        socket.emit("join-user-room", userId)
+      }
+    }
+  }, [socket, isConnected, userId])
 
   const unreadCount = notifications.filter(n => !n.read).length
 
