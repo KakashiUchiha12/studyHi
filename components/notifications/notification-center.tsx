@@ -20,6 +20,13 @@ export function NotificationCenter() {
     return unsubscribe
   }, [])
 
+  // Auto-mark all notifications as read when dropdown opens
+  useEffect(() => {
+    if (isOpen && unreadCount > 0) {
+      notificationManager.markAllAsRead()
+    }
+  }, [isOpen])
+
   const unreadCount = notifications.filter(n => !n.read).length
 
   const handleMarkAsRead = (id: string) => {
@@ -73,19 +80,7 @@ export function NotificationCenter() {
       <PopoverContent className="w-80 p-0" align="end">
         <Card className="border-0 shadow-none">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Notifications</CardTitle>
-              {unreadCount > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleMarkAllAsRead}
-                  className="text-xs"
-                >
-                  Mark all read
-                </Button>
-              )}
-            </div>
+            <CardTitle className="text-lg">Notifications</CardTitle>
           </CardHeader>
           
           <CardContent className="p-0">
