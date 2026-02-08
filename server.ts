@@ -106,6 +106,16 @@ app.prepare().then(() => {
                                 read: false
                             }))
                         });
+
+                        // Emit notification event to each member
+                        memberIds.forEach(userId => {
+                            io.to(`user:${userId}`).emit("new-notification", {
+                                type: 'message',
+                                title: `New message in #${savedMessage.channel.name}`,
+                                message: `${savedMessage.sender.name || 'Someone'}: ${sanitizedContent}`,
+                                actionUrl: '/social'
+                            });
+                        });
                     }
 
                     io.to(message.channelId).emit("new-message", savedMessage);
@@ -138,6 +148,14 @@ app.prepare().then(() => {
                             timestamp: new Date(),
                             read: false
                         }
+                    });
+
+                    // Emit notification event to receiver
+                    io.to(`user:${message.receiverId}`).emit("new-notification", {
+                        type: 'message',
+                        title: 'New Message',
+                        message: `${savedMessage.sender.name || 'Someone'} sent you a message: ${sanitizedContent}`,
+                        actionUrl: '/social'
                     });
 
                     // Emit to both sender and receiver so it updates instantly for both

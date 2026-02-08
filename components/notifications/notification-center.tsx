@@ -10,15 +10,32 @@ import { Bell, Check, X, ExternalLink } from "lucide-react"
 import { notificationManager, type StudyNotification } from "@/lib/notifications"
 import { format } from "date-fns"
 import Link from "next/link"
+import { useSocket } from "@/components/providers/socket-provider"
+import { useSession } from "next-auth/react"
 
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<StudyNotification[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const { socket, isConnected } = useSocket()
+  const { data: session } = useSession()
+  const userId = (session?.user as any)?.id
 
   useEffect(() => {
     const unsubscribe = notificationManager.subscribe(setNotifications)
     return unsubscribe
   }, [])
+
+  // Connect socket to notification manager for real-time updates
+  useEffect(() => {
+    if (socket && isConnected) {
+      notificationManager.setSocket(socket)
+      
+      // Join user room for notifications
+      if (userId) {
+        socket.emit("join-user-room", userId)
+      }
+    }
+  }, [socket, isConnected, userId])
 
   const unreadCount = notifications.filter(n => !n.read).length
 

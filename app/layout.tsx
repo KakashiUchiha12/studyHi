@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthSessionProvider } from "@/components/providers/session-provider"
 import { SocketProvider } from "@/components/providers/socket-provider"
 import { ReactQueryProvider } from "@/components/providers/react-query-provider"
+import { AppHeader } from "@/components/app-header"
 import { Toaster } from "react-hot-toast"
 import { Analytics } from "@vercel/analytics/next"
 import ErrorBoundary from "@/components/error-boundary"
@@ -39,13 +40,14 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthSessionProvider>
             <ReactQueryProvider>
-              {/* <SocketProvider> */}
-              <ThemeProvider defaultTheme="light">
-                {children}
-                <Toaster position="top-right" />
-                <Analytics />
-              </ThemeProvider>
-              {/* </SocketProvider> */}
+              <SocketProvider>
+                <ThemeProvider defaultTheme="light">
+                  <AppHeader />
+                  {children}
+                  <Toaster position="top-right" />
+                  <Analytics />
+                </ThemeProvider>
+              </SocketProvider>
             </ReactQueryProvider>
           </AuthSessionProvider>
         </ErrorBoundary>
