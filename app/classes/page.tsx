@@ -3,9 +3,20 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, GraduationCap } from "lucide-react";
+import { Plus, Search, GraduationCap, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Class {
   id: string;
@@ -25,9 +36,13 @@ interface Class {
 
 export default function ClassesPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     fetchClasses();
@@ -66,6 +81,66 @@ export default function ClassesPage() {
     }
   };
 
+  const handleJoinClass = async () => {
+    if (!inviteCode.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a class code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setJoining(true);
+    try {
+      const response = await fetch(`/api/classes/join`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ inviteCode: inviteCode.trim().toUpperCase() }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: data.status === "pending" 
+            ? "Join request sent. Waiting for approval."
+            : "Successfully joined the class!",
+        });
+        setJoinDialogOpen(false);
+        setInviteCode("");
+        
+        // Refresh classes list
+        fetchClasses();
+        
+        // Navigate to the class if approved
+        if (data.status === "approved" && data.classId) {
+          setTimeout(() => {
+            router.push(`/classes/${data.classId}`);
+          }, 1500);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to join class. Please check the code and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to join class:", error);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setJoining(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
@@ -85,12 +160,67 @@ export default function ClassesPage() {
                 </p>
               </div>
             </div>
-            <Link href="/classes/create">
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Create Class
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Join Class
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Join a Class</DialogTitle>
+                    <DialogDescription>
+                      Enter the class code provided by your teacher
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-code">Class Code</Label>
+                      <Input
+                        id="invite-code"
+                        placeholder="e.g., ABC123"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !joining) {
+                            handleJoinClass();
+                          }
+                        }}
+                        maxLength={10}
+                        className="text-lg font-mono tracking-wider"
+                        disabled={joining}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Ask your teacher for the class code
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setJoinDialogOpen(false);
+                        setInviteCode("");
+                      }}
+                      disabled={joining}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleJoinClass} disabled={joining || !inviteCode.trim()}>
+                      {joining ? "Joining..." : "Join Class"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Link href="/classes/create">
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create Class
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Search Bar */}
