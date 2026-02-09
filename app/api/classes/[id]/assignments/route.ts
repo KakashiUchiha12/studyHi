@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -27,7 +27,7 @@ export async function GET(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -52,13 +52,25 @@ export async function GET(
             submissions: true,
           },
         },
+        // Include post to get attachments
+        post: {
+          select: {
+            attachments: true,
+          },
+        },
       },
       orderBy: {
         dueDate: 'asc',
       },
     })
 
-    return NextResponse.json(assignments)
+    const formattedAssignments = assignments.map(assignment => ({
+      ...assignment,
+      maxFileSize: Number(assignment.maxFileSize),
+      attachments: assignment.post?.attachments ? JSON.parse(assignment.post.attachments) : [],
+    }))
+
+    return NextResponse.json(formattedAssignments)
   } catch (error) {
     console.error('Failed to fetch assignments:', error)
     return NextResponse.json(
@@ -78,7 +90,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -91,7 +103,7 @@ export async function POST(
 
     // Check if user is teacher or admin
     const hasPermission = await isTeacherOrAdmin(classId, userId)
-    
+
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'Permission denied' },

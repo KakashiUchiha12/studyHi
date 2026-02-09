@@ -27,7 +27,7 @@ const ROLE_COLORS = {
 
 export function ClassCard({ classData }: ClassCardProps) {
   const router = useRouter()
-  
+
   const coverColorClass = COVER_COLORS[classData.coverImage as keyof typeof COVER_COLORS] || 'bg-blue-500'
   const roleColor = ROLE_COLORS[classData.role as keyof typeof ROLE_COLORS] || ROLE_COLORS.student
 
@@ -36,27 +36,48 @@ export function ClassCard({ classData }: ClassCardProps) {
   }
 
   return (
-    <Card 
+    <Card
       className="hover:shadow-lg transition-all cursor-pointer overflow-hidden group"
       onClick={handleClick}
     >
-      <div className={`h-24 ${coverColorClass} relative`}>
-        {classData.coverImage && classData.coverImage.startsWith('http') ? (
-          <img 
-            src={classData.coverImage} 
+      <div className={`h-32 ${coverColorClass} relative overflow-hidden`}>
+        {classData.bannerImage ? (
+          <img
+            src={classData.bannerImage}
+            alt={`${classData.name} banner`}
+            className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
+          />
+        ) : classData.coverImage && classData.coverImage.startsWith('http') ? (
+          <img
+            src={classData.coverImage}
             alt={classData.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
           />
         ) : null}
-        <div className="absolute top-2 right-2">
-          <Badge className={roleColor}>
-            {classData.role?.toUpperCase()}
+
+        <div className="absolute top-3 right-3">
+          <Badge className={`${roleColor} shadow-md`}>
+            {classData.role?.toUpperCase() || 'STUDENT'}
           </Badge>
         </div>
       </div>
-      
-      <CardHeader>
-        <CardTitle className="text-xl group-hover:text-primary transition-colors">
+
+      <div className="px-6 relative">
+        <div className="absolute -top-12 left-6 border-4 border-background rounded-2xl overflow-hidden shadow-lg h-20 w-20 bg-muted flex items-center justify-center">
+          {classData.icon ? (
+            <img
+              src={classData.icon}
+              alt={`${classData.name} icon`}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <BookOpen className="h-10 w-10 text-muted-foreground/50" />
+          )}
+        </div>
+      </div>
+
+      <CardHeader className="pt-10 pb-2">
+        <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-1">
           {classData.name}
         </CardTitle>
         {classData.description && (
@@ -65,7 +86,7 @@ export function ClassCard({ classData }: ClassCardProps) {
           </p>
         )}
       </CardHeader>
-      
+
       <CardContent>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">

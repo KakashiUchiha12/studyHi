@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -27,7 +27,7 @@ export async function GET(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -62,7 +62,12 @@ export async function GET(
       ],
     })
 
-    return NextResponse.json(posts)
+    const formattedPosts = posts.map(post => ({
+      ...post,
+      attachments: post.attachments ? JSON.parse(post.attachments) : [],
+    }))
+
+    return NextResponse.json(formattedPosts)
   } catch (error) {
     console.error('Failed to fetch posts:', error)
     return NextResponse.json(
@@ -82,7 +87,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -95,7 +100,7 @@ export async function POST(
 
     // Check if user is a member
     const userRole = await getUserClassRole(classId, userId)
-    
+
     if (!userRole) {
       return NextResponse.json(
         { error: 'Access denied' },

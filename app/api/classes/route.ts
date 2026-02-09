@@ -11,7 +11,7 @@ import { generateUniqueJoinCode } from '@/lib/classes/permissions'
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
         description: body.description || null,
         syllabus: body.syllabus || null,
         coverImage: body.coverImage || '#3B82F6', // Default to blue color
+        icon: body.icon || null,
+        bannerImage: body.bannerImage || null,
         joinCode,
         createdBy: userId,
         allowStudentPosts: body.allowStudentPosts ?? true,

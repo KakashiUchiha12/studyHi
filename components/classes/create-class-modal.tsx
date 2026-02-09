@@ -22,6 +22,8 @@ interface CreateClassModalProps {
     name: string
     description: string
     coverImage: string
+    icon?: string
+    bannerImage?: string
     syllabus?: string
     allowStudentPosts?: boolean
     allowComments?: boolean
@@ -45,13 +47,15 @@ export function CreateClassModal({
   const [description, setDescription] = useState("")
   const [syllabus, setSyllabus] = useState("")
   const [coverImage, setCoverImage] = useState("#3B82F6")
+  const [icon, setIcon] = useState("")
+  const [bannerImage, setBannerImage] = useState("")
   const [allowStudentPosts, setAllowStudentPosts] = useState(true)
   const [allowComments, setAllowComments] = useState(true)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!name.trim()) {
       return
     }
@@ -62,14 +66,18 @@ export function CreateClassModal({
         name: name.trim(),
         description: description.trim(),
         coverImage,
+        icon: icon.trim() || undefined,
+        bannerImage: bannerImage.trim() || undefined,
         syllabus: syllabus.trim() || undefined,
         allowStudentPosts,
         allowComments,
       })
-      
+
       setName("")
       setDescription("")
       setSyllabus("")
+      setIcon("")
+      setBannerImage("")
       setCoverImage("#3B82F6")
       setAllowStudentPosts(true)
       setAllowComments(true)
@@ -87,7 +95,7 @@ export function CreateClassModal({
             Create a new class to collaborate with students and share materials
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Class Name *</Label>
@@ -122,18 +130,38 @@ export function CreateClassModal({
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="icon">Class Icon URL (Optional)</Label>
+              <Input
+                id="icon"
+                placeholder="https://..."
+                value={icon}
+                onChange={(e) => setIcon(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="banner">Banner Image URL (Optional)</Label>
+              <Input
+                id="banner"
+                placeholder="https://..."
+                value={bannerImage}
+                onChange={(e) => setBannerImage(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label>Cover Color</Label>
+            <Label>Cover Color (Fallback)</Label>
             <div className="flex gap-2">
               {COVER_COLORS.map((color) => (
                 <button
                   key={color.value}
                   type="button"
-                  className={`w-12 h-12 rounded-lg border-2 transition-all ${
-                    coverImage === color.value
-                      ? 'border-foreground scale-110'
-                      : 'border-transparent hover:scale-105'
-                  }`}
+                  className={`w-12 h-12 rounded-lg border-2 transition-all ${coverImage === color.value
+                    ? 'border-foreground scale-110'
+                    : 'border-transparent hover:scale-105'
+                    }`}
                   style={{ backgroundColor: color.value }}
                   onClick={() => setCoverImage(color.value)}
                   title={color.name}

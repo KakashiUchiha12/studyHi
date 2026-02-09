@@ -15,6 +15,8 @@ export interface Class {
   description: string | null
   syllabus: string | null
   coverImage: string | null
+  icon: string | null
+  bannerImage: string | null
   joinCode: string
   createdBy: string
   createdAt: Date | string
