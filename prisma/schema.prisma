@@ -105,6 +105,16 @@ model User {
   driveActivities       DriveActivity[]
   sentCopyRequests      CopyRequest[] @relation("SentCopyRequests")
   receivedCopyRequests  CopyRequest[] @relation("ReceivedCopyRequests")
+  
+  // Classes Relations
+  ownedClasses         Class[]              @relation("ClassOwner")
+  classMemberships     ClassMember[]
+  classPosts           ClassPost[]
+  classPostComments    PostComment[]
+  classPostLikes       PostLike[]
+  createdAssignments   Assignment[]
+  assignmentSubmissions AssignmentSubmission[]
+  classResources       ClassResource[]
 }
 
 model UserProfile {
@@ -727,4 +737,172 @@ model CopyRequest {
   @@index([toUserId])
   @@index([status])
   @@map("copy_requests")
+}
+
+// Classes Models (Google Classroom-inspired)
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  subject     String?
+  schedule    String?
+  room        String?
+  ownerId     String   @map("owner_id")
+  banner      String?
+  icon        String?
+  inviteCode  String   @unique @map("invite_code")
+  isPrivate   Boolean  @default(false) @map("is_private")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner       User            @relation("ClassOwner", fields: [ownerId], references: [id])
+  members     ClassMember[]
+  posts       ClassPost[]
+  assignments Assignment[]
+  resources   ClassResource[]
+
+  @@index([ownerId])
+  @@index([inviteCode])
+  @@map("classes")
+}
+
+model ClassMember {
+  id        String   @id @default(cuid())
+  classId   String   @map("class_id")
+  userId    String   @map("user_id")
+  role      String   @default("student") // admin, teacher, student
+  status    String   @default("approved") // pending, approved
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, userId])
+  @@index([classId])
+  @@index([userId])
+  @@index([status])
+  @@map("class_members")
+}
+
+model ClassPost {
+  id          String   @id @default(cuid())
+  classId     String   @map("class_id")
+  userId      String   @map("user_id")
+  type        String   @default("general") // general, announcement, material, question
+  title       String?
+  content     String   @db.Text
+  attachments String   @default("[]") // JSON array
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  class    Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments PostComment[]
+  likes    PostLike[]
+
+  @@index([classId])
+  @@index([userId])
+  @@index([type])
+  @@index([isPinned])
+  @@map("class_posts")
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  content   String   @db.Text
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  post    ClassPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies PostComment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("post_comments")
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post ClassPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+model Assignment {
+  id                  String   @id @default(cuid())
+  classId             String   @map("class_id")
+  userId              String   @map("user_id")
+  title               String
+  instructions        String   @db.Text
+  dueDate             DateTime @map("due_date")
+  points              Int      @default(100)
+  allowLateSubmission Boolean  @default(true) @map("allow_late_submission")
+  attachments         String   @default("[]") // JSON array
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  class       Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@index([classId])
+  @@index([userId])
+  @@index([dueDate])
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id           String    @id @default(cuid())
+  assignmentId String    @map("assignment_id")
+  studentId    String    @map("student_id")
+  files        String    @default("[]") // JSON array
+  submittedAt  DateTime  @default(now()) @map("submitted_at")
+  isLate       Boolean   @default(false) @map("is_late")
+  grade        Int?
+  feedback     String?   @db.Text
+  gradedAt     DateTime? @map("graded_at")
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
+  @@map("assignment_submissions")
+}
+
+model ClassResource {
+  id          String   @id @default(cuid())
+  classId     String   @map("class_id")
+  userId      String   @map("user_id")
+  title       String
+  description String?  @db.Text
+  url         String
+  type        String   // document, link, video, etc.
+  fileSize    Int?     @map("file_size")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+  @@index([userId])
+  @@map("class_resources")
 }
