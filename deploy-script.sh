@@ -35,18 +35,18 @@ docker volume create studyhiapp27thjanuary_uploads_data || true
 # 4. Build and start containers
 echo "🏗️ Building and starting Docker containers..."
 # Use --build-arg if needed, but we pinned versions now
-docker-compose build --no-cache
-docker-compose up -d
+docker compose build --no-cache
+docker compose up -d
 
 # 5. Run database migrations
 echo "🗄️ Running database migrations..."
 # Wait a few seconds for MySQL to be ready
 sleep 15
-docker-compose exec -T app npx prisma migrate deploy
+docker compose exec -T app npx prisma migrate deploy
 
 # 6. Check status
 echo "🔍 Checking container status..."
-docker-compose ps
+docker compose ps
 
 echo "✅ Deployment complete!"
 echo "Your application should be live at: https://139.59.93.248 (or your domain)"
