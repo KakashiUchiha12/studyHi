@@ -33,6 +33,9 @@ RUN apt-get update && apt-get install -y \
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Reinstall sharp with correct platform binaries
+RUN npm install --os=linux --cpu=x64 sharp
+
 # Generate Prisma Client
 RUN npx prisma generate
 
