@@ -7,6 +7,14 @@ set -e # Exit on any error
 
 echo "🚀 Starting deployment..."
 
+# 0. Check for Swap (OOM prevention)
+SWAP_SIZE=$(free -m | grep -i swap | awk '{print $2}')
+if [ "$SWAP_SIZE" -lt 1024 ]; then
+    echo "⚠️ Warning: Swap space is less than 1GB ($SWAP_SIZE MB)."
+    echo "This may cause the build to crash on a 2GB droplet."
+    echo "Please consider adding swap with: fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile"
+fi
+
 # 1. Pull latest changes
 echo "📥 Pulling latest changes from GitHub..."
 git pull origin main

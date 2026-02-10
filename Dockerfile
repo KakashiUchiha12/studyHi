@@ -41,6 +41,11 @@ ENV DATABASE_URL="mysql://root:password@localhost:3306/studyhi"
 ENV NEXTAUTH_SECRET="dummy_secret_for_build_must_be_32_chars_long"
 ENV NEXTAUTH_URL="http://localhost:3000"
 
+# Optimization: Limit memory usage and disable source maps
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV NEXT_DISABLE_SOURCEMAPS=1
+ENV GENERATE_SOURCEMAP=false
+
 # Build strictly without swc patching errors
 RUN npm run build
 RUN npm run build:server
