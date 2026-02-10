@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { CommentItem } from "./comment-item";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { useToast } from "@/hooks/use-toast";
+import { FilePreview } from "@/components/file-preview";
 import { Loader2, LayoutDashboard } from "lucide-react";
 import {
     DropdownMenu,
@@ -40,6 +41,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     const [isSavingInProgress, setIsSavingInProgress] = useState<string | null>(null);
     const [isDeleted, setIsDeleted] = useState(false);
     const [currentStatus, setCurrentStatus] = useState(post.status || "published");
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<any>(null);
 
     const handleStatusChange = async (newStatus: string) => {
         try {
@@ -172,6 +175,18 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
         }
     };
 
+    const handlePreview = (att: any) => {
+        const isPDF = att.mimeType === 'application/pdf' || att.name?.toLowerCase().endsWith('.pdf');
+        setSelectedFile({
+            id: att.id || att.url,
+            name: att.name || "File",
+            url: att.url,
+            size: att.size || 0,
+            type: isPDF ? 'application/pdf' : 'application/octet-stream'
+        });
+        setIsPreviewOpen(true);
+    };
+
     const mediaAttachments = post.attachments?.filter((att: any) => att.type === "image") || [];
     const fileAttachments = post.attachments?.filter((att: any) => att.type !== "image") || [];
 
@@ -302,7 +317,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                                     key={att.id}
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        handleSaveToDrive(att);
+                                        handlePreview(att);
                                     }}
                                     disabled={!!isSavingInProgress}
                                     className="w-full flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors border text-left group disabled:opacity-50"
@@ -444,6 +459,14 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                 isOpen={isViewerOpen}
                 onClose={() => setIsViewerOpen(false)}
             />
+
+            {selectedFile && (
+                <FilePreview
+                    file={selectedFile}
+                    isOpen={isPreviewOpen}
+                    onClose={() => setIsPreviewOpen(false)}
+                />
+            )}
         </Card>
     );
 }

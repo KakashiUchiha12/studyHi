@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { validateEnvironment } from '../env-validation'
 
-// Database service base class
+// Database service base class for Prisma management
 export class DatabaseService {
   private prisma: PrismaClient
   private static instance: DatabaseService

@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { formatDistanceToNow } from "date-fns"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Send } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { PostComment } from "@/types/classes"
 import { toast } from "sonner"
+import { Send, MoreHorizontal } from "lucide-react"
 
 interface PostCommentsProps {
   classId: string
@@ -26,7 +27,7 @@ export function PostComments({ classId, postId, onUpdate }: PostCommentsProps) {
   const loadComments = async () => {
     try {
       const response = await fetch(`/api/classes/${classId}/posts/${postId}/comments`)
-      
+
       if (!response.ok) {
         throw new Error("Failed to load comments")
       }
@@ -40,7 +41,7 @@ export function PostComments({ classId, postId, onUpdate }: PostCommentsProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!newComment.trim()) {
       return
     }
@@ -69,38 +70,56 @@ export function PostComments({ classId, postId, onUpdate }: PostCommentsProps) {
   }
 
   return (
-    <div className="space-y-4 pt-4 border-t">
+    <div className="space-y-4 pt-2">
       <div className="space-y-3">
         {comments.map((comment) => (
-          <div key={comment.id} className="flex space-x-3">
-            <Avatar className="h-8 w-8">
+          <div key={comment.id} className="flex gap-3 text-sm group">
+            <Avatar className="h-8 w-8 shrink-0">
               <AvatarImage src={comment.author?.image || undefined} />
               <AvatarFallback>
                 {comment.author?.name?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 bg-muted rounded-lg p-3">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-semibold">{comment.author?.name || 'Unknown'}</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(comment.createdAt).toLocaleDateString()}
-                </p>
+            <div className="flex-1 space-y-1">
+              <div className="flex items-start justify-between group/bubble">
+                <div className="bg-muted px-3 py-2 rounded-2xl flex-1 max-w-fit">
+                  <div className="flex items-center justify-between gap-4 mb-0.5">
+                    <p className="text-xs font-bold leading-none">{comment.author?.name || 'Unknown'}</p>
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                    </span>
+                  </div>
+                  <p className="text-sm leading-snug">{comment.content}</p>
+                </div>
+
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0">
+                  <MoreHorizontal className="h-3 w-3" />
+                </Button>
               </div>
-              <p className="text-sm">{comment.content}</p>
             </div>
           </div>
         ))}
+
+        {comments.length === 0 && (
+          <p className="text-center text-xs text-muted-foreground py-2 italic">
+            No comments yet. Start the conversation!
+          </p>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <Textarea
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center pt-2">
+        <Input
           placeholder="Write a comment..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          rows={2}
-          className="flex-1"
+          className="h-9 text-sm rounded-full bg-muted/50 focus-visible:ring-1 border-none"
         />
-        <Button type="submit" disabled={loading || !newComment.trim()} size="sm">
+        <Button
+          type="submit"
+          disabled={loading || !newComment.trim()}
+          size="icon"
+          className="h-8 w-8 rounded-full shrink-0"
+        >
           <Send className="h-4 w-4" />
         </Button>
       </form>

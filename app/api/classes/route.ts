@@ -6,7 +6,8 @@ import { generateUniqueJoinCode } from '@/lib/classes/permissions'
 
 /**
  * GET /api/classes
- * Get all classes the user is enrolled in
+ * Get all classes the user is enrolled in.
+ * Supports optional 'query' parameter to filter by name or subject.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -20,12 +21,31 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = (session.user as any).id
+    const { searchParams } = new URL(request.url)
+    const query = searchParams.get('query')
+
+    const whereClause: any = {
+      members: {
+        some: {
+          userId,
+          status: 'approved',
+        },
+      },
+    }
+
+    if (query) {
+      whereClause.OR = [
+        { name: { contains: query } }, // Prisma default is case-insensitive for some DBs, but explicitly mode: 'insensitive' is better if Postres, but this is MySQL likely or generic
+        { subject: { contains: query } },
+      ]
+    }
 
     // Get all classes where user is a member
     const memberships = await dbService.getPrisma().classMember.findMany({
       where: {
         userId,
         status: 'approved',
+        class: whereClause
       },
       include: {
         class: {
@@ -44,6 +64,10 @@ export async function GET(request: NextRequest) {
                 assignments: true,
               },
             },
+            members: {
+              where: { userId },
+              select: { role: true, status: true }
+            }
           },
         },
       },
@@ -103,14 +127,25 @@ export async function POST(request: NextRequest) {
       data: {
         name: body.name,
         description: body.description || null,
+        subject: body.subject || null,
         syllabus: body.syllabus || null,
+        schedule: body.schedule || null,
+        room: body.room || null,
         coverImage: body.coverImage || '#3B82F6', // Default to blue color
         icon: body.icon || null,
-        bannerImage: body.bannerImage || null,
+        bannerImage: body.bannerImage || body.banner || null, // Handle both key names
         joinCode,
+        isPrivate: body.isPrivate || false,
         createdBy: userId,
         allowStudentPosts: body.allowStudentPosts ?? true,
         allowComments: body.allowComments ?? true,
+        members: {
+          create: {
+            userId,
+            role: 'admin',
+            status: 'approved',
+          }
+        }
       },
       include: {
         creator: {
@@ -121,16 +156,10 @@ export async function POST(request: NextRequest) {
             image: true,
           },
         },
-      },
-    })
-
-    // Add creator as admin member
-    await dbService.getPrisma().classMember.create({
-      data: {
-        classId: newClass.id,
-        userId,
-        role: 'admin',
-        status: 'approved',
+        members: {
+          where: { userId },
+          select: { role: true, status: true }
+        }
       },
     })
 

@@ -633,6 +633,9 @@ model Like {
 model Message {
   id         String   @id @default(cuid())
   content    String @db.Text
+  fileUrl    String?  @db.Text @map("file_url")
+  fileType   String?  @map("file_type")
+  fileName   String?  @map("file_name")
   senderId   String   @map("sender_id")
   channelId  String?  @map("channel_id") // For community channels
   receiverId String?  @map("receiver_id") // For DMs
@@ -768,6 +771,7 @@ model CopyRequest {
   @@index([status])
   @@map("copy_requests")
 }
+
 // Course Management Models
 
 model Course {
@@ -1080,11 +1084,15 @@ model Class {
   id                 String          @id @default(cuid())
   name               String
   description        String?         @db.Text
+  subject            String?
   syllabus           String?         @db.Text
+  schedule           String?
+  room               String?
   coverImage         String?         @map("cover_image") // URL or color code
   icon               String?         @map("icon") // Class Icon URL
   bannerImage        String?         @map("banner_image") // Banner Image URL
   joinCode           String          @unique @map("join_code")
+  isPrivate          Boolean         @default(false) @map("is_private")
   createdBy          String          @map("created_by")
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
@@ -1115,7 +1123,6 @@ model ClassMember {
   
   class               Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   user                User     @relation("ClassMemberships", fields: [userId], references: [id], onDelete: Cascade)
-  
   @@unique([classId, userId])
   @@index([classId])
   @@index([userId])
@@ -1153,13 +1160,18 @@ model PostComment {
   postId    String   @map("post_id")
   authorId  String   @map("author_id")
   content   String   @db.Text
+  parentId  String?  @map("parent_id")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
   
   post      ClassPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   author    User      @relation("PostCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  parent    PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   PostComment[] @relation("CommentReplies")
   
   @@index([postId])
   @@index([authorId])
+  @@index([parentId])
   @@map("post_comments")
 }
 
@@ -1171,7 +1183,6 @@ model PostLike {
   
   post      ClassPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   user      User      @relation("PostLikeUser", fields: [userId], references: [id], onDelete: Cascade)
-  
   @@unique([postId, userId])
   @@index([postId])
   @@index([userId])
@@ -1185,6 +1196,7 @@ model Assignment {
   teacherId           String       @map("teacher_id")
   title               String
   description         String       @db.Text
+  points              Int          @default(100)
   dueDate             DateTime     @map("due_date")
   allowLateSubmission Boolean      @default(false) @map("allow_late_submission")
   maxFileSize         BigInt       @default(268435456) @map("max_file_size") // 256MB in bytes

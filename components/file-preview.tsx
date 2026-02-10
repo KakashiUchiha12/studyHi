@@ -18,10 +18,10 @@ import {
 import { useToast } from "@/hooks/use-toast"
 
 // Import PDF.js
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
+import * as pdfjsLib from 'pdfjs-dist'
 
 // Set the worker source for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
 
 interface FilePreviewProps {
   file: {

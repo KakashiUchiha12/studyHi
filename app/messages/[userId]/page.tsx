@@ -24,21 +24,19 @@ export default function DirectMessagePage() {
     }, [socket, session]);
 
     return (
-        <div className="container max-w-4xl py-6 h-[calc(100vh-4rem)]">
-            <Card className="h-full flex flex-col">
-                <CardHeader className="border-b py-3">
-                    <div className="flex items-center gap-2">
-                        <Link href="/dashboard" className="p-2 hover:bg-slate-100 rounded-full transition">
+        <div className="h-screen md:h-[calc(100vh-4rem)] w-full md:container md:max-w-4xl md:py-6">
+            <div className="h-full w-full md:rounded-lg md:border md:shadow-lg bg-background flex flex-col">
+                <div className="border-b py-3 px-4 bg-card sticky top-0 z-10">
+                    <div className="flex items-center gap-3">
+                        <Link href="/messages" className="p-2 hover:bg-muted rounded-lg transition">
                             <ArrowLeft className="w-5 h-5" />
                         </Link>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            Chat
-                        </CardTitle>
+                        <h1 className="text-lg font-semibold">Chat</h1>
                     </div>
-                </CardHeader>
-                <div className="flex-1 overflow-hidden flex flex-col relative">
+                </div>
+                <div className="flex-1 overflow-hidden flex flex-col relative bg-background">
                     <ChatMessages
-                        chatId={otherUserId} // Using otherUserID as ID for query key
+                        chatId={otherUserId}
                         type="conversation"
                         apiUrl={`/api/messages/${otherUserId}`}
                         socketUrl="/api/socket/direct-messages"
@@ -46,7 +44,7 @@ export default function DirectMessagePage() {
                         paramKey="conversationId"
                         paramValue={otherUserId}
                         name="Chat"
-                        member={session?.user as any} // Pass current user
+                        member={session?.user as any}
                     />
                     <ChatInput
                         socket={socket}
@@ -59,7 +57,7 @@ export default function DirectMessagePage() {
                         member={session?.user}
                     />
                 </div>
-            </Card>
+            </div>
         </div>
     );
 }

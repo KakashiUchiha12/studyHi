@@ -1397,7 +1397,7 @@ export default function DashboardPage() {
               icon={Zap}
               defaultExpanded={false}
             >
-              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {/* Log Study Session */}
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setShowCreateStudySession(true)}>
                   <CardContent className="p-4 sm:p-6">
@@ -1430,6 +1430,24 @@ export default function DashboardPage() {
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
                       Connect with peers
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Classes */}
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/classes')}>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-center space-x-3 sm:space-x-4">
+                      <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                        <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm sm:text-base font-semibold text-foreground">Classes</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Manage classes & assignments</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Virtual classroom
                     </div>
                   </CardContent>
                 </Card>

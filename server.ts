@@ -65,11 +65,14 @@ app.prepare().then(() => {
             const prisma = dbService.getPrisma();
 
             try {
-                if (message.channelId && message.senderId && message.content) {
+                if (message.channelId && message.senderId && (message.content || message.fileUrl)) {
                     // Channel Message
                     const savedMessage = await prisma.message.create({
                         data: {
-                            content: message.content,
+                            content: message.content || "",
+                            fileUrl: message.fileUrl,
+                            fileType: message.fileType,
+                            fileName: message.fileName,
                             channelId: message.channelId,
                             senderId: message.senderId,
                             isRead: false
@@ -108,7 +111,7 @@ app.prepare().then(() => {
                                 senderId: message.senderId,
                                 type: "channel_message",
                                 title: `New message in #${savedMessage.channel.name}`,
-                                message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
+                                message: `${savedMessage.sender.name}: ${message.fileUrl ? "Sent a file" : message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
                                 actionUrl: `/community/${savedMessage.channel.communityId}`
                             });
                             console.log(`[SOCKET] Channel notifications triggered for ${savedMessage.channel.name}`);
@@ -116,11 +119,14 @@ app.prepare().then(() => {
                             console.error("[SOCKET] Failed to trigger community notifications:", err);
                         }
                     }
-                } else if (message.receiverId && message.senderId && message.content) {
+                } else if (message.receiverId && message.senderId && (message.content || message.fileUrl)) {
                     // Direct Message
                     const savedMessage = await prisma.message.create({
                         data: {
-                            content: message.content,
+                            content: message.content || "",
+                            fileUrl: message.fileUrl,
+                            fileType: message.fileType,
+                            fileName: message.fileName,
                             receiverId: message.receiverId,
                             senderId: message.senderId,
                             isRead: false
@@ -147,7 +153,7 @@ app.prepare().then(() => {
                             senderId: message.senderId,
                             type: "message",
                             title: "New Message",
-                            message: `${savedMessage.sender.name}: ${message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
+                            message: `${savedMessage.sender.name}: ${message.fileUrl ? "Sent a file" : message.content.substring(0, 50)}${message.content.length > 50 ? "..." : ""}`,
                             actionUrl: `/messages/${message.senderId}`
                         });
                         console.log(`[SOCKET] DM notification triggered for ${message.receiverId}`);

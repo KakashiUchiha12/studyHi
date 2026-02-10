@@ -52,6 +52,16 @@ export async function GET(
             submissions: true,
           },
         },
+        // Include my own submissions
+        submissions: {
+          where: { studentId: userId },
+          select: {
+            id: true,
+            submittedAt: true,
+            isLate: true,
+            grade: true,
+          },
+        },
         // Include post to get attachments
         post: {
           select: {
@@ -64,10 +74,13 @@ export async function GET(
       },
     })
 
-    const formattedAssignments = assignments.map(assignment => ({
+    const formattedAssignments = assignments.map((assignment: any) => ({
       ...assignment,
       maxFileSize: Number(assignment.maxFileSize),
       attachments: assignment.post?.attachments ? JSON.parse(assignment.post.attachments) : [],
+      // Alias teacher to user for frontend compatibility if needed
+      user: assignment.teacher,
+      userSubmission: assignment.submissions?.[0] || null
     }))
 
     return NextResponse.json(formattedAssignments)
@@ -121,10 +134,20 @@ export async function POST(
       )
     }
 
+    // Validate due date is not in the past
+    const dueDate = new Date(body.dueDate)
+    const now = new Date()
+    if (dueDate < now) {
+      return NextResponse.json(
+        { error: 'Due date cannot be in the past' },
+        { status: 400 }
+      )
+    }
+
     // Create assignment with associated post
-    const result = await dbService.getPrisma().$transaction(async (prisma) => {
+    const result = await dbService.getPrisma().$transaction(async (tx) => {
       // Create the post first
-      const post = await prisma.classPost.create({
+      const post = await tx.classPost.create({
         data: {
           classId,
           authorId: userId,
@@ -136,13 +159,14 @@ export async function POST(
       })
 
       // Create the assignment linked to the post
-      const assignment = await prisma.assignment.create({
+      const assignment = await tx.assignment.create({
         data: {
           classId,
           postId: post.id,
           teacherId: userId,
           title: body.title,
           description: body.description,
+          points: body.points || 100,
           dueDate: new Date(body.dueDate),
           allowLateSubmission: body.allowLateSubmission ?? false,
           maxFileSize: body.maxFileSize ? BigInt(body.maxFileSize) : BigInt(268435456),
@@ -162,7 +186,14 @@ export async function POST(
       return assignment
     })
 
-    return NextResponse.json(result, { status: 201 })
+    // Format BigInt for JSON response
+    const responseData = {
+      ...result,
+      maxFileSize: Number(result.maxFileSize),
+      user: result.teacher
+    }
+
+    return NextResponse.json(responseData, { status: 201 })
   } catch (error) {
     console.error('Failed to create assignment:', error)
     return NextResponse.json(

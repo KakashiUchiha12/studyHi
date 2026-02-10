@@ -35,13 +35,19 @@ export async function GET(
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type')
+
+    const where: any = { classId }
+    if (type && type !== 'all') {
+      where.type = type
+    }
+
     // Get all posts
     const posts = await dbService.getPrisma().classPost.findMany({
-      where: {
-        classId,
-      },
+      where,
       include: {
-        author: {
+        author: { // Merged schema uses 'author'
           select: {
             id: true,
             name: true,
@@ -55,6 +61,10 @@ export async function GET(
             likes: true,
           },
         },
+        likes: {
+          where: { userId },
+          select: { id: true },
+        },
       },
       orderBy: [
         { pinned: 'desc' },
@@ -62,9 +72,13 @@ export async function GET(
       ],
     })
 
-    const formattedPosts = posts.map(post => ({
+    // Map posts to include 'user' alias for frontend compatibility if needed, 
+    // and parse attachments if they are strings (some frontends expect objects)
+    const formattedPosts = posts.map((post: any) => ({
       ...post,
-      attachments: post.attachments ? JSON.parse(post.attachments) : [],
+      user: post.author, // Alias author to user for compatibility
+      attachments: typeof post.attachments === 'string' ? JSON.parse(post.attachments || '[]') : post.attachments,
+      isLiked: post.likes.length > 0
     }))
 
     return NextResponse.json(formattedPosts)
@@ -108,7 +122,7 @@ export async function POST(
       )
     }
 
-    // Get class settings
+    // Get class settings to check if students can post
     const classData = await dbService.getPrisma().class.findUnique({
       where: { id: classId },
       select: { allowStudentPosts: true },
@@ -148,6 +162,7 @@ export async function POST(
         title: body.title || null,
         content: body.content,
         attachments: body.attachments ? JSON.stringify(body.attachments) : '[]',
+        pinned: false, // Default
       },
       include: {
         author: {
@@ -161,7 +176,13 @@ export async function POST(
       },
     })
 
-    return NextResponse.json(post, { status: 201 })
+    const formattedPost = {
+      ...post,
+      user: post.author, // Alias
+      attachments: typeof post.attachments === 'string' ? JSON.parse(post.attachments || '[]') : post.attachments
+    }
+
+    return NextResponse.json(formattedPost, { status: 201 })
   } catch (error) {
     console.error('Failed to create post:', error)
     return NextResponse.json(

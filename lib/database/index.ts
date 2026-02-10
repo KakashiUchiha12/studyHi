@@ -25,39 +25,39 @@ export type { CreateTestMarkData, UpdateTestMarkData } from './test-mark-service
 export type { MigrationResult } from './migration-utility'
 
 // New Profile Management Types
-export type { 
-  CreateProfileData, 
-  UpdateProfileData 
+export type {
+  CreateProfileData,
+  UpdateProfileData
 } from './profile-service'
-export type { 
-  CreateGoalData, 
-  UpdateGoalData, 
-  CreateGoalTaskData, 
-  UpdateGoalTaskData 
+export type {
+  CreateGoalData,
+  UpdateGoalData,
+  CreateGoalTaskData,
+  UpdateGoalTaskData
 } from './goal-service'
-export type { 
-  CreateSkillData, 
-  UpdateSkillData, 
-  CreateSkillObjectiveData, 
-  UpdateSkillObjectiveData 
+export type {
+  CreateSkillData,
+  UpdateSkillData,
+  CreateSkillObjectiveData,
+  UpdateSkillObjectiveData
 } from './skill-service'
-export type { 
-  CreateDocumentData, 
-  UpdateDocumentData 
+export type {
+  CreateDocumentData,
+  UpdateDocumentData
 } from './document-service'
-export type { 
-  CreateCalendarEventData, 
-  UpdateCalendarEventData 
+export type {
+  CreateCalendarEventData,
+  UpdateCalendarEventData
 } from './calendar-event-service'
 
 // Re-export Prisma types for convenience
-export type { 
-  Subject, 
+export type {
+  Subject,
   Chapter,
   Material,
-  Task, 
-  StudySession, 
-  TestMark, 
+  Task,
+  StudySession,
+  TestMark,
   User,
   UserProfile,
   Goal,
@@ -65,5 +65,12 @@ export type {
   Skill,
   SkillObjective,
   Document,
-  CalendarEvent
+  CalendarEvent,
+  Class,
+  ClassMember,
+  ClassPost,
+  PostComment,
+  PostLike,
+  Assignment,
+  Submission
 } from '@prisma/client'

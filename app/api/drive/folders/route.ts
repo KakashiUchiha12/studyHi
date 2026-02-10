@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { validateName, buildPath } from '@/lib/drive/path-validator';
+import { sanitizeName } from '@/lib/drive/sanitizer';
+import { validateSession } from '@/lib/drive/auth-validator';
+import { DriveErrors } from '@/lib/drive/errors';
+import { checkRateLimit } from '@/lib/drive/rate-limiter';
 
 /**
  * GET /api/drive/folders
@@ -56,17 +61,37 @@ export async function GET(request: NextRequest) {
 
       // Create drive folders for these subjects automatically
       if (subjects.length > 0) {
-        await Promise.all(subjects.map(subject =>
-          prisma.driveFolder.create({
-            data: {
+        for (const subject of subjects) {
+          // Check if folder already exists (including soft-deleted)
+          const existing = await prisma.driveFolder.findFirst({
+            where: {
               driveId: drive.id,
-              name: `Subjects - ${subject.name}`,
-              path: `Subjects - ${subject.name}`,
-              subjectId: subject.id,
-              isPublic: false
+              subjectId: subject.id
             }
-          })
-        ));
+          });
+
+          if (existing) {
+            // If was deleted, restore it
+            if (existing.deletedAt) {
+              await prisma.driveFolder.update({
+                where: { id: existing.id },
+                data: { deletedAt: null }
+              });
+            }
+            // Otherwise it already exists, skip
+          } else {
+            // Create new folder
+            await prisma.driveFolder.create({
+              data: {
+                driveId: drive.id,
+                name: `Subjects - ${subject.name}`,
+                path: `Subjects - ${subject.name}`,
+                subjectId: subject.id,
+                isPublic: false
+              }
+            });
+          }
+        }
       }
     }
 

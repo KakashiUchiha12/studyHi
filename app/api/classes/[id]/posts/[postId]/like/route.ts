@@ -14,7 +14,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -27,7 +27,7 @@ export async function POST(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -38,6 +38,7 @@ export async function POST(
     // Verify post belongs to class
     const post = await dbService.getPrisma().classPost.findUnique({
       where: { id: postId },
+      select: { id: true, classId: true }
     })
 
     if (!post || post.classId !== classId) {

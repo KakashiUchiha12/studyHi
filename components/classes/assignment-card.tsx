@@ -4,18 +4,22 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Calendar, 
-  Clock, 
-  FileText, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Calendar,
+  Clock,
+  FileText,
+  CheckCircle2,
+  XCircle,
   Upload,
   Trash2,
-  Users
+  Users,
+  Pencil
 } from "lucide-react"
 import { Assignment, ClassRole } from "@/types/classes"
 import { SubmitAssignmentModal } from "@/components/classes/submit-assignment-modal"
+import { CreateAssignmentModal } from "@/components/classes/create-assignment-modal"
+import { FilePreview } from "@/components/file-preview"
+import { DeleteAssignmentDialog } from "@/components/classes/confirmation-dialogs"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 
@@ -34,11 +38,16 @@ export function AssignmentCard({
 }: AssignmentCardProps) {
   const { data: session } = useSession()
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
-  
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<any>(null)
+
   const userId = (session?.user as any)?.id
   const isTeacherOrAdmin = userRole === 'admin' || userRole === 'teacher'
+  const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
-  
+
   const dueDate = new Date(assignment.dueDate)
   const now = new Date()
   const isOverdue = now > dueDate && !assignment.userSubmission
@@ -47,10 +56,6 @@ export function AssignmentCard({
   const isGraded = assignment.userSubmission?.grade !== null && assignment.userSubmission?.grade !== undefined
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this assignment? All submissions will be deleted.")) {
-      return
-    }
-
     try {
       const response = await fetch(`/api/classes/${classId}/assignments/${assignment.id}`, {
         method: "DELETE",
@@ -65,6 +70,27 @@ export function AssignmentCard({
     } catch (error) {
       console.error("Failed to delete assignment:", error)
       toast.error("Failed to delete assignment")
+    }
+  }
+
+  const handleEdit = async (assignmentData: any) => {
+    try {
+      const response = await fetch(`/api/classes/${classId}/assignments/${assignment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(assignmentData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update assignment")
+      }
+
+      toast.success("Assignment updated successfully!")
+      setEditModalOpen(false)
+      onUpdate()
+    } catch (error: any) {
+      console.error("Failed to update assignment:", error)
+      toast.error(error.message || "Failed to update assignment")
     }
   }
 
@@ -88,6 +114,24 @@ export function AssignmentCard({
       console.error("Failed to submit assignment:", error)
       toast.error(error.message || "Failed to submit assignment")
     }
+  }
+
+  const handlePreview = (attachment: any) => {
+    const url = typeof attachment === 'string' ? attachment : attachment.url
+    const name = typeof attachment === 'string' ? "Attachment" : attachment.name
+    const size = typeof attachment === 'string' ? 0 : attachment.size
+    const type = typeof attachment === 'string'
+      ? (url.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream')
+      : (attachment.type === 'pdf' ? 'application/pdf' : (attachment.type === 'image' ? 'image/jpeg' : 'application/octet-stream'))
+
+    setSelectedFile({
+      id: url,
+      name: name,
+      url: url,
+      size: size,
+      type: type
+    })
+    setIsPreviewOpen(true)
   }
 
   return (
@@ -129,8 +173,8 @@ export function AssignmentCard({
                 <Clock className="h-4 w-4 mr-1" />
                 {dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
-              {isTeacherOrAdmin && (
-                <div className="flex items-center">
+              {isTeacher && (
+                <div className="flex items-center text-primary font-medium">
                   <Users className="h-4 w-4 mr-1" />
                   {assignment._count?.submissions || 0} submissions
                 </div>
@@ -138,15 +182,25 @@ export function AssignmentCard({
             </div>
           </div>
 
-          {isTeacherOrAdmin && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              className="text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          {isTeacher && (
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditModalOpen(true)}
+                className="text-muted-foreground hover:text-primary"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                className="text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
       </CardHeader>
@@ -157,18 +211,20 @@ export function AssignmentCard({
         {assignment.attachments && assignment.attachments.length > 0 && (
           <div className="space-y-2">
             <p className="text-sm font-medium">Attachments:</p>
-            {assignment.attachments.map((attachment, index) => (
-              <a
-                key={index}
-                href={attachment}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block text-sm text-primary hover:underline"
-              >
-                <FileText className="h-4 w-4 inline mr-1" />
-                Attachment {index + 1}
-              </a>
-            ))}
+            {assignment.attachments.map((attachment: any, index: number) => {
+              const name = typeof attachment === 'string' ? `Attachment ${index + 1}` : (attachment.name || `Attachment ${index + 1}`)
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handlePreview(attachment)}
+                  className="w-full flex items-center gap-2 p-2 bg-muted/50 rounded-md hover:bg-muted transition-colors text-sm text-primary group text-left"
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="truncate flex-1">{name}</span>
+                </button>
+              )
+            })}
           </div>
         )}
 
@@ -180,13 +236,13 @@ export function AssignmentCard({
         )}
 
         <div className="flex gap-2 pt-2 border-t">
-          {isStudent && !isSubmitted && (!isOverdue || assignment.allowLateSubmission) && (
+          {!isSubmitted && (!isOverdue || assignment.allowLateSubmission) && (
             <Button onClick={() => setSubmitModalOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Submit Assignment
             </Button>
           )}
-          {isTeacherOrAdmin && (
+          {isTeacher && (
             <Button variant="outline" onClick={() => window.location.href = `/classes/${classId}/assignments/${assignment.id}`}>
               View Submissions
             </Button>
@@ -201,6 +257,22 @@ export function AssignmentCard({
           onSubmit={handleSubmit}
           assignmentTitle={assignment.title}
           maxFileSize={Number(assignment.maxFileSize)}
+        />
+      )}
+      {isTeacherOrAdmin && (
+        <CreateAssignmentModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          onSave={handleEdit}
+          mode="edit"
+          initialData={assignment}
+        />
+      )}
+      {selectedFile && (
+        <FilePreview
+          file={selectedFile}
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
         />
       )}
     </Card>

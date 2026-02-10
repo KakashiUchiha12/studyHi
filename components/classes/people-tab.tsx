@@ -19,7 +19,7 @@ export function PeopleTab({ classId, userRole, onUpdate }: PeopleTabProps) {
   const [members, setMembers] = useState<ClassMember[]>([])
   const [loading, setLoading] = useState(true)
 
-  const isAdmin = userRole === 'admin'
+  const isAdmin = userRole === 'admin' || userRole === 'teacher'
 
   useEffect(() => {
     loadMembers()
@@ -29,7 +29,7 @@ export function PeopleTab({ classId, userRole, onUpdate }: PeopleTabProps) {
     try {
       setLoading(true)
       const response = await fetch(`/api/classes/${classId}/members`)
-      
+
       if (!response.ok) {
         throw new Error("Failed to load members")
       }

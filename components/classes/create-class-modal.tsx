@@ -52,6 +52,58 @@ export function CreateClassModal({
   const [allowStudentPosts, setAllowStudentPosts] = useState(true)
   const [allowComments, setAllowComments] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [uploadingIcon, setUploadingIcon] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingIcon(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) throw new Error('Upload failed')
+
+      const data = await response.json()
+      setIcon(data.url)
+    } catch (error) {
+      console.error('Failed to upload icon:', error)
+    } finally {
+      setUploadingIcon(false)
+    }
+  }
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingBanner(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) throw new Error('Upload failed')
+
+      const data = await response.json()
+      setBannerImage(data.url)
+    } catch (error) {
+      console.error('Failed to upload banner:', error)
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -130,25 +182,76 @@ export function CreateClassModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="icon">Class Icon URL (Optional)</Label>
+          <div className="space-y-2">
+            <Label htmlFor="icon">Class Icon (Optional)</Label>
+            <div className="flex gap-2">
               <Input
                 id="icon"
-                placeholder="https://..."
+                placeholder="https://... or upload"
                 value={icon}
                 onChange={(e) => setIcon(e.target.value)}
               />
+              <input
+                type="file"
+                id="iconFile"
+                accept="image/*"
+                onChange={(e) => handleIconUpload(e)}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('iconFile')?.click()}
+                disabled={uploadingIcon}
+              >
+                {uploadingIcon ? "Uploading..." : "Upload"}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="banner">Banner Image URL (Optional)</Label>
+            {icon && icon.startsWith('http') && (
+              <div className="mt-2 rounded-lg border overflow-hidden w-20 h-20">
+                <img
+                  src={icon}
+                  alt="Icon preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="banner">Banner Image (Optional)</Label>
+            <div className="flex gap-2">
               <Input
                 id="banner"
-                placeholder="https://..."
+                placeholder="https://... or upload"
                 value={bannerImage}
                 onChange={(e) => setBannerImage(e.target.value)}
               />
+              <input
+                type="file"
+                id="bannerFile"
+                accept="image/*"
+                onChange={(e) => handleBannerUpload(e)}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('bannerFile')?.click()}
+                disabled={uploadingBanner}
+              >
+                {uploadingBanner ? "Uploading..." : "Upload"}
+              </Button>
             </div>
+            {bannerImage && bannerImage.startsWith('http') && (
+              <div className="mt-2 rounded-lg border overflow-hidden">
+                <img
+                  src={bannerImage}
+                  alt="Banner preview"
+                  className="w-full h-32 object-cover"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

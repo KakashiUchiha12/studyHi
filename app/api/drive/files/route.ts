@@ -11,6 +11,10 @@ import {
   validateFileSize,
   isStorageLimitExceeded,
 } from '@/lib/drive/storage';
+import { validateSession } from '@/lib/drive/auth-validator';
+import { sanitizeTags, sanitizeName } from '@/lib/drive/sanitizer';
+import { DriveErrors } from '@/lib/drive/errors';
+import { checkRateLimit } from '@/lib/drive/rate-limiter';
 
 /**
  * GET /api/drive/files
@@ -117,29 +121,38 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Validate session
     const session = await getServerSession(authOptions);
-    const user = session?.user as any;
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = validateSession(session);
+
+    // Rate limit check
+    const rateLimit = checkRateLimit(user.id, 'fileUpload');
+    if (!rateLimit.allowed) {
+      const error = DriveErrors.rateLimitExceeded('file upload', rateLimit.resetTime!);
+      return NextResponse.json(error.toJSON(), { status: error.status });
     }
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const folderId = formData.get('folderId') as string | null;
     const tagsString = formData.get('tags') as string | null;
-    const parsedTags = tagsString ? JSON.parse(tagsString) : [];
+    const description = formData.get('description') as string | null;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      const error = DriveErrors.invalidInput('file', 'No file provided');
+      return NextResponse.json(error.toJSON(), { status: error.status });
     }
 
     // Validate file size
-    if (!validateFileSize(file.size)) {
-      return NextResponse.json(
-        { error: `File size exceeds limit of ${STORAGE_LIMITS.MAX_FILE_SIZE / 1024 / 1024}MB` },
-        { status: 400 }
-      );
+    const sizeValidation = validateFileSize(file.size);
+    if (!sizeValidation.valid) {
+      const error = DriveErrors.fileTooLarge(file.size, STORAGE_LIMITS.FILE_SIZE_LIMIT);
+      return NextResponse.json(error.toJSON(), { status: error.status });
     }
+
+    // Sanitize inputs
+    const sanitizedTags = sanitizeTags(tagsString || '[]');
+    const sanitizedName = sanitizeName(file.name);
 
     // Get user's drive
     const drive = await prisma.drive.findUnique({
@@ -147,17 +160,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (!drive) {
-      return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
+      const error = DriveErrors.driveNotFound();
+      return NextResponse.json(error.toJSON(), { status: error.status });
     }
 
-    const currentDrive = drive;
-
     // Check storage limits
-    if (isStorageLimitExceeded(currentDrive.storageUsed, currentDrive.storageLimit, file.size)) {
-      return NextResponse.json(
-        { error: 'Storage limit exceeded' },
-        { status: 402 }
+    if (isStorageLimitExceeded(drive.storageUsed, drive.storageLimit, file.size)) {
+      const error = DriveErrors.storageExceeded(
+        `${Number(drive.storageUsed) / 1024 / 1024}MB`,
+        `${Number(drive.storageLimit) / 1024 / 1024}MB`
       );
+      return NextResponse.json(error.toJSON(), { status: error.status });
     }
 
     // Create unique file name and path
@@ -199,62 +212,67 @@ export async function POST(request: NextRequest) {
       console.error('Failed to generate thumbnail during upload:', error);
     }
 
-    // Create database record
-    const newFile = await prisma.driveFile.create({
-      data: {
-        driveId: currentDrive.id,
-        folderId: folderId || null,
-        originalName: file.name,
-        storedName: fileName,
-        filePath: filePath.replace(/\\/g, '/'), // Use forward slashes
-        thumbnailPath,
-        fileSize: BigInt(file.size),
-        mimeType: file.type || 'application/octet-stream',
-        fileType: extension.slice(1).toUpperCase() || 'FILE',
-        fileHash: hash,
-        tags: JSON.stringify(parsedTags),
-      },
-      include: {
-        folder: {
-          select: {
-            id: true,
-            name: true,
-            path: true,
+    // Create database record and update storage in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create file record
+      const newFile = await tx.driveFile.create({
+        data: {
+          driveId: drive.id,
+          folderId: folderId || null,
+          originalName: file.name,
+          storedName: fileName,
+          filePath: filePath.replace(/\\/g, '/'), // Use forward slashes
+          thumbnailPath,
+          fileSize: BigInt(file.size),
+          mimeType: file.type || 'application/octet-stream',
+          fileType: extension.slice(1).toUpperCase() || 'FILE',
+          fileHash: hash,
+          tags: JSON.stringify(sanitizedTags),
+        },
+        include: {
+          folder: {
+            select: {
+              id: true,
+              name: true,
+              path: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // Update storage usage
-    await prisma.drive.update({
-      where: { id: currentDrive.id },
-      data: {
-        storageUsed: currentDrive.storageUsed + BigInt(file.size),
-      },
-    });
+      // Update storage usage atomically
+      await tx.drive.update({
+        where: { id: drive.id },
+        data: {
+          storageUsed: { increment: BigInt(file.size) },
+        },
+      });
 
-    // Create activity log
-    await prisma.driveActivity.create({
-      data: {
-        driveId: currentDrive.id,
-        userId: user.id,
-        action: 'upload',
-        targetType: 'file',
-        targetId: newFile.id,
-        targetName: file.name,
-        metadata: JSON.stringify({
-          fileSize: file.size,
-          mimeType: file.type,
-          folderId,
-        }),
-      },
+      // Create activity log
+      await tx.driveActivity.create({
+        data: {
+          driveId: drive.id,
+          userId: user.id,
+          action: 'upload',
+          targetType: 'file',
+          targetId: newFile.id,
+          targetName: file.name,
+          metadata: JSON.stringify({
+            fileSize: file.size,
+            mimeType: file.type,
+            folderId,
+          }),
+        },
+      });
+
+      return newFile;
     });
 
     return NextResponse.json({
       file: {
-        ...newFile,
-        fileSize: newFile.fileSize.toString(),
-        tags: parsedTags,
+        ...result,
+        fileSize: result.fileSize.toString(),
+        tags: sanitizedTags,
       },
     }, { status: 201 });
   } catch (error) {

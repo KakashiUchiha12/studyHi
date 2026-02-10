@@ -2,19 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
-import { isTeacherOrAdmin } from '@/lib/classes/permissions'
+import { isTeacherOrAdmin, canPinPosts } from '@/lib/classes/permissions'
 
 /**
- * PUT /api/classes/[id]/posts/[postId]/pin
  * Toggle pin status (admin/teacher only)
  */
-export async function PUT(
+async function togglePin(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; postId: string }> }
+  params: Promise<{ id: string; postId: string }> | { id: string; postId: string }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -23,11 +22,14 @@ export async function PUT(
     }
 
     const userId = (session.user as any).id
-    const { id: classId, postId } = await params
 
-    // Check if user is teacher or admin
+    // Handle both Promise and synchronous params (Next.js 15 compatibility)
+    const resolvedParams = params instanceof Promise ? await params : params
+    const { id: classId, postId } = resolvedParams
+
+    // Check if user has permission to pin posts
     const hasPermission = await isTeacherOrAdmin(classId, userId)
-    
+
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'Permission denied' },
@@ -38,6 +40,7 @@ export async function PUT(
     // Check if post exists
     const post = await dbService.getPrisma().classPost.findUnique({
       where: { id: postId },
+      select: { id: true, classId: true, pinned: true }
     })
 
     if (!post || post.classId !== classId) {
@@ -53,6 +56,22 @@ export async function PUT(
       data: {
         pinned: !post.pinned,
       },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true,
+            likes: true,
+          },
+        },
+      },
     })
 
     return NextResponse.json(updatedPost)
@@ -63,4 +82,18 @@ export async function PUT(
       { status: 500 }
     )
   }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; postId: string }> }
+) {
+  return togglePin(request, params)
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; postId: string }> }
+) {
+  return togglePin(request, params)
 }

@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -27,7 +27,7 @@ export async function GET(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -38,6 +38,7 @@ export async function GET(
     // Verify post belongs to class
     const post = await dbService.getPrisma().classPost.findUnique({
       where: { id: postId },
+      select: { id: true, classId: true }
     })
 
     if (!post || post.classId !== classId) {
@@ -49,7 +50,10 @@ export async function GET(
 
     // Get comments
     const comments = await dbService.getPrisma().postComment.findMany({
-      where: { postId },
+      where: {
+        postId,
+        parentId: null // Top-level comments
+      },
       include: {
         author: {
           select: {
@@ -59,13 +63,38 @@ export async function GET(
             image: true,
           },
         },
+        replies: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
       orderBy: {
         createdAt: 'asc',
       },
     })
 
-    return NextResponse.json(comments)
+    // Alias author to user for frontend compatibility if needed
+    const formattedComments = comments.map((comment: any) => ({
+      ...comment,
+      user: comment.author,
+      replies: comment.replies.map((reply: any) => ({
+        ...reply,
+        user: reply.author
+      }))
+    }))
+
+    return NextResponse.json(formattedComments)
   } catch (error) {
     console.error('Failed to fetch comments:', error)
     return NextResponse.json(
@@ -85,7 +114,7 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -98,7 +127,7 @@ export async function POST(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -146,6 +175,7 @@ export async function POST(
         postId,
         authorId: userId,
         content: body.content,
+        parentId: body.parentId || null,
       },
       include: {
         author: {
@@ -159,7 +189,12 @@ export async function POST(
       },
     })
 
-    return NextResponse.json(comment, { status: 201 })
+    const formattedComment = {
+      ...comment,
+      user: comment.author
+    }
+
+    return NextResponse.json(formattedComment, { status: 201 })
   } catch (error) {
     console.error('Failed to create comment:', error)
     return NextResponse.json(

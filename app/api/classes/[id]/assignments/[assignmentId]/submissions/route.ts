@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
-import { isTeacherOrAdmin } from '@/lib/classes/permissions'
+import { canViewSubmissions } from '@/lib/classes/permissions'
 
 /**
  * GET /api/classes/[id]/assignments/[assignmentId]/submissions
- * Get all submissions for an assignment (teacher/admin only)
+ * Get all submissions for an assignment (teacher only)
  */
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -25,9 +25,9 @@ export async function GET(
     const userId = (session.user as any).id
     const { id: classId, assignmentId } = await params
 
-    // Check if user is teacher or admin
-    const hasPermission = await isTeacherOrAdmin(classId, userId)
-    
+    // Check if user has permission to view submissions
+    const hasPermission = await canViewSubmissions(userId, classId)
+
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'Permission denied' },

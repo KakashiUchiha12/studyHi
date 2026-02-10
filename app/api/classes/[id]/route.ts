@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -25,17 +25,6 @@ export async function GET(
     const userId = (session.user as any).id
     const { id: classId } = await params
 
-    // Check if user is a member of the class
-    const isMember = await isClassMember(classId, userId)
-    
-    if (!isMember) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
-    }
-
-    // Get class details with related data
     const classData = await dbService.getPrisma().class.findUnique({
       where: { id: classId },
       include: {
@@ -67,6 +56,7 @@ export async function GET(
             posts: true,
             assignments: true,
             resources: true,
+            members: true,
           },
         },
       },
@@ -79,7 +69,20 @@ export async function GET(
       )
     }
 
-    // Get user's role in the class
+    // Check if user is a member
+    const isMember = await isClassMember(classId, userId)
+
+    // If not a member and class is private, deny access
+    if (!isMember && classData.isPrivate) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
+    }
+
+    // Get user's role in the class if they are a member
+    // Note: classData.members only includes 'approved' members, so we might need to query separately if we want to show pending status
+    // But for now, we rely on the `isClassMember` check which checks for approved status.
     const userMember = classData.members.find((m) => m.userId === userId)
 
     return NextResponse.json({
@@ -96,16 +99,15 @@ export async function GET(
 }
 
 /**
- * PUT /api/classes/[id]
- * Update class details (admin only)
+ * Update class details (Unified for PUT and PATCH)
  */
-export async function PUT(
+async function updateClass(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  params: Promise<{ id: string }>
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -118,7 +120,7 @@ export async function PUT(
 
     // Check if user is admin
     const isAdmin = await isClassAdmin(classId, userId)
-    
+
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -128,14 +130,20 @@ export async function PUT(
 
     const body = await request.json()
 
-    // Update class
+    // Update class with all possible fields from both branches
     const updatedClass = await dbService.getPrisma().class.update({
       where: { id: classId },
       data: {
         name: body.name,
         description: body.description,
         syllabus: body.syllabus,
+        subject: body.subject,
+        schedule: body.schedule,
+        room: body.room,
         coverImage: body.coverImage,
+        bannerImage: body.bannerImage || body.banner,
+        icon: body.icon,
+        isPrivate: body.isPrivate,
         allowStudentPosts: body.allowStudentPosts,
         allowComments: body.allowComments,
         archived: body.archived,
@@ -162,6 +170,20 @@ export async function PUT(
   }
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return updateClass(request, params)
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return updateClass(request, params)
+}
+
 /**
  * DELETE /api/classes/[id]
  * Delete a class (admin only)
@@ -172,7 +194,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -185,7 +207,7 @@ export async function DELETE(
 
     // Check if user is admin
     const isAdmin = await isClassAdmin(classId, userId)
-    
+
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },

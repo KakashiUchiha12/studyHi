@@ -74,12 +74,14 @@ export function shouldResetBandwidth(bandwidthReset: Date): boolean {
 }
 
 /**
- * Get next bandwidth reset time (24 hours from now)
+ * Get next bandwidth reset time (daily at midnight UTC)
  */
 export function getNextBandwidthReset(): Date {
-  const now = new Date();
-  now.setHours(now.getHours() + 24);
-  return now;
+  const now = new Date()
+  const tomorrow = new Date(now)
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+  tomorrow.setUTCHours(0, 0, 0, 0) // Midnight UTC
+  return tomorrow
 }
 
 /**

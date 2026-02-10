@@ -3,7 +3,9 @@
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Send } from "lucide-react";
+import { Plus, Send, X, Image as ImageIcon, FileText, Video } from "lucide-react";
+import { useState, useRef } from "react";
+import { toast } from "sonner";
 
 import {
     Form,
@@ -15,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface ChatInputProps {
-    socket?: any; // Made optional as we might use API
+    socket?: any;
     apiUrl: string;
     query: Record<string, any>;
     name: string;
@@ -23,7 +25,7 @@ interface ChatInputProps {
 }
 
 const formSchema = z.object({
-    content: z.string().min(1),
+    content: z.string(),
 });
 
 import { useSocket } from "@/components/providers/socket-provider";
@@ -36,6 +38,11 @@ export const ChatInput = ({
     type,
     member
 }: ChatInputProps & { member: any }) => {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -43,29 +50,88 @@ export const ChatInput = ({
         },
     });
 
-    const { isConnected } = useSocket(); // Get connection status
+    const { isConnected } = useSocket();
+    const isLoading = form.formState.isSubmitting || uploading;
 
-    const isLoading = form.formState.isSubmitting;
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error("File size must be less than 10MB");
+            return;
+        }
+
+        setSelectedFile(file);
+
+        // Create preview for images and videos
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFilePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+            const url = URL.createObjectURL(file);
+            setFilePreview(url);
+        } else {
+            setFilePreview(null);
+        }
+    };
+
+    const clearFile = () => {
+        setSelectedFile(null);
+        setFilePreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
+            // Require either content or file
+            if (!values.content.trim() && !selectedFile) {
+                return;
+            }
+
+            let fileUrl = null;
+
+            // Upload file first if selected
+            if (selectedFile) {
+                setUploading(true);
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadRes.ok) {
+                    setUploading(false);
+                    throw new Error('File upload failed');
+                }
+
+                const uploadData = await uploadRes.json();
+                fileUrl = uploadData.url;
+                setUploading(false);
+            }
+
             const payload = {
-                content: values.content,
+                content: values.content.trim() || (selectedFile ? `Sent a file: ${selectedFile.name}` : ''),
                 senderId: (member as any)?.id,
-                ...query // Contains channelId or receiverId
+                fileUrl: fileUrl,
+                fileType: selectedFile?.type || null,
+                fileName: selectedFile?.name || null,
+                ...query
             };
 
             if (socket) {
-                // Use socket for real-time sending (and saving via server.ts)
                 socket.emit("send-message", payload);
                 form.reset();
+                clearFile();
             } else {
-                // Fallback to API if socket not connected (though server.ts handles saving, 
-                // we might want an http route as backup? For now, let's try to rely on socket or show error).
-                // Since our API route /api/messages was questionable, let's stick to socket for now 
-                // or assume an http route exists if we really need it.
-                // But given the task is to fix messaging and we know server.ts handles it:
-
                 await fetch("/api/messages", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -73,43 +139,102 @@ export const ChatInput = ({
                 });
 
                 form.reset();
+                clearFile();
             }
         } catch (error) {
             console.error("ChatInput Error", error);
-            // alert("Failed to send message");
+            toast.error("Failed to send message");
+            setUploading(false);
         }
     }
 
     return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-                <FormField
-                    control={form.control}
-                    name="content"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormControl>
-                                <div className="relative p-4 pb-6">
-                                    <div className="absolute top-7 left-8">
-                                        <Plus className="h-[24px] w-[24px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition" />
-                                    </div>
-                                    <Input
-                                        disabled={isLoading}
-                                        className="px-14 py-6 bg-zinc-200/90 dark:bg-zinc-700/75 border-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-zinc-600 dark:text-zinc-200"
-                                        placeholder={`Message ${type === "conversation" ? name : "#" + name}`}
-                                        {...field}
-                                    />
-                                    <div className="absolute top-7 right-8">
-                                        <Button disabled={isLoading} size="icon" variant="ghost">
-                                            <Send className="h-6 w-6 text-zinc-500 dark:text-zinc-400" />
+        <div className="border-t bg-card">
+            {/* File Preview */}
+            {selectedFile && (
+                <div className="p-3 border-b bg-muted/50">
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            {selectedFile.type.startsWith('image/') && filePreview ? (
+                                <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-border">
+                                    <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                                </div>
+                            ) : selectedFile.type.startsWith('video/') && filePreview ? (
+                                <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-border">
+                                    <video src={filePreview} className="w-full h-full object-cover" />
+                                </div>
+                            ) : (
+                                <div className="w-16 h-16 rounded-lg border-2 border-border bg-muted flex items-center justify-center">
+                                    <FileText className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {(selectedFile.size / 1024).toFixed(2)} KB
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearFile}
+                            className="shrink-0"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <FormField
+                        control={form.control}
+                        name="content"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormControl>
+                                    <div className="relative p-3 sm:p-4">
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*,video/*,application/pdf,.doc,.docx,.txt"
+                                            onChange={handleFileSelect}
+                                            className="hidden"
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-10"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={isLoading}
+                                        >
+                                            <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground hover:text-foreground transition" />
+                                        </Button>
+                                        <Input
+                                            disabled={isLoading}
+                                            className="px-12 sm:px-14 py-5 sm:py-6 bg-muted/50 border-none ring-0 focus-visible:ring-1 focus-visible:ring-ring text-sm sm:text-base"
+                                            placeholder={uploading ? "Uploading..." : `Message ${type === "conversation" ? name : "#" + name}`}
+                                            {...field}
+                                        />
+                                        <Button
+                                            disabled={isLoading || (!field.value && !selectedFile)}
+                                            size="icon"
+                                            variant="ghost"
+                                            className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2"
+                                        >
+                                            <Send className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground hover:text-primary transition" />
                                         </Button>
                                     </div>
-                                </div>
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-            </form>
-        </Form>
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                </form>
+            </Form>
+        </div>
     )
 }

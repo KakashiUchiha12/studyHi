@@ -41,7 +41,7 @@ export default function ClassesPage() {
     try {
       setLoading(true)
       const response = await fetch("/api/classes")
-      
+
       if (!response.ok) {
         throw new Error("Failed to load classes")
       }
@@ -88,7 +88,7 @@ export default function ClassesPage() {
   const handleJoinClass = async (code: string) => {
     try {
       const previewResponse = await fetch(`/api/classes/join/${code}`)
-      
+
       if (!previewResponse.ok) {
         if (previewResponse.status === 404) {
           throw new Error("Invalid join code")
@@ -143,64 +143,71 @@ export default function ClassesPage() {
 
   const filteredClasses = classes.filter((cls) =>
     cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (cls.description && cls.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    (cls.description && cls.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    ((cls as any).subject && (cls as any).subject.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center space-x-4">
+      <header className="border-b border-border bg-card sticky top-0 z-10">
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+          <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Dashboard
+                <Button variant="ghost" size="sm" className="px-2 sm:px-3">
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-2">Dashboard</span>
                 </Button>
               </Link>
-              <div className="flex items-center space-x-2">
-                <BookOpen className="h-6 w-6 text-primary" />
-                <span className="text-xl font-bold text-foreground">Classes</span>
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <span className="text-lg sm:text-xl font-bold text-foreground">Classes</span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setJoinModalOpen(true)}
+                className="px-2 sm:px-4"
               >
-                <Users className="h-4 w-4 mr-2" />
-                Join Class
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Join</span>
               </Button>
-              <Button onClick={() => setCreateModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Class
+              <Button
+                size="sm"
+                onClick={() => setCreateModalOpen(true)}
+                className="px-2 sm:px-4"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Create</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mb-4 sm:mb-8 space-y-3 sm:space-y-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">My Classes</h1>
-            <p className="mt-2 text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">My Classes</h1>
+            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground">
               Manage your classes, assignments, and collaborate with classmates
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="relative flex-1 sm:flex-initial">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search classes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 pl-10"
+                className="w-full sm:w-64 pl-10"
               />
             </div>
-            <Badge variant="secondary" className="text-sm">
-              {classes.length} classes
+            <Badge variant="secondary" className="py-1.5 self-start sm:self-auto">
+              {filteredClasses.length} {filteredClasses.length === 1 ? 'class' : 'classes'}
             </Badge>
           </div>
         </div>
@@ -217,31 +224,31 @@ export default function ClassesPage() {
             ))}
           </div>
         ) : filteredClasses.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-card">
-            <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {searchQuery ? "No classes found" : "No Classes Yet"}
+          <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center px-4">
+            <FolderOpen className="h-16 w-16 sm:h-20 sm:w-20 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold mb-2">
+              {searchQuery ? 'No classes found' : 'No classes yet'}
             </h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm sm:text-base text-muted-foreground mb-6 max-w-md">
               {searchQuery
-                ? "Try adjusting your search terms"
-                : "Create a class to get started or join an existing class with a code"}
+                ? `No classes match "${searchQuery}". Try a different search term.`
+                : 'Get started by creating your first class or join an existing one.'}
             </p>
             {!searchQuery && (
-              <div className="flex items-center justify-center gap-2">
-                <Button onClick={() => setCreateModalOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button onClick={() => setCreateModalOpen(true)} size="lg">
+                  <Plus className="h-5 w-5 mr-2" />
                   Create Class
                 </Button>
-                <Button variant="outline" onClick={() => setJoinModalOpen(true)}>
-                  <Users className="h-4 w-4 mr-2" />
+                <Button onClick={() => setJoinModalOpen(true)} variant="outline" size="lg">
+                  <Users className="h-5 w-5 mr-2" />
                   Join Class
                 </Button>
               </div>
             )}
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredClasses.map((cls) => (
               <ClassCard key={cls.id} classData={cls} />
             ))}

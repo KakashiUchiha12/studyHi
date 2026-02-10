@@ -13,7 +13,9 @@ export interface Class {
   id: string
   name: string
   description: string | null
+  subject: string | null
   syllabus: string | null
+  room: string | null
   coverImage: string | null
   icon: string | null
   bannerImage: string | null

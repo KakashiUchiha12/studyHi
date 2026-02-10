@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
-import { isClassMember, isTeacherOrAdmin } from '@/lib/classes/permissions'
+import { isClassMember, canViewSubmissions } from '@/lib/classes/permissions'
 
 /**
  * GET /api/classes/[id]/assignments/[assignmentId]/submissions/[submissionId]
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -27,7 +27,7 @@ export async function GET(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -78,10 +78,10 @@ export async function GET(
     }
 
     // Check permission - students can only see their own submissions
-    const isTeacherAdmin = await isTeacherOrAdmin(classId, userId)
+    const isTeacher = await canViewSubmissions(userId, classId)
     const isOwner = submission.studentId === userId
 
-    if (!isTeacherAdmin && !isOwner) {
+    if (!isTeacher && !isOwner) {
       return NextResponse.json(
         { error: 'Permission denied' },
         { status: 403 }

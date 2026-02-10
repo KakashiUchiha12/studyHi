@@ -41,7 +41,7 @@ export function AssignmentsTab({ classId, userRole }: AssignmentsTabProps) {
     try {
       setLoading(true)
       const response = await fetch(`/api/classes/${classId}/assignments`)
-      
+
       if (!response.ok) {
         throw new Error("Failed to load assignments")
       }
@@ -61,6 +61,7 @@ export function AssignmentsTab({ classId, userRole }: AssignmentsTabProps) {
     description: string
     dueDate: string
     allowLateSubmission: boolean
+    attachments?: any[]
   }) => {
     try {
       const response = await fetch(`/api/classes/${classId}/assignments`, {
@@ -84,14 +85,14 @@ export function AssignmentsTab({ classId, userRole }: AssignmentsTabProps) {
 
   const filteredAssignments = assignments.filter((assignment) => {
     if (filter === "all") return true
-    
+
     const hasSubmission = assignment.userSubmission !== undefined
     const isLate = new Date() > new Date(assignment.dueDate)
-    
+
     if (filter === "todo") return !hasSubmission && !isLate
     if (filter === "done") return hasSubmission
     if (filter === "late") return !hasSubmission && isLate
-    
+
     return true
   })
 
@@ -135,8 +136,8 @@ export function AssignmentsTab({ classId, userRole }: AssignmentsTabProps) {
       {filteredAssignments.length === 0 ? (
         <div className="text-center py-12 border rounded-lg bg-card">
           <p className="text-muted-foreground">
-            {filter === "all" 
-              ? "No assignments yet" 
+            {filter === "all"
+              ? "No assignments yet"
               : `No ${filter} assignments`}
           </p>
         </div>

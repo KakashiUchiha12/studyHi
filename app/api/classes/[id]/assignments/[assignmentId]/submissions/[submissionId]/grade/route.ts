@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
-import { isTeacherOrAdmin } from '@/lib/classes/permissions'
+import { canGradeAssignments } from '@/lib/classes/permissions'
 
 /**
  * PUT /api/classes/[id]/assignments/[assignmentId]/submissions/[submissionId]/grade
- * Grade a submission (teacher/admin only)
+ * Grade a submission (teacher only)
  */
 export async function PUT(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -25,9 +25,9 @@ export async function PUT(
     const userId = (session.user as any).id
     const { id: classId, assignmentId, submissionId } = await params
 
-    // Check if user is teacher or admin
-    const hasPermission = await isTeacherOrAdmin(classId, userId)
-    
+    // Check if user has permission to grade assignments
+    const hasPermission = await canGradeAssignments(userId, classId)
+
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'Permission denied' },

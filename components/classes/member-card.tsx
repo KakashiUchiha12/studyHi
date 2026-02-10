@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
@@ -38,16 +39,23 @@ export function MemberCard({ member, isAdmin, onRemove, onChangeRole }: MemberCa
   return (
     <div className="flex items-center justify-between p-3 bg-card border rounded-lg hover:bg-accent/50 transition-colors">
       <div className="flex items-center space-x-3">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={member.user?.image || undefined} />
-          <AvatarFallback>
-            {member.user?.name?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <p className="font-medium">{member.user?.name || 'Unknown'}</p>
-          <p className="text-sm text-muted-foreground">{member.user?.email}</p>
-        </div>
+        <Link
+          href={`/profile/${member.userId}`}
+          className="flex items-center space-x-3 group"
+        >
+          <Avatar className="h-10 w-10 transition-opacity group-hover:opacity-80">
+            <AvatarImage src={member.user?.image || undefined} />
+            <AvatarFallback>
+              {member.user?.name?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="font-medium group-hover:text-primary transition-colors truncate">
+              {member.user?.name || 'Unknown'}
+            </p>
+            <p className="text-sm text-muted-foreground truncate">{member.user?.email}</p>
+          </div>
+        </Link>
       </div>
 
       <div className="flex items-center gap-2">
@@ -56,7 +64,7 @@ export function MemberCard({ member, isAdmin, onRemove, onChangeRole }: MemberCa
           {member.role.toUpperCase()}
         </Badge>
 
-        {isAdmin && member.role !== 'admin' && (
+        {isAdmin && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">
@@ -80,7 +88,7 @@ export function MemberCard({ member, isAdmin, onRemove, onChangeRole }: MemberCa
                 <Shield className="h-4 w-4 mr-2" />
                 Make Admin
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => onRemove(member.userId)}
                 className="text-destructive"
               >

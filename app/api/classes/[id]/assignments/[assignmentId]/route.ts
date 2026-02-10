@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -27,7 +27,7 @@ export async function GET(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -50,6 +50,11 @@ export async function GET(
         _count: {
           select: {
             submissions: true,
+          },
+        },
+        post: {
+          select: {
+            attachments: true,
           },
         },
       },
@@ -82,7 +87,7 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -95,7 +100,7 @@ export async function PUT(
 
     // Check if user is teacher or admin
     const hasPermission = await isTeacherOrAdmin(classId, userId)
-    
+
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'Permission denied' },
@@ -117,29 +122,59 @@ export async function PUT(
 
     const body = await request.json()
 
-    // Update assignment
-    const updatedAssignment = await dbService.getPrisma().assignment.update({
-      where: { id: assignmentId },
-      data: {
-        title: body.title,
-        description: body.description,
-        dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
-        allowLateSubmission: body.allowLateSubmission,
-        maxFileSize: body.maxFileSize ? BigInt(body.maxFileSize) : undefined,
-      },
-      include: {
-        teacher: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
+    // Update assignment and linked post in a transaction
+    const updatedAssignment = await dbService.getPrisma().$transaction(async (tx) => {
+      // Find the assignment first to get its postId
+      const existingAssignment = await tx.assignment.findUnique({
+        where: { id: assignmentId },
+        select: { postId: true }
+      })
+
+      if (!existingAssignment) throw new Error('Assignment not found')
+
+      // 1. Update the ClassPost
+      if (existingAssignment.postId) {
+        await tx.classPost.update({
+          where: { id: existingAssignment.postId },
+          data: {
+            title: body.title,
+            content: body.description,
+            attachments: body.attachments ? JSON.stringify(body.attachments) : undefined,
+          }
+        })
+      }
+
+      // 2. Update the Assignment
+      return await tx.assignment.update({
+        where: { id: assignmentId },
+        data: {
+          title: body.title,
+          description: body.description,
+          dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+          allowLateSubmission: body.allowLateSubmission,
+          maxFileSize: body.maxFileSize ? BigInt(body.maxFileSize) : undefined,
+        },
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            },
           },
         },
-      },
+      })
     })
 
-    return NextResponse.json(updatedAssignment)
+    // Format BigInt for JSON response
+    const responseData = {
+      ...updatedAssignment,
+      maxFileSize: Number(updatedAssignment.maxFileSize),
+      user: updatedAssignment.teacher
+    }
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Failed to update assignment:', error)
     return NextResponse.json(
@@ -159,7 +194,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -172,7 +207,7 @@ export async function DELETE(
 
     // Check if user is teacher or admin
     const hasPermission = await isTeacherOrAdmin(classId, userId)
-    
+
     if (!hasPermission) {
       return NextResponse.json(
         { error: 'Permission denied' },
