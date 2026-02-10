@@ -105,25 +105,3 @@ export function shouldPermanentlyDelete(deletedAt: Date): boolean {
   const daysSinceDeleted = Math.floor((now.getTime() - deletedAt.getTime()) / (1000 * 60 * 60 * 24));
   return daysSinceDeleted >= STORAGE_LIMITS.TRASH_RETENTION_DAYS;
 }
-
-/**
- * Validate file size
- */
-export function validateFileSize(size: number): { valid: boolean; error?: string } {
-  if (size > STORAGE_LIMITS.FILE_SIZE_LIMIT) {
-    return {
-      valid: false,
-      error: `File size exceeds the maximum limit of ${formatBytes(STORAGE_LIMITS.FILE_SIZE_LIMIT)}`,
-    };
-  }
-  return { valid: true };
-}
-
-/**
- * Check if item should be permanently deleted from trash
- */
-export function shouldPermanentlyDelete(deletedAt: Date): boolean {
-  const now = new Date();
-  const daysSinceDeleted = Math.floor((now.getTime() - deletedAt.getTime()) / (1000 * 60 * 60 * 24));
-  return daysSinceDeleted >= STORAGE_LIMITS.TRASH_RETENTION_DAYS;
-}
