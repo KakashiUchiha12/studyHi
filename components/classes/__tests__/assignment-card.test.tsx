@@ -137,6 +137,8 @@ describe('AssignmentCard', () => {
                 isLate: false,
                 grade: null,
                 feedback: null,
+                gradedAt: null,
+                gradedBy: null,
             },
         }
 
@@ -164,6 +166,8 @@ describe('AssignmentCard', () => {
                 isLate: false,
                 grade: 85,
                 feedback: 'Good work',
+                gradedAt: new Date().toISOString(),
+                gradedBy: 'teacher-1',
             },
         }
 

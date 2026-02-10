@@ -10,6 +10,7 @@ export async function GET(
     try {
         const session = await getServerSession(authOptions);
         const { id: userId } = await params;
+        const currentUserId = (session?.user as any)?.id;
 
         if (!userId) {
             return new NextResponse("User ID required", { status: 400 });
@@ -57,23 +58,16 @@ export async function GET(
         }
 
         let isFollowing = false;
-        if (session?.user?.email) {
-            const currentUser = await prisma.user.findUnique({
-                where: { email: session.user.email },
-                select: { id: true }
-            });
-
-            if (currentUser) {
-                const follow = await prisma.follows.findUnique({
-                    where: {
-                        followerId_followingId: {
-                            followerId: currentUser.id,
-                            followingId: user.id
-                        }
+        if (currentUserId) {
+            const follow = await prisma.follows.findUnique({
+                where: {
+                    followerId_followingId: {
+                        followerId: currentUserId,
+                        followingId: user.id
                     }
-                });
-                isFollowing = !!follow;
-            }
+                }
+            });
+            isFollowing = !!follow;
         }
 
         return NextResponse.json({

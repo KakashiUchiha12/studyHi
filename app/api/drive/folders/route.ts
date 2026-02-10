@@ -15,8 +15,8 @@ import { checkRateLimit } from '@/lib/drive/rate-limiter';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const user = session?.user as any;
-    if (!user?.id) {
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's drive
     const drive = await prisma.drive.findUnique({
-      where: { userId: user.id },
+      where: { userId },
     });
 
     if (!drive) {
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     if (!parentId || parentId === '') {
       const subjects = await prisma.subject.findMany({
         where: {
-          userId: user.id,
+          userId,
           driveFolders: {
             none: { driveId: drive.id, deletedAt: null }
           }
@@ -78,7 +78,6 @@ export async function GET(request: NextRequest) {
                 data: { deletedAt: null }
               });
             }
-            // Otherwise it already exists, skip
           } else {
             // Create new folder
             await prisma.driveFolder.create({
@@ -98,11 +97,7 @@ export async function GET(request: NextRequest) {
     // Get folders with pagination
     const [folders, total] = await Promise.all([
       prisma.driveFolder.findMany({
-        where: {
-          ...where,
-          // If at root, we also want to explicitly include subject folders 
-          // even if they were just created above
-        },
+        where,
         include: {
           parent: {
             select: {
@@ -115,6 +110,18 @@ export async function GET(request: NextRequest) {
             select: {
               files: { where: { deletedAt: null } },
               children: { where: { deletedAt: null } },
+            },
+          },
+          files: {
+            where: { deletedAt: null },
+            select: {
+              id: true,
+              originalName: true,
+              fileSize: true,
+              mimeType: true,
+              fileType: true,
+              isPublic: true,
+              createdAt: true,
             },
           },
           subject: {
@@ -132,12 +139,14 @@ export async function GET(request: NextRequest) {
       prisma.driveFolder.count({ where }),
     ]);
 
-    // Add folderType and format response
+    // Format response and handle BigInt
     const formattedFolders = folders.map(folder => ({
       ...folder,
       folderType: folder.subjectId ? 'subject' : 'regular',
-      // Ensure compatible structure for UI
-      files: [] // No need to return nested files here as they are fetched separately
+      files: folder.files.map(file => ({
+        ...file,
+        fileSize: file.fileSize.toString(),
+      }))
     }));
 
     return NextResponse.json({
@@ -165,8 +174,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const user = session?.user as any;
-    if (!user?.id) {
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -181,32 +190,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's drive
-    const drive = await prisma.drive.findUnique({
-      where: { userId: user.id },
+    let drive = await prisma.drive.findUnique({
+      where: { userId },
     });
 
     if (!drive) {
       // Create drive if it doesn't exist
-      const newDrive = await prisma.drive.create({
+      drive = await prisma.drive.create({
         data: {
-          userId: user.id,
+          userId,
         },
       });
 
-      if (!newDrive) {
+      if (!drive) {
         return NextResponse.json(
           { error: 'Failed to create drive' },
           { status: 500 }
         );
       }
-    }
-
-    const currentDrive = drive || await prisma.drive.findUnique({
-      where: { userId: user.id },
-    });
-
-    if (!currentDrive) {
-      return NextResponse.json({ error: 'Drive not found' }, { status: 404 });
     }
 
     // Verify parent folder exists and belongs to user
@@ -215,7 +216,7 @@ export async function POST(request: NextRequest) {
       const parentFolder = await prisma.driveFolder.findFirst({
         where: {
           id: parentId,
-          driveId: currentDrive.id,
+          driveId: drive.id,
           deletedAt: null,
         },
       });
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest) {
     // Check if folder with same name already exists in parent
     const existingFolder = await prisma.driveFolder.findFirst({
       where: {
-        driveId: currentDrive.id,
+        driveId: drive.id,
         parentId: parentId || null,
         name,
         deletedAt: null,
@@ -251,7 +252,7 @@ export async function POST(request: NextRequest) {
       const subject = await prisma.subject.findFirst({
         where: {
           id: subjectId,
-          userId: user.id,
+          userId,
         },
       });
 
@@ -270,7 +271,7 @@ export async function POST(request: NextRequest) {
     // Create folder
     const newFolder = await prisma.driveFolder.create({
       data: {
-        driveId: currentDrive.id,
+        driveId: drive.id,
         parentId: parentId || null,
         name: folderName,
         path: folderPath,
@@ -297,8 +298,8 @@ export async function POST(request: NextRequest) {
     // Create activity log
     await prisma.driveActivity.create({
       data: {
-        driveId: currentDrive.id,
-        userId: user.id,
+        driveId: drive.id,
+        userId,
         action: 'upload',
         targetType: 'folder',
         targetId: newFolder.id,

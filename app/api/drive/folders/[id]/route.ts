@@ -15,8 +15,8 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const user = session?.user as any;
-    if (!user?.id) {
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -38,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
     }
 
-    if (folder.drive.userId !== user.id) {
+    if (folder.drive.userId !== userId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -81,8 +81,8 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const user = session?.user as any;
-    if (!user?.id) {
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -114,7 +114,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
     }
 
-    if (folder.drive.userId !== user.id) {
+    if (folder.drive.userId !== userId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -185,7 +185,7 @@ export async function PUT(
     await prisma.driveActivity.create({
       data: {
         driveId: folder.driveId,
-        userId: user.id,
+        userId,
         action: 'rename',
         targetType: 'folder',
         targetId: folderId,
@@ -219,8 +219,8 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const user = session?.user as any;
-    if (!user?.id) {
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -245,7 +245,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
     }
 
-    if (folder.drive.userId !== user.id) {
+    if (folder.drive.userId !== userId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -285,7 +285,7 @@ export async function DELETE(
       await prisma.driveActivity.create({
         data: {
           driveId: folder.driveId,
-          userId: user.id,
+          userId,
           action: 'delete',
           targetType: 'folder',
           targetId: folderId,
@@ -335,7 +335,7 @@ export async function DELETE(
       await prisma.driveActivity.create({
         data: {
           driveId: folder.driveId,
-          userId: user.id,
+          userId,
           action: 'delete',
           targetType: 'folder',
           targetId: folderId,
@@ -359,6 +359,73 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+/**
+ * Helper function to update all children paths recursively
+ */
+async function updateChildrenPaths(
+  folderId: string,
+  oldPath: string,
+  newPath: string
+): Promise<void> {
+  const children = await prisma.driveFolder.findMany({
+    where: {
+      parentId: folderId,
+      deletedAt: null,
+    },
+  });
+
+  for (const child of children) {
+    const updatedChildPath = child.path.replace(oldPath, newPath);
+
+    await prisma.driveFolder.update({
+      where: { id: child.id },
+      data: { path: updatedChildPath },
+    });
+
+    // Recursively update grandchildren
+    await updateChildrenPaths(child.id, child.path, updatedChildPath);
+  }
+}
+
+/**
+ * Helper function to get all files in folder and subfolders
+ */
+async function getAllFilesInFolder(folderId: string) {
+  const subfolders = await getAllSubfolders(folderId);
+  const folderIds = [folderId, ...subfolders.map(f => f.id)];
+
+  return await prisma.driveFile.findMany({
+    where: {
+      folderId: { in: folderIds },
+    },
+    select: {
+      id: true,
+      filePath: true,
+      fileSize: true,
+    },
+  });
+}
+
+/**
+ * Helper function to get all subfolders recursively
+ */
+async function getAllSubfolders(folderId: string): Promise<any[]> {
+  const directChildren = await prisma.driveFolder.findMany({
+    where: {
+      parentId: folderId,
+    },
+  });
+
+  const allSubfolders = [...directChildren];
+
+  for (const child of directChildren) {
+    const grandChildren = await getAllSubfolders(child.id);
+    allSubfolders.push(...grandChildren);
+  }
+
+  return allSubfolders;
 }
 
 /**

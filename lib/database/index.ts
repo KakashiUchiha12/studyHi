@@ -24,7 +24,6 @@ export type { CreateStudySessionData, UpdateStudySessionData } from './study-ses
 export type { CreateTestMarkData, UpdateTestMarkData } from './test-mark-service'
 export type { MigrationResult } from './migration-utility'
 
-// New Profile Management Types
 export type {
   CreateProfileData,
   UpdateProfileData

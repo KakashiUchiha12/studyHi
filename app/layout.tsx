@@ -48,10 +48,10 @@ export default function RootLayout({
                   <Analytics />
                 </ThemeProvider>
               </SocketProvider>
-            </ReactQueryProvider>
-          </AuthSessionProvider>
-        </ErrorBoundary>
-      </body>
-    </html>
+            </ReactQueryProvider >
+          </AuthSessionProvider >
+        </ErrorBoundary >
+      </body >
+    </html >
   )
 }

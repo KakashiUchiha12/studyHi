@@ -1252,8 +1252,6 @@ export function SubjectDetailDialog({
                 </Button>
               </div>
 
-
-
               {filteredMaterials.length > 0 ? (
                 <div className="space-y-3">
                   {filteredMaterials.map((material, index) => (
@@ -1309,10 +1307,8 @@ export function SubjectDetailDialog({
 
                       {/* Display files */}
                       {(() => {
-                        // Get files using the utility function
                         const { files, links } = parseMaterialContent(material.content || '')
 
-                        // Handle backward compatibility for old fileUrl format
                         if (files.length === 0 && material.fileUrl) {
                           const convertedFiles = [{
                             id: material.id,
@@ -1322,28 +1318,15 @@ export function SubjectDetailDialog({
                             type: material.type || 'application/octet-stream',
                             uploadedAt: material.createdAt || new Date().toISOString()
                           }]
-                          console.log('Converted old fileUrl format to files:', convertedFiles.length)
                           return (
                             <div className="space-y-2">
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Files: {convertedFiles.length} file(s)
-                              </p>
-                              {convertedFiles.map((file: any, index: number) => (
-                                <div
-                                  key={file.id}
-                                  className="bg-muted/50 rounded-md p-3 transition-all"
-                                >
+                              {convertedFiles.map((file: any) => (
+                                <div key={file.id} className="bg-muted/50 rounded-md p-3">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
-                                      {/* Show thumbnail if available */}
                                       <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
-                                        {/* For images, show the actual image as thumbnail */}
                                         {file.type.startsWith('image/') ? (
-                                          <img
-                                            src={file.url}
-                                            alt="File thumbnail"
-                                            className="w-full h-full object-cover"
-                                          />
+                                          <img src={file.url} alt="Thumbnail" className="w-full h-full object-cover" />
                                         ) : file.type === 'application/pdf' ? (
                                           <FileText className="h-8 w-8 text-red-500" />
                                         ) : (
@@ -1352,32 +1335,12 @@ export function SubjectDetailDialog({
                                       </div>
                                       <div>
                                         <p className="text-sm font-medium">{file.name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {new Date(file.uploadedAt).toLocaleDateString()}
-                                        </p>
+                                        <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                                       </div>
                                     </div>
                                     <div className="flex items-center space-x-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          setPreviewFile(file)
-                                          setIsPreviewOpen(true)
-                                        }}
-                                      >
-                                        <Eye className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}
-                                      >
-                                        <Download className="h-3 w-3" />
-                                      </Button>
+                                      <Button variant="ghost" size="sm" onClick={() => { setPreviewFile(file); setIsPreviewOpen(true); }}><Eye className="h-3 w-3" /></Button>
+                                      <Button variant="ghost" size="sm" onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}><Download className="h-3 w-3" /></Button>
                                     </div>
                                   </div>
                                 </div>
@@ -1390,9 +1353,6 @@ export function SubjectDetailDialog({
 
                         return (
                           <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Files: {files.length} file(s)
-                            </p>
                             {files.map((file: any, index: number) => (
                               <div
                                 key={file.id}
@@ -1407,24 +1367,16 @@ export function SubjectDetailDialog({
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center space-x-3">
-                                    {/* Drag handle */}
                                     <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
                                       <GripVertical className="h-3 w-3 text-muted-foreground transition-opacity" />
                                     </div>
-
-                                    {/* Show thumbnail if available */}
                                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
-                                      {/* Show thumbnail if available, otherwise generic icon */}
                                       {file.thumbnailUrl || (file.type.startsWith('image/') && file.url) ? (
                                         <img
                                           src={file.thumbnailUrl || file.url}
-                                          alt="File thumbnail"
+                                          alt="Thumbnail"
                                           className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            // Fallback if thumbnail fails to load
-                                            (e.target as HTMLImageElement).style.display = 'none';
-                                            (e.target as HTMLImageElement).parentElement?.classList.add('flex-col');
-                                          }}
+                                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                         />
                                       ) : file.type === 'application/pdf' ? (
                                         <FileText className="h-8 w-8 text-red-500" />
@@ -1438,72 +1390,26 @@ export function SubjectDetailDialog({
                                           value={editingFileNameText}
                                           onChange={(e) => setEditingFileNameText(e.target.value)}
                                           onKeyPress={(e) => {
-                                            if (e.key === "Enter") {
-                                              updateFileName(material.id, file.id, editingFileNameText)
-                                              setEditingFileName(null)
-                                            }
-                                            if (e.key === "Escape") setEditingFileName(null)
+                                            if (e.key === "Enter") { updateFileName(material.id, file.id, editingFileNameText); setEditingFileName(null); }
+                                            if (e.key === "Escape") setEditingFileName(null);
                                           }}
-                                          onBlur={() => {
-                                            updateFileName(material.id, file.id, editingFileNameText)
-                                            setEditingFileName(null)
-                                          }}
+                                          onBlur={() => { updateFileName(material.id, file.id, editingFileNameText); setEditingFileName(null); }}
                                           className="h-6 text-sm"
                                           autoFocus
                                         />
                                       ) : (
                                         <div className="flex items-center space-x-2">
-                                          <p
-                                            className="text-sm font-medium cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded"
-                                            onClick={() => {
-                                              setEditingFileName({ materialId: material.id, fileId: file.id })
-                                              setEditingFileNameText(file.name)
-                                            }}
-                                          >
-                                            {file.name}
-                                          </p>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-4 w-4 p-0 hover:bg-muted/50"
-                                            onClick={() => {
-                                              setEditingFileName({ materialId: material.id, fileId: file.id })
-                                              setEditingFileNameText(file.name)
-                                            }}
-                                          >
-                                            <Edit2 className="h-3 w-3" />
-                                          </Button>
+                                          <p className="text-sm font-medium cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded" onClick={() => { setEditingFileName({ materialId: material.id, fileId: file.id }); setEditingFileNameText(file.name); }}>{file.name}</p>
+                                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0" onClick={() => { setEditingFileName({ materialId: material.id, fileId: file.id }); setEditingFileNameText(file.name); }}><Edit2 className="h-3 w-3" /></Button>
                                         </div>
                                       )}
-                                      <p className="text-xs text-muted-foreground">
-                                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {new Date(file.uploadedAt).toLocaleDateString()}
-                                      </p>
+                                      <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                                     </div>
                                   </div>
                                   <div className="flex items-center space-x-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setPreviewFile(file)
-                                        setIsPreviewOpen(true)
-                                      }}
-                                    >
-                                      <Eye className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}
-                                    >
-                                      <Download className="h-3 w-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => removeFileFromMaterial(material.id, file.id)}>
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => { setPreviewFile(file); setIsPreviewOpen(true); }}><Eye className="h-3 w-3" /></Button>
+                                    <Button variant="ghost" size="sm" onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}><Download className="h-3 w-3" /></Button>
+                                    <Button variant="ghost" size="sm" onClick={() => removeFileFromMaterial(material.id, file.id)}><Trash2 className="h-3 w-3" /></Button>
                                   </div>
                                 </div>
                               </div>
@@ -1512,13 +1418,10 @@ export function SubjectDetailDialog({
                         )
                       })()}
 
-                      {/* Display links if available */}
+                      {/* Display links */}
                       {(() => {
-                        // Get links using the utility function
-                        const { files, links } = parseMaterialContent(material.content || '')
-
+                        const { links } = parseMaterialContent(material.content || '')
                         if (links.length === 0) return null
-
                         return (
                           <div className="space-y-2 mt-3">
                             <p className="text-sm font-medium text-muted-foreground">Links:</p>
@@ -1530,23 +1433,11 @@ export function SubjectDetailDialog({
                                     <div>
                                       <p className="text-sm font-medium">{link.description}</p>
                                       <p className="text-xs text-blue-600 dark:text-blue-400">
-                                        <button
-                                          onClick={() => openLink(link.url)}
-                                          className="hover:underline cursor-pointer"
-                                        >
-                                          {link.url}
-                                        </button>
+                                        <button onClick={() => openLink(link.url)} className="hover:underline">{link.url}</button>
                                       </p>
                                     </div>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeLinkFromMaterial(material.id)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => removeLinkFromMaterial(material.id)}><Trash2 className="h-3 w-3" /></Button>
                                 </div>
                               </div>
                             ))}
@@ -1554,98 +1445,34 @@ export function SubjectDetailDialog({
                         )
                       })()}
 
-
-
                       <div className="space-y-3">
                         <div className="border-2 border-dashed border-muted-foreground/25 rounded-md p-4">
                           <div className="text-center">
                             <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Upload files or add content
-                            </p>
+                            <p className="text-sm text-muted-foreground mb-2">Upload files or add content</p>
                             <div className="flex space-x-2 justify-center">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => document.getElementById(`file-upload-${material.id}`)?.click()}
-                                disabled={uploadingFile === material.id}
-                              >
-                                {uploadingFile === material.id ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></div>
-                                    Uploading...
-                                  </>
-                                ) : (
-                                  'Choose File'
-                                )}
+                              <Button variant="outline" size="sm" onClick={() => document.getElementById(`file-upload-${material.id}`)?.click()} disabled={uploadingFile === material.id}>
+                                {uploadingFile === material.id ? 'Uploading...' : 'Choose File'}
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setAddingLinkToMaterial(material.id)}
-                                disabled={uploadingFile === material.id}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Link
+                              <Button variant="outline" size="sm" onClick={() => setAddingLinkToMaterial(material.id)} disabled={uploadingFile === material.id}>
+                                <Plus className="h-4 w-4 mr-2" /> Add Link
                               </Button>
                             </div>
-                            {uploadError && uploadingFile === material.id && (
-                              <p className="text-xs text-red-600 mt-2">{uploadError}</p>
-                            )}
-                            {uploadingFile === material.id && (
-                              <div className="mt-2">
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
-                                </div>
-                                <p className="text-xs text-gray-600 mt-1">Uploading file...</p>
-                              </div>
-                            )}
                             <input
                               id={`file-upload-${material.id}`}
                               type="file"
                               className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file) handleFileUpload(material.id, file)
-                              }}
+                              onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFileUpload(material.id, file); }}
                               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.mp4,.mp3"
                             />
-
-                            {/* Link input dialog */}
                             {addingLinkToMaterial === material.id && (
-                              <div className="mt-3 p-3 bg-muted/50 rounded-md">
+                              <div className="mt-3 p-3 bg-muted/50 rounded-md text-left">
                                 <div className="space-y-2">
-                                  <Input
-                                    placeholder="Link description (e.g., 'Course Notes')"
-                                    value={newLinkDescription}
-                                    onChange={(e) => setNewLinkDescription(e.target.value)}
-                                    className="h-8 text-sm"
-                                  />
-                                  <Input
-                                    placeholder="URL (e.g., https://example.com)"
-                                    value={newLinkUrl}
-                                    onChange={(e) => setNewLinkUrl(e.target.value)}
-                                    className="h-8 text-sm"
-                                  />
+                                  <Input placeholder="Description" value={newLinkDescription} onChange={(e) => setNewLinkDescription(e.target.value)} className="h-8 text-sm" />
+                                  <Input placeholder="URL" value={newLinkUrl} onChange={(e) => setNewLinkUrl(e.target.value)} className="h-8 text-sm" />
                                   <div className="flex space-x-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => addLinkToMaterial(material.id)}
-                                      disabled={!newLinkUrl.trim() || !newLinkDescription.trim()}
-                                    >
-                                      Add Link
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setAddingLinkToMaterial(null)
-                                        setNewLinkUrl("")
-                                        setNewLinkDescription("")
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
+                                    <Button size="sm" onClick={() => addLinkToMaterial(material.id)} disabled={!newLinkUrl.trim() || !newLinkDescription.trim()}>Add</Button>
+                                    <Button variant="outline" size="sm" onClick={() => { setAddingLinkToMaterial(null); setNewLinkUrl(""); setNewLinkDescription(""); }}>Cancel</Button>
                                   </div>
                                 </div>
                               </div>
@@ -1659,17 +1486,7 @@ export function SubjectDetailDialog({
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  {searchQuery ? (
-                    <>
-                      <p>No materials found matching "{searchQuery}"</p>
-                      <p className="text-sm">Try a different search term.</p>
-                    </>
-                  ) : (
-                    <>
-                      <p>No study materials added yet.</p>
-                      <p className="text-sm">Add materials like textbooks, notes, or videos above.</p>
-                    </>
-                  )}
+                  <p>{searchQuery ? `No materials found matching "${searchQuery}"` : 'No study materials added yet.'}</p>
                 </div>
               )}
             </div>

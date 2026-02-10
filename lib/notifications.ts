@@ -34,9 +34,8 @@ class NotificationManager {
   setSocket(socket: any) {
     this.socket = socket
     if (socket) {
-      socket.on("new-notification", () => {
-        // Refresh notifications when a new notification event is received
-        this.refreshNotifications()
+      socket.on("new-notification", (notification: any) => {
+        this.handleNewRealtimeNotification(notification)
       })
     }
   }
@@ -124,10 +123,6 @@ class NotificationManager {
 
       if (response.ok) {
         const savedNotification = await response.json()
-        // We don't unshift here if we expect Pusher to handle it for the sender too?
-        // Actually, normally the sender doesn't send a notification to themselves via Pusher 
-        // if they are the one creating the action. 
-        // But for local actions like "Goals", we might want it.
         this.notifications.unshift({
           ...savedNotification,
           timestamp: new Date(savedNotification.timestamp)
@@ -269,7 +264,6 @@ class NotificationManager {
       case "achievement": return "🎉"
       case "deadline": return "⚠️"
       case "goal": return "🎯"
-      case "message": return "💬"
       default: return "📚"
     }
   }

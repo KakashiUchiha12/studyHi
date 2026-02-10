@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useRef } from "react";
 import { format } from "date-fns";
 import { Download, X, Maximize2, FileText, File } from "lucide-react";
@@ -254,4 +256,4 @@ export const ChatMessages = ({
             </div>
         </div>
     );
-}
+};

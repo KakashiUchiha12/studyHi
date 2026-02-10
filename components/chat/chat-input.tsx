@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useSocket } from "@/components/providers/socket-provider";
 
 interface ChatInputProps {
     socket?: any;
@@ -27,8 +28,6 @@ interface ChatInputProps {
 const formSchema = z.object({
     content: z.string(),
 });
-
-import { useSocket } from "@/components/providers/socket-provider";
 
 export const ChatInput = ({
     socket,

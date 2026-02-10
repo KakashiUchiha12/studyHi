@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Bell, MessageSquare, Users, UserCircle, Globe, Settings2, Home, User, LayoutDashboard, HardDrive } from "lucide-react";
+import { Bell, MessageSquare, Users, UserCircle, Globe, Settings2, Home, User, LayoutDashboard, HardDrive, Layout } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -41,6 +41,12 @@ export function SocialSidebar() {
             count: 0
         },
         {
+            title: "Projects",
+            href: "/projects",
+            icon: Layout,
+            count: 0
+        },
+        {
             title: "Messages",
             href: "/messages",
             icon: MessageSquare,
@@ -59,11 +65,6 @@ export function SocialSidebar() {
             count: 0
         }
     ];
-
-    useEffect(() => {
-        // We still keep the query for other things if needed, 
-        // but for now we prioritize the real-time count if it's available.
-    }, [])
 
     return (
         <Card className="h-fit sticky top-24 w-full md:w-56 lg:w-64 hidden md:block border-0 shadow-none bg-transparent">

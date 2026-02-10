@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest' import { NextRequest } from 'next/server'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { NextRequest } from 'next/server'
 import { GET as getPosts, POST as createPost } from '@/app/api/classes/[id]/posts/route'
 
 // Mock dependencies
@@ -18,12 +19,12 @@ vi.mock('@/lib/database', () => ({
 
 vi.mock('@/lib/classes/permissions', () => ({
     isClassMember: vi.fn(),
-    canCreatePost: vi.fn(),
+    isTeacherOrAdmin: vi.fn(),
 }))
 
 import { getServerSession } from 'next-auth'
 import { dbService } from '@/lib/database'
-import { isClassMember, canCreatePost } from '@/lib/classes/permissions'
+import { isClassMember, isTeacherOrAdmin } from '@/lib/classes/permissions'
 
 describe('Posts API - GET /api/classes/[id]/posts', () => {
     beforeEach(() => {
@@ -121,7 +122,7 @@ describe('Posts API - POST /api/classes/[id]/posts', () => {
         (getServerSession as any).mockResolvedValue({
             user: { id: 'user-1' },
         })
-            ; (canCreatePost as any).mockResolvedValue(false)
+            ; (isTeacherOrAdmin as any).mockResolvedValue(false)
 
         const request = new NextRequest('http://localhost/api/classes/class-1/posts', {
             method: 'POST',
@@ -140,7 +141,7 @@ describe('Posts API - POST /api/classes/[id]/posts', () => {
         (getServerSession as any).mockResolvedValue({
             user: { id: 'user-1' },
         })
-            ; (canCreatePost as any).mockResolvedValue(true)
+            ; (isTeacherOrAdmin as any).mockResolvedValue(true)
 
         const request = new NextRequest('http://localhost/api/classes/class-1/posts', {
             method: 'POST',

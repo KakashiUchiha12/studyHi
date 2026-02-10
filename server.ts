@@ -48,6 +48,8 @@ app.prepare().then(() => {
     (global as any).io = io;
 
     io.on("connection", (socket) => {
+        // console.log("Socket connected:", socket.id);
+
         socket.on("join-channel", (channelId: string) => {
             socket.join(channelId);
         });

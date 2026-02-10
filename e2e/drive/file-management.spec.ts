@@ -31,7 +31,7 @@ test.describe('Drive File Upload Flow', () => {
         await fileInput.setInputFiles({
             name: file.name,
             mimeType: file.mimeType,
-            buffer file.buffer,
+            buffer: file.buffer,
         })
 
         // Wait for upload to complete

@@ -57,7 +57,6 @@ const uploadThingSchema = z.object({
   UPLOADTHING_APP_ID: z.string(),
 }).or(z.object({})).optional()
 
-
 // Cache validation result
 let validatedEnv: z.infer<typeof envSchema> | null = null
 
