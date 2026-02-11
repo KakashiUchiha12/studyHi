@@ -38,11 +38,17 @@ echo "🏗️ Building and starting Docker containers..."
 docker compose build --no-cache
 docker compose up -d
 
+
 # 5. Run database migrations
 echo "🗄️ Running database migrations..."
 # Wait a few seconds for MySQL to be ready
 sleep 15
 docker compose exec -T app npx prisma migrate deploy
+
+# 6. Run retroactive subject sync
+echo "🔄 Running retroactive subject-drive sync..."
+docker compose exec -T app node scripts/sync-subjects-to-drive.js
+
 
 # 6. Check status
 echo "🔍 Checking container status..."
