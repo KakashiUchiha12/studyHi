@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { detectDuplicates } from '@/lib/drive/duplicate-detection';
 import path from 'path';
+import { copyFile, constants } from 'fs/promises';
 
 /**
  * POST /api/drive/import - Import files/folders from another user
@@ -576,6 +577,30 @@ async function importFile(
   const extension = path.extname(originalStoredName);
   const newStoredName = `${Date.now()}-${Math.random().toString(36).substring(7)}${extension}`;
 
+  // Determine source path
+  const sourcePath = path.isAbsolute(sourceFile.filePath)
+    ? sourceFile.filePath
+    : path.join(process.cwd(), sourceFile.filePath);
+
+  // Determine destination path (same directory structure as source usually, or a dedicated upload dir)
+  // Let's reuse the directory of the source file if possible, or default to public/uploads
+  const uploadDir = path.dirname(sourcePath);
+  const newFilePath = path.join(uploadDir, newStoredName);
+
+  // If we can't determine a good path, default to standard upload location
+  // But since we are copying, we can just put it in public/uploads if we want to be safe
+  // actually, let's just use the same folder to keep it simple, assuming it's writable
+
+  try {
+    await copyFile(sourcePath, newFilePath, constants.COPYFILE_FICLONE);
+  } catch (err) {
+    console.error("Failed to copy file physically:", err);
+    // Fallback: if copy fails (e.g. permissions), we might have to fail the import 
+    // or duplicate the buffer (slower). 
+    // For now, let's throw to avoid creating broken records.
+    throw new Error(`Failed to copy physical file: ${sourceFile.originalName}`);
+  }
+
   const copiedFile = await prisma.driveFile.create({
     data: {
       driveId: targetDriveId,
@@ -586,8 +611,9 @@ async function importFile(
       mimeType: sourceFile.mimeType,
       fileType: sourceFile.fileType,
       fileHash: sourceFile.fileHash || '',
-      filePath: sourceFile.filePath, // This points to the same physical file
-      thumbnailPath: sourceFile.thumbnailPath,
+      filePath: newFilePath, // NEW independent path
+      thumbnailPath: sourceFile.thumbnailPath, // Thumbnails can potentially be shared or copied too. 
+      // Attempting to copy thumbnail would be good but optional.
       isPublic: false,
       description: sourceFile.description,
       tags: sourceFile.tags,
