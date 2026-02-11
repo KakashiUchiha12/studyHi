@@ -16,11 +16,17 @@ export async function GET(
             return new NextResponse("User ID required", { status: 400 });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { id: userId },
+                    { username: userId }
+                ]
+            },
             select: {
                 id: true,
                 name: true,
+                username: true,
                 image: true,
                 createdAt: true,
                 socialProfile: {
@@ -54,11 +60,12 @@ export async function GET(
         });
 
         if (!user) {
+            console.log(`[USER_GET] User not found: ${userId}`);
             return new NextResponse("User not found", { status: 404 });
         }
 
         let isFollowing = false;
-        if (currentUserId) {
+        if (currentUserId && currentUserId !== user.id) {
             const follow = await prisma.follows.findUnique({
                 where: {
                     followerId_followingId: {
@@ -75,7 +82,7 @@ export async function GET(
             isFollowing
         });
     } catch (error) {
-        console.error("[USER_GET]", error);
+        console.error("[USER_GET] Error fetching user:", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
 }
