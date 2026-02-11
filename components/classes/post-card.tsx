@@ -39,6 +39,7 @@ import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { LikersDialog } from "@/components/feed/likers-dialog"
 
 interface PostCardProps {
   post: ClassPost
@@ -84,6 +85,7 @@ export function PostCard({
   const [isSavingInProgress, setIsSavingInProgress] = useState<string | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<any>(null)
+  const [isLikersOpen, setIsLikersOpen] = useState(false)
 
   const Icon = POST_TYPE_ICONS[post.type as keyof typeof POST_TYPE_ICONS] || MessageSquare
   const typeColor = POST_TYPE_COLORS[post.type as keyof typeof POST_TYPE_COLORS] || POST_TYPE_COLORS.general
@@ -385,16 +387,25 @@ export function PostCard({
 
       <CardFooter className="p-2 flex flex-col items-stretch">
         <div className="flex items-center justify-between w-full border-t pt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("flex-1 gap-2 rounded-lg", liked && "text-red-500 hover:text-red-600 hover:bg-red-50")}
-            onClick={handleToggleLike}
-          >
-            <Heart className={cn("w-4 h-4", liked && "fill-current")} />
-            {likeCount > 0 && <span className="text-xs font-semibold">{likeCount}</span>}
-            <span className="hidden sm:inline text-xs">Like</span>
-          </Button>
+          <div className="flex-1 flex items-center justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("gap-2 rounded-lg", liked && "text-red-500 hover:text-red-600 hover:bg-red-50")}
+              onClick={handleToggleLike}
+            >
+              <Heart className={cn("w-4 h-4", liked && "fill-current")} />
+              <span className="hidden sm:inline text-xs">Like</span>
+            </Button>
+            {likeCount > 0 && (
+              <button
+                onClick={() => setIsLikersOpen(true)}
+                className="text-xs font-semibold hover:underline text-muted-foreground ml-1"
+              >
+                {likeCount}
+              </button>
+            )}
+          </div>
 
           <Button
             variant="ghost"
@@ -437,6 +448,11 @@ export function PostCard({
           onClose={() => setIsPreviewOpen(false)}
         />
       )}
+      <LikersDialog
+        isOpen={isLikersOpen}
+        onClose={() => setIsLikersOpen(false)}
+        apiUrl={`/api/classes/${classId}/posts/${post.id}/like`}
+      />
     </Card>
   )
 }

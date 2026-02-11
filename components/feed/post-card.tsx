@@ -22,6 +22,7 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { LikersDialog } from "./likers-dialog";
 
 interface PostCardProps {
     post: any;
@@ -44,6 +45,7 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     const [currentStatus, setCurrentStatus] = useState(post.status || "published");
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState<any>(null);
+    const [isLikersOpen, setIsLikersOpen] = useState(false);
 
     const handleStatusChange = async (newStatus: string) => {
         try {
@@ -389,15 +391,24 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
             </CardContent>
             <CardFooter className="p-2 flex flex-col items-stretch">
                 <div className="flex items-center justify-between w-full border-t pt-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn("flex-1 gap-2", liked && "text-red-500 hover:text-red-600")}
-                        onClick={toggleLike}
-                    >
-                        <Heart className={cn("w-4 h-4", liked && "fill-current")} />
-                        {likeCount > 0 && likeCount}
-                    </Button>
+                    <div className="flex-1 flex items-center justify-center">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn("gap-2 px-2", liked && "text-red-500 hover:text-red-600")}
+                            onClick={toggleLike}
+                        >
+                            <Heart className={cn("w-4 h-4", liked && "fill-current")} />
+                        </Button>
+                        {likeCount > 0 && (
+                            <button
+                                onClick={() => setIsLikersOpen(true)}
+                                className="text-sm font-medium hover:underline text-muted-foreground ml-1"
+                            >
+                                {likeCount}
+                            </button>
+                        )}
+                    </div>
                     <Button variant="ghost" size="sm" className="flex-1 gap-2" onClick={loadComments}>
                         <MessageSquare className="w-4 h-4" />
                         {commentCount > 0 && commentCount}
@@ -482,6 +493,12 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                     onClose={() => setIsPreviewOpen(false)}
                 />
             )}
+
+            <LikersDialog
+                isOpen={isLikersOpen}
+                onClose={() => setIsLikersOpen(false)}
+                apiUrl={`/api/posts/${post.id}/like`}
+            />
         </Card>
     );
 }

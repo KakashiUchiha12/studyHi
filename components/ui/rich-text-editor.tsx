@@ -1,13 +1,13 @@
 "use client"
 
 import { useEditor, EditorContent } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Underline from "@tiptap/extension-underline"
-import TextAlign from "@tiptap/extension-text-align"
-import Link from "@tiptap/extension-link"
-import Youtube from "@tiptap/extension-youtube"
+import { StarterKit } from "@tiptap/starter-kit"
+import { Underline } from "@tiptap/extension-underline"
+import { TextAlign } from "@tiptap/extension-text-align"
+import { Link } from "@tiptap/extension-link"
+import { Youtube } from "@tiptap/extension-youtube"
 import { Color } from "@tiptap/extension-color"
-import TextStyle from "@tiptap/extension-text-style"
+import { TextStyle } from "@tiptap/extension-text-style"
 import {
     Bold,
     Italic,
@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 
 interface RichTextEditorProps {
@@ -55,7 +55,14 @@ export function RichTextEditor({
     placeholder,
     className,
 }: RichTextEditorProps) {
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
     const editor = useEditor({
+        immediatelyRender: false,
         extensions: [
             StarterKit,
             Underline,
@@ -91,8 +98,13 @@ export function RichTextEditor({
 
     const [linkUrl, setLinkUrl] = useState("")
 
-    if (!editor) {
-        return null
+    if (!mounted || !editor) {
+        return (
+            <div className={cn(
+                "border rounded-md bg-background min-h-[150px] animate-pulse",
+                className
+            )} />
+        )
     }
 
     const setLink = () => {
@@ -310,7 +322,9 @@ export function RichTextEditor({
                 </Button>
             </div>
 
-            <EditorContent editor={editor} className="min-h-[150px] p-0" />
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+                <EditorContent editor={editor} className="min-h-[150px] p-0" />
+            </div>
         </div>
     )
 }

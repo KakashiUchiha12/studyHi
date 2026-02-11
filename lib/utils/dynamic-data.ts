@@ -22,22 +22,22 @@ export const generateSubjectColor = (subjectName: string): string => {
     a = ((a << 5) - a + b.charCodeAt(0)) & 0xffffffff
     return a
   }, 0)
-  
+
   const colors = [
     '#0891b2', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#f97316',
     '#06b6d4', '#f43f5e', '#eab308', '#22c55e', '#a855f7', '#ea580c'
   ]
-  
+
   return colors[Math.abs(hash) % colors.length]
 }
 
 // Time formatting utilities
 export const formatStudyTime = (minutes: number): string => {
   if (minutes <= 0) return '0m'
-  
+
   const hours = Math.floor(minutes / 60)
   const remainingMinutes = minutes % 60
-  
+
   if (hours === 0) return `${remainingMinutes}m`
   if (remainingMinutes === 0) return `${hours}h`
   return `${hours}h ${remainingMinutes}m`
@@ -45,10 +45,10 @@ export const formatStudyTime = (minutes: number): string => {
 
 export const formatStudyTimeShort = (minutes: number): string => {
   if (minutes <= 0) return '0m'
-  
+
   const hours = Math.floor(minutes / 60)
   const remainingMinutes = minutes % 60
-  
+
   if (hours === 0) return `${remainingMinutes}m`
   if (remainingMinutes === 0) return `${hours}h`
   return `${hours}h ${remainingMinutes}m`
@@ -61,15 +61,15 @@ export const calculateProgress = (completed: number, total: number): number => {
 }
 
 export const calculateEfficiency = (
-  testScore: number, 
-  studyTime: number, 
+  testScore: number,
+  studyTime: number,
   totalStudyTime: number
 ): number => {
   if (studyTime <= 0 || totalStudyTime <= 0 || testScore <= 0) return 0
-  
+
   const testScoreRatio = testScore / 100
   const studyTimeRatio = studyTime / totalStudyTime
-  
+
   const efficiency = Math.round(testScoreRatio * studyTimeRatio * 100)
   return Math.min(100, Math.max(0, efficiency))
 }
@@ -85,19 +85,19 @@ export const validateSubjectData = (subject: Partial<Subject>): boolean => {
 
 export const validateStudySessionData = (session: Partial<StudySession>): boolean => {
   return !!(
-    session.duration &&
-    session.duration > 0 &&
-    session.date
+    session.durationMinutes !== undefined &&
+    session.durationMinutes > 0 &&
+    session.startTime
   )
 }
 
 export const validateTestMarkData = (test: Partial<TestMark>): boolean => {
   return !!(
     test.subjectId &&
-    test.marksObtained !== undefined && test.marksObtained >= 0 &&
-    test.totalMarks !== undefined && test.totalMarks > 0 &&
-    test.marksObtained !== undefined && test.totalMarks !== undefined && test.marksObtained <= test.totalMarks &&
-    test.date
+    test.score !== undefined && test.score >= 0 &&
+    test.maxScore !== undefined && test.maxScore > 0 &&
+    test.score <= test.maxScore &&
+    test.testDate
   )
 }
 
@@ -118,37 +118,39 @@ export const getDefaultSubject = (name: string): Subject => ({
   instructor: 'TBD',
   color: generateSubjectColor(name),
   progress: 0,
-  nextExam: undefined,
   assignmentsDue: 0,
-  materials: [],
-  topics: [],
   totalChapters: 0,
-  completedChapters: 0
+  completedChapters: 0,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  userId: ''
 })
 
 export const getDefaultStudySession = (): StudySession => ({
   id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  date: new Date(),
-  duration: 0,
-  subject: '',
+  userId: '',
+  startTime: new Date(),
+  endTime: new Date(),
+  durationMinutes: 0,
   efficiency: 5,
   sessionType: 'Focused Study',
   productivity: 3,
   notes: '',
-  topicsCovered: [],
-  materialsUsed: []
+  topicsCovered: '',
+  materialsUsed: '',
+  createdAt: new Date()
 })
 
 export const getDefaultTestMark = (): TestMark => ({
   id: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-  date: new Date(),
+  testDate: new Date(),
   subjectId: '',
-  subjectName: '',
-  marksObtained: 0,
-  totalMarks: 100,
-  title: '',
-  percentage: 0,
-  grade: 'F'
+  testName: '',
+  testType: 'Quiz',
+  score: 0,
+  maxScore: 100,
+  createdAt: new Date(),
+  updatedAt: new Date()
 })
 
 export const getDefaultTask = (): Task => ({
@@ -173,17 +175,17 @@ export const getChartColors = (count: number): string[] => {
     '#06b6d4', '#f43f5e', '#eab308', '#22c55e', '#a855f7', '#ea580c',
     '#0ea5e9', '#ef4444', '#fbbf24', '#16a34a', '#9333ea', '#f97316'
   ]
-  
+
   if (count <= baseColors.length) {
     return baseColors.slice(0, count)
   }
-  
+
   // Generate additional colors if needed
   const additionalColors: string[] = []
   for (let i = baseColors.length; i < count; i++) {
     additionalColors.push(generateRandomColor())
   }
-  
+
   return [...baseColors, ...additionalColors]
 }
 
@@ -308,11 +310,11 @@ export const getChartConfig = () => ({
   height: 300,
   colors: getChartColors(10),
   grid: { strokeDasharray: '3 3' },
-  tooltip: { 
+  tooltip: {
     style: { backgroundColor: 'rgba(0, 0, 0, 0.8)', border: 'none' },
     contentStyle: { border: 'none', borderRadius: '8px' }
   },
-  legend: { 
+  legend: {
     wrapperStyle: { paddingTop: '20px' }
   }
 })

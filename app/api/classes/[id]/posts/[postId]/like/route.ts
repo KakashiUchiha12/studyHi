@@ -5,6 +5,62 @@ import { dbService } from '@/lib/database'
 import { isClassMember } from '@/lib/classes/permissions'
 
 /**
+ * GET /api/classes/[id]/posts/[postId]/like
+ * Fetch list of users who liked the post
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; postId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user || !(session.user as any).id) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const userId = (session.user as any).id
+    const { id: classId, postId } = await params
+
+    // Check if user is a member
+    const isMember = await isClassMember(classId, userId)
+
+    if (!isMember) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      )
+    }
+
+    const likers = await dbService.getPrisma().postLike.findMany({
+      where: { postId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    const users = likers.map(l => l.user)
+    return NextResponse.json(users)
+  } catch (error) {
+    console.error('Failed to fetch likers:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch likers' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
  * POST /api/classes/[id]/posts/[postId]/like
  * Toggle like on a post (create or delete)
  */

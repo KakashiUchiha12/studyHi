@@ -76,11 +76,24 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const classes = memberships.map((membership) => ({
-      ...membership.class,
-      role: membership.role,
-      memberCount: membership.class._count.members,
-      assignmentCount: membership.class._count.assignments,
+    const classes = await Promise.all(memberships.map(async (membership) => {
+      const assignmentCount = membership.class._count.assignments
+      const unreadAssignmentsCount = await dbService.getPrisma().assignment.count({
+        where: {
+          classId: membership.class.id,
+          createdAt: {
+            gt: (membership as any).lastViewedAssignments || membership.joinedAt
+          }
+        }
+      })
+
+      return {
+        ...membership.class,
+        role: membership.role,
+        memberCount: membership.class._count.members,
+        assignmentCount,
+        unreadAssignmentsCount,
+      }
     }))
 
     return NextResponse.json(classes)

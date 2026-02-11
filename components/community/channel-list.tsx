@@ -62,7 +62,7 @@ export function ChannelList({ communityId, initialChannels, isAdmin }: ChannelLi
     const router = useRouter();
     const { toast } = useToast();
     const { data: session } = useSession();
-    const userId = (session?.user as any)?.id;
+    const userId = session?.user ? (session.user as any).id : null;
 
     const [notifications, setNotifications] = useState<any[]>([]);
 

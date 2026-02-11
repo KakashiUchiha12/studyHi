@@ -13,18 +13,19 @@ import { MobileNav } from "@/components/community/mobile-nav";
 
 export default async function CommunityLayout({
     children,
-    params
+    params: paramsPromise
 }: {
     children: React.ReactNode;
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
+    const resolvedParams = await paramsPromise;
     const session = await getServerSession(authOptions);
     if (!session) {
         redirect("/api/auth/signin");
     }
 
     const community = await prisma.community.findUnique({
-        where: { id: params.id },
+        where: { id: resolvedParams.id },
         include: {
             channels: true,
             _count: {
@@ -40,7 +41,7 @@ export default async function CommunityLayout({
     const membership = await prisma.communityMember.findUnique({
         where: {
             communityId_userId: {
-                communityId: params.id,
+                communityId: resolvedParams.id,
                 userId: (session.user as { id: string }).id
             }
         }

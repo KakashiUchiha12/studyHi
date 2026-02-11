@@ -30,6 +30,7 @@ export interface Class {
   role?: ClassRole
   memberCount?: number
   assignmentCount?: number
+  unreadAssignmentsCount?: number
   _count?: {
     members: number
     assignments: number

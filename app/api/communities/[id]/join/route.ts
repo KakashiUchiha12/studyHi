@@ -47,8 +47,9 @@ export async function POST(
 
 export async function DELETE(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params;
     try {
         const session = await getServerSession(authOptions);
         if (!session) {
@@ -56,7 +57,7 @@ export async function DELETE(
         }
 
         const userId = (session.user as any).id;
-        const communityId = params.id;
+        const communityId = id;
 
         // Check if admin/owner
         const membership = await prisma.communityMember.findUnique({

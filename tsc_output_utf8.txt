@@ -1,0 +1,222 @@
+﻿.next/types/app/api/drive/notifications/route.ts(14,13): error TS2344: Type 'OmitWithTag<typeof import("D:/Development_3rd_Feb/app/api/drive/notifications/route"), "POST" | "GET" | "PUT" | "PATCH" | "DELETE" | "config" | "generateStaticParams" | "unstable_prefetch" | ... 8 more ... | "OPTIONS", "">' does not satisfy the constraint '{ [x: string]: never; }'.
+  Property 'createDriveNotification' is incompatible with index signature.
+    Type '(data: { userId: string; type: string; title: string; message: string; link?: string | undefined; metadata?: any; }) => Promise<{ id: string; userId: string; title: string; createdAt: Date; updatedAt: Date; ... 5 more ...; actionUrl: string | null; }>' is not assignable to type 'never'.
+.next/types/app/projects/[id]/edit/page.ts(36,29): error TS2344: Type 'EditProjectPageProps' does not satisfy the constraint 'PageProps'.
+  Types of property 'params' are incompatible.
+    Type '{ id: string; }' is missing the following properties from type 'Promise<any>': then, catch, finally, [Symbol.toStringTag]
+.next/types/app/projects/[id]/page.ts(36,29): error TS2344: Type 'ProjectPageProps' does not satisfy the constraint 'PageProps'.
+  Types of property 'params' are incompatible.
+    Type '{ id: string; }' is missing the following properties from type 'Promise<any>': then, catch, finally, [Symbol.toStringTag]
+.next/types/app/projects/page.ts(36,29): error TS2344: Type 'ProjectsPageProps' does not satisfy the constraint 'PageProps'.
+  Types of property 'searchParams' are incompatible.
+    Type '{ page?: string | undefined; category?: string | undefined; search?: string | undefined; sortBy?: string | undefined; }' is missing the following properties from type 'Promise<any>': then, catch, finally, [Symbol.toStringTag]
+.next/types/validator.ts(1966,31): error TS2344: Type 'typeof import("D:/Development_3rd_Feb/app/community/[id]/layout")' does not satisfy the constraint 'LayoutConfig<"/community/[id]">'.
+  Types of property 'default' are incompatible.
+    Type '({ children, params }: { children: ReactNode; params: { id: string; }; }) => Promise<Element>' is not assignable to type 'ComponentType<LayoutProps<"/community/[id]">> | ((props: LayoutProps<"/community/[id]">) => void | ReactNode | Promise<...> | Promise<...>)'.
+      Type '({ children, params }: { children: ReactNode; params: { id: string; }; }) => Promise<Element>' is not assignable to type 'FunctionComponent<LayoutProps<"/community/[id]">>'.
+        Types of parameters '__0' and 'props' are incompatible.
+          Type 'LayoutProps<"/community/[id]">' is not assignable to type '{ children: ReactNode; params: { id: string; }; }'.
+            Types of property 'params' are incompatible.
+              Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+__tests__/components/tasks/task-manager.test.tsx(106,20): error TS2531: Object is possibly 'null'.
+__tests__/database/subjects-database.test.ts(362,21): error TS2339: Property 'createSampleData' does not exist on type 'Mocked<DatabaseService>'.
+__tests__/database/subjects-database.test.ts(364,23): error TS2339: Property 'createSampleData' does not exist on type 'DatabaseService'.
+__tests__/database/subjects-database.test.ts(366,28): error TS2339: Property 'createSampleData' does not exist on type 'Mocked<DatabaseService>'.
+__tests__/database/subjects-database.test.ts(371,21): error TS2339: Property 'createSampleData' does not exist on type 'Mocked<DatabaseService>'.
+__tests__/database/subjects-database.test.ts(374,19): error TS2339: Property 'createSampleData' does not exist on type 'DatabaseService'.
+__tests__/hooks/useSubjects.test.tsx(39,7): error TS2741: Property 'expires' is missing in type '{ user: { id: string; email: string; name: string; }; }' but required in type 'Session'.
+__tests__/hooks/useSubjects.test.tsx(131,38): error TS2345: Argument of type '{ data: null; status: "unauthenticated"; }' is not assignable to parameter of type '{ update: UpdateSession; data: Session; status: "authenticated"; } | { update: UpdateSession; data: null; status: "loading"; } | { update: UpdateSession; data: Session; status: "authenticated"; } | { ...; }'.
+  Property 'update' is missing in type '{ data: null; status: "unauthenticated"; }' but required in type '{ update: UpdateSession; data: null; status: "loading" | "unauthenticated"; }'.
+__tests__/hooks/useSubjects.test.tsx(147,38): error TS2345: Argument of type '{ data: null; status: "loading"; }' is not assignable to parameter of type '{ update: UpdateSession; data: Session; status: "authenticated"; } | { update: UpdateSession; data: null; status: "loading"; } | { update: UpdateSession; data: Session; status: "authenticated"; } | { ...; }'.
+  Type '{ data: null; status: "loading"; }' is not assignable to type '{ update: UpdateSession; data: null; status: "loading"; } | { update: UpdateSession; data: null; status: "loading" | "unauthenticated"; }'.
+    Property 'update' is missing in type '{ data: null; status: "loading"; }' but required in type '{ update: UpdateSession; data: null; status: "loading" | "unauthenticated"; }'.
+__tests__/hooks/useSubjects.test.tsx(194,61): error TS2345: Argument of type '{ name: string; color: string; description: string; }' is not assignable to parameter of type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">'.
+  Type '{ name: string; color: string; description: string; }' is missing the following properties from type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">': instructor, code, credits, totalChapters, and 4 more.
+__tests__/hooks/useSubjects.test.tsx(239,46): error TS2345: Argument of type '{ name: string; color: string; }' is not assignable to parameter of type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">'.
+  Type '{ name: string; color: string; }' is missing the following properties from type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">': description, instructor, code, credits, and 5 more.
+__tests__/hooks/useSubjects.test.tsx(244,18): error TS18046: 'error' is of type 'unknown'.
+__tests__/hooks/useSubjects.test.tsx(252,38): error TS2345: Argument of type '{ data: null; status: "unauthenticated"; }' is not assignable to parameter of type '{ update: UpdateSession; data: Session; status: "authenticated"; } | { update: UpdateSession; data: null; status: "loading"; } | { update: UpdateSession; data: Session; status: "authenticated"; } | { ...; }'.
+  Property 'update' is missing in type '{ data: null; status: "unauthenticated"; }' but required in type '{ update: UpdateSession; data: null; status: "loading" | "unauthenticated"; }'.
+__tests__/hooks/useSubjects.test.tsx(265,46): error TS2345: Argument of type '{ name: string; color: string; }' is not assignable to parameter of type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">'.
+  Type '{ name: string; color: string; }' is missing the following properties from type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">': description, instructor, code, credits, and 5 more.
+__tests__/hooks/useSubjects.test.tsx(270,18): error TS18046: 'error' is of type 'unknown'.
+__tests__/hooks/useSubjects.test.tsx(425,14): error TS18048: 'searchResults' is possibly 'undefined'.
+__tests__/integration/subjects-page.test.tsx(34,7): error TS2741: Property 'expires' is missing in type '{ user: { id: string; email: string; name: string; }; }' but required in type 'Session'.
+__tests__/integration/subjects-page.test.tsx(47,38): error TS2345: Argument of type '{ data: null; status: "loading"; }' is not assignable to parameter of type '{ update: UpdateSession; data: Session; status: "authenticated"; } | { update: UpdateSession; data: null; status: "loading"; } | { update: UpdateSession; data: Session; status: "authenticated"; } | { ...; }'.
+  Type '{ data: null; status: "loading"; }' is not assignable to type '{ update: UpdateSession; data: null; status: "loading"; } | { update: UpdateSession; data: null; status: "loading" | "unauthenticated"; }'.
+    Property 'update' is missing in type '{ data: null; status: "loading"; }' but required in type '{ update: UpdateSession; data: null; status: "loading" | "unauthenticated"; }'.
+__tests__/integration/subjects-page.test.tsx(361,38): error TS2345: Argument of type '{ data: null; status: "unauthenticated"; }' is not assignable to parameter of type '{ update: UpdateSession; data: Session; status: "authenticated"; } | { update: UpdateSession; data: null; status: "loading"; } | { update: UpdateSession; data: Session; status: "authenticated"; } | { ...; }'.
+  Property 'update' is missing in type '{ data: null; status: "unauthenticated"; }' but required in type '{ update: UpdateSession; data: null; status: "loading" | "unauthenticated"; }'.
+app/(lib)/thumbnails-simple-pdf.ts(12,35): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf.js' or its corresponding type declarations.
+app/(lib)/thumbnails.ts(77,35): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf.js' or its corresponding type declarations.
+app/api/channels/[channelId]/route.ts(73,33): error TS2339: Property 'channelId' does not exist on type 'Promise<{ channelId: string; }>'.
+app/api/classes/join/route.ts(30,9): error TS2353: Object literal may only specify known properties, and 'inviteCode' does not exist in type 'ClassWhereUniqueInput'.
+app/api/comments/[commentId]/like/route.ts(57,25): error TS18047: 'like.comment' is possibly 'null'.
+app/api/comments/[commentId]/like/route.ts(60,29): error TS18047: 'like.comment' is possibly 'null'.
+app/api/comments/[commentId]/like/route.ts(64,89): error TS18047: 'like.comment' is possibly 'null'.
+app/api/communities/[id]/join/route.ts(60,36): error TS2339: Property 'id' does not exist on type 'Promise<{ id: string; }>'.
+app/api/courses/[id]/announcements/route.ts(86,11): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+app/api/drive/notifications/route.ts(21,13): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+app/api/files/upload/route.ts(107,7): error TS2322: Type 'string | null' is not assignable to type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+app/api/media/thumbnail/route.ts(52,33): error TS2345: Argument of type 'Buffer<ArrayBufferLike>' is not assignable to parameter of type 'BodyInit | null | undefined'.
+  Type 'Buffer<ArrayBufferLike>' is missing the following properties from type 'URLSearchParams': size, append, delete, get, and 2 more.
+app/api/skills/[id]/objectives/[objectiveId]/route.ts(27,7): error TS2322: Type 'Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+app/api/skills/[id]/objectives/route.ts(27,7): error TS2322: Type 'Date | null' is not assignable to type 'Date | undefined'.
+  Type 'null' is not assignable to type 'Date | undefined'.
+app/api/skills/[id]/objectives/route.ts(75,36): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+app/community/[id]/settings/page.tsx(301,49): error TS2322: Type '{ value: string; onChange: Dispatch<SetStateAction<string>>; }' is not assignable to type 'IntrinsicAttributes & RichTextEditorProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & RichTextEditorProps'.
+app/community/[id]/settings/page.tsx(309,49): error TS2322: Type '{ value: string; onChange: Dispatch<SetStateAction<string>>; }' is not assignable to type 'IntrinsicAttributes & RichTextEditorProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & RichTextEditorProps'.
+app/community/create/page.tsx(276,37): error TS2322: Type '{ value: string; onChange: (html: string) => void; placeholder: string; }' is not assignable to type 'IntrinsicAttributes & RichTextEditorProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & RichTextEditorProps'.
+app/community/create/page.tsx(299,33): error TS2322: Type '{ value: string; onChange: (html: string) => void; placeholder: string; className: string; }' is not assignable to type 'IntrinsicAttributes & RichTextEditorProps'.
+  Property 'value' does not exist on type 'IntrinsicAttributes & RichTextEditorProps'.
+app/courses/instructor/[id]/content/page.tsx(1095,62): error TS7006: Parameter 'img' implicitly has an 'any' type.
+app/courses/instructor/[id]/content/page.tsx(1095,67): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+app/courses/instructor/[id]/content/page.tsx(1132,67): error TS7006: Parameter 'file' implicitly has an 'any' type.
+app/courses/instructor/[id]/content/page.tsx(1132,73): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+app/drive/page-wrapper.tsx(4,10): error TS2304: Cannot find name 'Suspense'.
+app/drive/page-wrapper.tsx(5,14): error TS2304: Cannot find name 'DrivePageContent'.
+app/drive/page-wrapper.tsx(6,11): error TS2304: Cannot find name 'Suspense'.
+app/profile/page.tsx(420,15): error TS2719: Type '(goal: Goal) => void' is not assignable to type '(goal: Goal) => void'. Two different types with this name exist, but they are unrelated.
+  Types of parameters 'goal' and 'goal' are incompatible.
+    Type 'Goal' is missing the following properties from type 'Goal': userId, createdAt, updatedAt, order
+app/projects/[id]/edit/page.tsx(60,26): error TS2322: Type '{ id: string; title: string; description: string; coverImage: string | undefined; category: string | undefined; tags: any; sections: { id: string; order: number; createdAt: Date; updatedAt: Date; ... 5 more ...; videoType: string | null; }[]; isPublished: boolean; }' is not assignable to type '{ id?: string | undefined; title: string; description: string; coverImage?: string | undefined; category?: string | undefined; tags?: string[] | undefined; sections?: ProjectSection[] | undefined; isPublished?: boolean | undefined; }'.
+  Types of property 'sections' are incompatible.
+    Type '{ id: string; order: number; createdAt: Date; updatedAt: Date; title: string; content: string; projectId: string; images: JsonValue; videoUrl: string | null; videoType: string | null; }[]' is not assignable to type 'ProjectSection[]'.
+      Type '{ id: string; order: number; createdAt: Date; updatedAt: Date; title: string; content: string; projectId: string; images: JsonValue; videoUrl: string | null; videoType: string | null; }' is not assignable to type 'ProjectSection'.
+        Types of property 'images' are incompatible.
+          Type 'JsonValue' is not assignable to type 'string[] | undefined'.
+            Type 'null' is not assignable to type 'string[] | undefined'.
+app/subjects/debug/page.tsx(12,42): error TS2345: Argument of type '{ name: string; color: string; description: string; }' is not assignable to parameter of type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">'.
+  Type '{ name: string; color: string; description: string; }' is missing the following properties from type 'Omit<{ id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; credits: number; ... 5 more ...; order: number; }, "id" | ... 3 more ... | "order">': instructor, code, credits, totalChapters, and 4 more.
+app/tasks/page.tsx(2,33): error TS2307: Cannot find module '@/components/ui/predictive-input' or its corresponding type declarations.
+app/tasks/page.tsx(3,10): error TS2305: Module '"@/hooks"' has no exported member 'useSuggestions'.
+components/analytics/advanced-analytics.tsx(304,29): error TS2339: Property 'progress' does not exist on type 'Subject'.
+components/calendar/EventModal.tsx(94,9): error TS2322: Type '"other" | "assignment" | "study" | "exam" | "break" | "personal"' is not assignable to type 'NonNullable<"assignment" | "study" | "exam" | "break" | "personal" | undefined>'.
+  Type '"other"' is not assignable to type 'NonNullable<"assignment" | "study" | "exam" | "break" | "personal" | undefined>'.
+components/classes/assignments-tab.tsx(162,11): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; onCreateAssignment: (assignmentData: { title: string; description: string; dueDate: string; allowLateSubmission: boolean; attachments?: any[] | undefined; }) => Promise<...>; }' is not assignable to type 'IntrinsicAttributes & CreateAssignmentModalProps'.
+  Property 'onCreateAssignment' does not exist on type 'IntrinsicAttributes & CreateAssignmentModalProps'.
+components/classes/post-card.tsx(406,91): error TS18048: 'post._count' is possibly 'undefined'.
+components/community/create-event-dialog.tsx(114,61): error TS2345: Argument of type '{ coverImage: any; append(name: string, value: string | Blob): void; append(name: string, value: string): void; append(name: string, blobValue: Blob, filename?: string): void; delete(name: string): void; ... 8 more ...; [Symbol.iterator](): FormDataIterator<[string, FormDataEntryValue]>; }' is not assignable to parameter of type 'SetStateAction<{ title: string; description: string; startDate: string; endDate: string; location: string; coverImage: string; }>'.
+  Type '{ coverImage: any; append(name: string, value: string | Blob): void; append(name: string, value: string): void; append(name: string, blobValue: Blob, filename?: string | undefined): void; ... 9 more ...; [Symbol.iterator](): FormDataIterator<...>; }' is missing the following properties from type '{ title: string; description: string; startDate: string; endDate: string; location: string; coverImage: string; }': title, description, startDate, endDate, location
+components/courses/CourseSearchBar.tsx(7,38): error TS2307: Cannot find module 'use-debounce' or its corresponding type declarations.
+components/drive/storage-indicator.tsx(38,9): error TS2322: Type '{ value: number; className: string; indicatorClassName: string; }' is not assignable to type 'IntrinsicAttributes & ProgressProps & RefAttributes<HTMLDivElement>'.
+  Property 'indicatorClassName' does not exist on type 'IntrinsicAttributes & ProgressProps & RefAttributes<HTMLDivElement>'.
+components/file-thumbnail.tsx(10,10): error TS2307: Cannot find module 'pdfjs-dist/legacy/build/pdf.js' or its corresponding type declarations.
+components/study-sessions/advanced-study-timer.tsx(271,35): error TS2339: Property 'YT' does not exist on type 'Window & typeof globalThis'.
+components/study-sessions/advanced-study-timer.tsx(286,53): error TS2339: Property 'YT' does not exist on type 'Window & typeof globalThis'.
+components/study-sessions/advanced-study-timer.tsx(286,66): error TS2339: Property 'YT' does not exist on type 'Window & typeof globalThis'.
+components/subjects/file-upload.tsx(29,10): error TS2305: Module '"@prisma/client"' has no exported member 'FileCategory'.
+components/user-settings.tsx(165,65): error TS2345: Argument of type '"taskReminders"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(179,65): error TS2345: Argument of type '"emailNotifications"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(193,65): error TS2345: Argument of type '"pushNotifications"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(209,54): error TS2345: Argument of type '"defaultStudyGoal"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(221,54): error TS2345: Argument of type '"breakDuration"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(235,54): error TS2345: Argument of type '"reminderTime"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(245,54): error TS2345: Argument of type '"preferredStudyTime"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(265,65): error TS2345: Argument of type '"showProgressBars"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(279,65): error TS2345: Argument of type '"compactMode"' is not assignable to parameter of type 'never'.
+components/user-settings.tsx(287,61): error TS2345: Argument of type '"theme"' is not assignable to parameter of type 'never'.
+hooks/useGoals.ts(160,40): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(178,38): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(178,49): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useGoals.ts(199,30): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(199,40): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useGoals.ts(217,38): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(217,49): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useGoals.ts(222,25): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(222,36): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useGoals.ts(241,30): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(241,40): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useGoals.ts(259,38): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(259,49): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useGoals.ts(275,30): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(275,43): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useGoals.ts(332,53): error TS2339: Property 'tasks' does not exist on type '{ id: string; userId: string; title: string; description: string; category: string; status: string; createdAt: Date; updatedAt: Date; order: number; targetDate: Date; }'.
+hooks/useGoals.ts(332,64): error TS7006: Parameter 't' implicitly has an 'any' type.
+hooks/useSkills.ts(168,47): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(186,40): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(186,56): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useSkills.ts(206,35): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(206,50): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useSkills.ts(224,40): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(224,56): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useSkills.ts(229,31): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(229,47): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useSkills.ts(249,35): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(249,50): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useSkills.ts(267,40): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(267,56): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useSkills.ts(282,35): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(282,53): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useSkills.ts(339,64): error TS2339: Property 'objectives' does not exist on type '{ id: string; userId: string; description: string; createdAt: Date; updatedAt: Date; name: string; order: number; resources: string; }'.
+hooks/useSkills.ts(339,80): error TS7006: Parameter 'o' implicitly has an 'any' type.
+hooks/useUserSettings.ts(187,48): error TS2536: Type 'K' cannot be used to index type 'Omit<UserSettings, "userId">'.
+hooks/useUserSettings.ts(187,72): error TS2536: Type 'K' cannot be used to index type 'Omit<UserSettings, "userId">'.
+hooks/useUserSettings.ts(193,22): error TS2536: Type 'K' cannot be used to index type 'Omit<UserSettings, "userId">'.
+inspect-latest-course.ts(30,35): error TS2551: Property 'isPublished' does not exist on type '{ modules: ({ chapters: ({ sections: { id: string; title: string; createdAt: Date; updatedAt: Date; order: number; content: string | null; fileUrl: string | null; fileName: string | null; ... 10 more ...; isPreview: boolean; }[]; } & { ...; })[]; } & { ...; })[]; } & { ...; }'. Did you mean 'publishedAt'?
+lib/database/document-service.ts(552,32): error TS2448: Block-scoped variable 'fs' used before its declaration.
+lib/database/document-service.ts(552,32): error TS2454: Variable 'fs' is used before being assigned.
+lib/database/document-service.ts(784,40): error TS2353: Object literal may only specify known properties, and 'mode' does not exist in type 'StringFilter<"Document">'.
+lib/database/document-service.ts(785,40): error TS2353: Object literal may only specify known properties, and 'mode' does not exist in type 'StringFilter<"Document">'.
+lib/database/goal-service.ts(274,17): error TS2353: Object literal may only specify known properties, and 'progress' does not exist in type '(Without<GoalUpdateInput, GoalUncheckedUpdateInput> & GoalUncheckedUpdateInput) | (Without<...> & GoalUpdateInput)'.
+lib/database/skill-service.ts(273,23): error TS2339: Property 'currentLevel' does not exist on type '{ objectives: { id: string; title: string; description: string | null; createdAt: Date; updatedAt: Date; order: number; completed: boolean; targetDate: Date | null; skillId: string; }[]; } & { ...; }'.
+lib/database/skill-service.ts(279,76): error TS2339: Property 'targetLevel' does not exist on type '{ objectives: { id: string; title: string; description: string | null; createdAt: Date; updatedAt: Date; order: number; completed: boolean; targetDate: Date | null; skillId: string; }[]; } & { ...; }'.
+lib/database/skill-service.ts(285,17): error TS2353: Object literal may only specify known properties, and 'currentLevel' does not exist in type '(Without<SkillUpdateInput, SkillUncheckedUpdateInput> & SkillUncheckedUpdateInput) | (Without<...> & SkillUpdateInput)'.
+lib/database/study-session-service.ts(92,11): error TS2322: Type 'string[]' is not assignable to type 'string'.
+lib/database/study-session-service.ts(93,11): error TS2322: Type 'string[]' is not assignable to type 'string'.
+lib/database/study-session-service.ts(116,11): error TS2322: Type 'string[] | undefined' is not assignable to type 'string | NullableStringFieldUpdateOperationsInput | null | undefined'.
+  Type 'string[]' is not assignable to type 'string | NullableStringFieldUpdateOperationsInput | null | undefined'.
+lib/database/study-session-service.ts(117,11): error TS2322: Type 'string[] | undefined' is not assignable to type 'string | NullableStringFieldUpdateOperationsInput | null | undefined'.
+  Type 'string[]' is not assignable to type 'string | NullableStringFieldUpdateOperationsInput | null | undefined'.
+lib/database/study-session-service.ts(217,41): error TS2353: Object literal may only specify known properties, and 'mode' does not exist in type 'StringNullableFilter<"StudySession">'.
+lib/database/study-session-service.ts(218,32): error TS2353: Object literal may only specify known properties, and 'hasSome' does not exist in type 'StringNullableFilter<"StudySession">'.
+lib/database/study-session-service.ts(219,32): error TS2353: Object literal may only specify known properties, and 'hasSome' does not exist in type 'StringNullableFilter<"StudySession">'.
+lib/database/subject-service.ts(154,13): error TS2353: Object literal may only specify known properties, and 'mode' does not exist in type 'StringFilter<"Subject">'.
+lib/database/task-service.ts(92,11): error TS2322: Type 'string[]' is not assignable to type 'string'.
+lib/database/task-service.ts(216,41): error TS2353: Object literal may only specify known properties, and 'mode' does not exist in type 'StringFilter<"Task">'.
+lib/database/task-service.ts(217,47): error TS2353: Object literal may only specify known properties, and 'mode' does not exist in type 'StringNullableFilter<"Task">'.
+lib/database/task-service.ts(218,23): error TS2353: Object literal may only specify known properties, and 'hasSome' does not exist in type 'StringFilter<"Task">'.
+lib/database/test-mark-service.ts(234,74): error TS2339: Property 'percentage' does not exist on type '{ subject: { id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; ... 6 more ...; order: number; }; } & { ...; }'.
+lib/database/test-mark-service.ts(236,72): error TS2339: Property 'percentage' does not exist on type '{ subject: { id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; ... 6 more ...; order: number; }; } & { ...; }'.
+lib/database/test-mark-service.ts(237,71): error TS2339: Property 'percentage' does not exist on type '{ subject: { id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; ... 6 more ...; order: number; }; } & { ...; }'.
+lib/database/test-mark-service.ts(242,32): error TS2339: Property 'grade' does not exist on type '{ subject: { id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; ... 6 more ...; order: number; }; } & { ...; }'.
+lib/database/test-mark-service.ts(242,65): error TS2339: Property 'grade' does not exist on type '{ subject: { id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; ... 6 more ...; order: number; }; } & { ...; }'.
+lib/database/test-mark-service.ts(252,59): error TS2339: Property 'percentage' does not exist on type '{ subject: { id: string; userId: string; description: string | null; createdAt: Date; updatedAt: Date; instructor: string | null; name: string; color: string; code: string | null; ... 6 more ...; order: number; }; } & { ...; }'.
+lib/database/test-mark-service.ts(305,59): error TS2339: Property 'percentage' does not exist on type '{ id: string; userId: string; createdAt: Date; updatedAt: Date; subjectId: string; notes: string | null; testName: string; testType: string; score: number; maxScore: number; testDate: Date; mistakes: string | null; }'.
+lib/drive/notifications.ts(16,13): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+lib/drive/notifications.ts(37,13): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+lib/drive/notifications.ts(54,13): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+lib/drive/notifications.ts(71,13): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+lib/drive/notifications.ts(89,13): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+lib/drive/notifications.ts(99,30): error TS2304: Cannot find name 'resetTime'.
+lib/drive/notifications.ts(107,13): error TS2353: Object literal may only specify known properties, and 'link' does not exist in type 'Without<NotificationCreateInput, NotificationUncheckedCreateInput> & NotificationUncheckedCreateInput'.
+lib/drive/thumbnail-service.ts(80,34): error TS2339: Property 'path' does not exist on type 'WriteImageResponse | ToBase64Response'.
+  Property 'path' does not exist on type 'ToBase64Response'.
+lib/drive/thumbnail-service.ts(81,63): error TS2339: Property 'path' does not exist on type 'WriteImageResponse | ToBase64Response'.
+  Property 'path' does not exist on type 'ToBase64Response'.
+lib/profile/profileService.ts(27,11): error TS2353: Object literal may only specify known properties, and 'github' does not exist in type 'SocialProfileSelect<DefaultArgs>'.
+lib/profile/profileService.ts(44,7): error TS7034: Variable 'featuredProjects' implicitly has type 'any[]' in some locations where its type cannot be determined.
+lib/profile/profileService.ts(77,5): error TS7005: Variable 'featuredProjects' implicitly has an 'any[]' type.
+lib/projects/projectService.ts(220,5): error TS2322: Type '{ sections?: { create: { images: string | null; order: number; title: string; content: string; videoUrl?: string; videoType?: string; }[]; } | undefined; tags?: string | undefined; title?: string | undefined; ... 4 more ...; isFeatured?: boolean | undefined; }' is not assignable to type '(Without<ProjectUpdateInput, ProjectUncheckedUpdateInput> & ProjectUncheckedUpdateInput) | (Without<...> & ProjectUpdateInput)'.
+  Type '{ sections?: { create: { images: string | null; order: number; title: string; content: string; videoUrl?: string; videoType?: string; }[]; } | undefined; tags?: string | undefined; title?: string | undefined; ... 4 more ...; isFeatured?: boolean | undefined; }' is not assignable to type 'Without<ProjectUncheckedUpdateInput, ProjectUpdateInput> & ProjectUpdateInput'.
+    Type '{ sections?: { create: { images: string | null; order: number; title: string; content: string; videoUrl?: string; videoType?: string; }[]; } | undefined; tags?: string | undefined; title?: string | undefined; ... 4 more ...; isFeatured?: boolean | undefined; }' is not assignable to type 'ProjectUpdateInput'.
+      Types of property 'sections' are incompatible.
+        Type '{ create: { images: string | null; order: number; title: string; content: string; videoUrl?: string | undefined; videoType?: string | undefined; }[]; } | undefined' is not assignable to type 'ProjectSectionUpdateManyWithoutProjectNestedInput | undefined'.
+          Type '{ create: { images: string | null; order: number; title: string; content: string; videoUrl?: string; videoType?: string; }[]; }' is not assignable to type 'ProjectSectionUpdateManyWithoutProjectNestedInput'.
+            Types of property 'create' are incompatible.
+              Type '{ images: string | null; order: number; title: string; content: string; videoUrl?: string | undefined; videoType?: string | undefined; }[]' is not assignable to type '(Without<ProjectSectionCreateWithoutProjectInput, ProjectSectionUncheckedCreateWithoutProjectInput> & ProjectSectionUncheckedCreateWithoutProjectInput) | (Without<...> & ProjectSectionCreateWithoutProjectInput) | ProjectSectionCreateWithoutProjectInput[] | ProjectSectionUncheckedCreateWithoutProjectInput[] | undefined'.
+                Type '{ images: string | null; order: number; title: string; content: string; videoUrl?: string | undefined; videoType?: string | undefined; }[]' is not assignable to type 'ProjectSectionCreateWithoutProjectInput[]'.
+                  Type '{ images: string | null; order: number; title: string; content: string; videoUrl?: string; videoType?: string; }' is not assignable to type 'ProjectSectionCreateWithoutProjectInput'.
+                    Types of property 'images' are incompatible.
+                      Type 'string | null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+                        Type 'null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+lib/utils/dynamic-data.ts(166,3): error TS2322: Type 'never[]' is not assignable to type 'string'.
+repro-create-course.ts(2,27): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+scripts/check-uploadthing.ts(2,30): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+scripts/migrate-subjects-to-drive.ts(80,53): error TS2339: Property 'storedName' does not exist on type '{ id: string; userId: string; description: string | null; category: string; createdAt: Date; updatedAt: Date; subjectId: string; fileType: string; fileName: string; originalName: string; ... 6 more ...; downloadCount: number; }'.
+scripts/migrate-subjects-to-drive.ts(91,57): error TS2339: Property 'storedName' does not exist on type '{ id: string; userId: string; description: string | null; category: string; createdAt: Date; updatedAt: Date; subjectId: string; fileType: string; fileName: string; originalName: string; ... 6 more ...; downloadCount: number; }'.

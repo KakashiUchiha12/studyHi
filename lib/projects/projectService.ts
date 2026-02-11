@@ -160,12 +160,12 @@ export async function createProject(data: {
   return await prisma.project.create({
     data: {
       ...projectData,
-      tags: tags ? JSON.stringify(tags) : null,
+      tags: tags ? (tags as any) : undefined,
       sections: sections
         ? {
           create: sections.map((section) => ({
             ...section,
-            images: section.images ? JSON.stringify(section.images) : null,
+            images: section.images ? (section.images as any) : undefined,
           })),
         }
         : undefined,

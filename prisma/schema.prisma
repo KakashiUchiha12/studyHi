@@ -1138,6 +1138,7 @@ model ClassMember {
   status              String   @default("pending") // 'pending', 'approved', 'rejected'
   joinedAt            DateTime @default(now()) @map("joined_at")
   mutedNotifications  Boolean  @default(false) @map("muted_notifications")
+  lastViewedAssignments DateTime? @map("last_viewed_assignments")
   
   class               Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   user                User     @relation("ClassMemberships", fields: [userId], references: [id], onDelete: Cascade)

@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function PUT(
     req: Request,
-    { params }: { params: { id: string; userId: string } }
+    { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
+    const { id, userId } = await params;
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
@@ -19,7 +20,7 @@ export async function PUT(
         const requesterMembership = await prisma.communityMember.findUnique({
             where: {
                 communityId_userId: {
-                    communityId: params.id,
+                    communityId: id,
                     userId: (session.user as any).id
                 }
             }
@@ -31,16 +32,16 @@ export async function PUT(
 
         // Update target member logic
         // Prevent changing owner's role?
-        const community = await prisma.community.findUnique({ where: { id: params.id } });
-        if (community?.ownerId === params.userId) {
+        const community = await prisma.community.findUnique({ where: { id } });
+        if (community?.ownerId === userId) {
             return new NextResponse("Cannot change owner role", { status: 400 });
         }
 
         const updatedMember = await prisma.communityMember.update({
             where: {
                 communityId_userId: {
-                    communityId: params.id,
-                    userId: params.userId
+                    communityId: id,
+                    userId: userId
                 }
             },
             data: { role }
@@ -56,8 +57,9 @@ export async function PUT(
 
 export async function DELETE(
     req: Request,
-    { params }: { params: { id: string; userId: string } }
+    { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
+    const { id, userId } = await params;
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
@@ -68,7 +70,7 @@ export async function DELETE(
         const requesterMembership = await prisma.communityMember.findUnique({
             where: {
                 communityId_userId: {
-                    communityId: params.id,
+                    communityId: id,
                     userId: (session.user as any).id
                 }
             }
@@ -79,16 +81,16 @@ export async function DELETE(
         }
 
         // Prevent kicking owner
-        const community = await prisma.community.findUnique({ where: { id: params.id } });
-        if (community?.ownerId === params.userId) {
+        const community = await prisma.community.findUnique({ where: { id } });
+        if (community?.ownerId === userId) {
             return new NextResponse("Cannot kick owner", { status: 400 });
         }
 
         await prisma.communityMember.delete({
             where: {
                 communityId_userId: {
-                    communityId: params.id,
-                    userId: params.userId
+                    communityId: id,
+                    userId: userId
                 }
             }
         });

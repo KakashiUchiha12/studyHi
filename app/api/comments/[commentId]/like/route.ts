@@ -3,6 +3,34 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export async function GET(
+    req: Request,
+    props: { params: Promise<{ commentId: string }> }
+) {
+    const params = await props.params;
+    try {
+        const likers = await prisma.like.findMany({
+            where: { commentId: params.commentId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        image: true,
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const users = likers.map(l => l.user);
+        return NextResponse.json(users);
+    } catch (error) {
+        console.error("[COMMENT_LIKERS_GET]", error);
+        return new NextResponse("Internal Error", { status: 500 });
+    }
+}
+
 export async function POST(
     req: Request,
     props: { params: Promise<{ commentId: string }> }
@@ -54,7 +82,7 @@ export async function POST(
             });
 
             // Trigger notification for comment owner
-            if (like && like.comment.userId !== userId) {
+            if (like && like.comment && like.comment.userId !== userId) {
                 const { createNotification } = await import("@/lib/notifications-server");
                 await createNotification({
                     userId: like.comment.userId,

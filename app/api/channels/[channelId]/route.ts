@@ -54,8 +54,9 @@ export async function DELETE(
 
 export async function PUT(
     req: Request,
-    { params }: { params: { channelId: string } }
+    { params }: { params: Promise<{ channelId: string }> }
 ) {
+    const { channelId } = await params;
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
@@ -69,7 +70,7 @@ export async function PUT(
         }
 
         const channel = await prisma.channel.findUnique({
-            where: { id: params.channelId },
+            where: { id: channelId },
             include: { community: true }
         });
 
@@ -95,7 +96,7 @@ export async function PUT(
         }
 
         const updatedChannel = await prisma.channel.update({
-            where: { id: params.channelId },
+            where: { id: channelId },
             data: { name }
         });
 

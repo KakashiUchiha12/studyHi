@@ -150,7 +150,18 @@ export default function CreateCommunityPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative">
+            {loading && (
+                <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                        <h2 className="text-xl font-semibold text-foreground">Creating your community...</h2>
+                        <p className="text-muted-foreground text-center max-w-xs">
+                            We're setting up your study group. This will only take a moment.
+                        </p>
+                    </div>
+                </div>
+            )}
             <Card className="w-full max-w-lg bg-white shadow-lg">
                 <CardHeader>
                     <div className="flex items-center gap-2 mb-2">

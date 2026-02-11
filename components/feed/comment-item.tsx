@@ -8,6 +8,7 @@ import { Heart, MessageSquare, MoreHorizontal, Pencil, Trash } from "lucide-reac
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { LikersDialog } from "./likers-dialog";
 
 interface CommentItemProps {
     comment: any;
@@ -34,6 +35,7 @@ export const CommentItem = ({
 
     const [liked, setLiked] = useState<boolean>(comment.likes && comment.likes.length > 0);
     const [likeCount, setLikeCount] = useState<number>(comment._count?.likes || 0);
+    const [isLikersOpen, setIsLikersOpen] = useState(false);
 
     const isOwner = currentUserId === comment.userId;
 
@@ -120,14 +122,23 @@ export const CommentItem = ({
                 </div>
 
                 <div className="flex items-center gap-4 text-muted-foreground text-xs px-1">
-                    <button
-                        className={cn("flex items-center gap-1 hover:text-red-500 transition-colors", liked && "text-red-500")}
-                        onClick={handleLike}
-                    >
-                        <Heart className={cn("w-3 h-3", liked && "fill-current")} />
-                        {likeCount > 0 && <span>{likeCount}</span>}
-                        Like
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            className={cn("flex items-center gap-1 hover:text-red-500 transition-colors", liked && "text-red-500")}
+                            onClick={handleLike}
+                        >
+                            <Heart className={cn("w-3 h-3", liked && "fill-current")} />
+                            Like
+                        </button>
+                        {likeCount > 0 && (
+                            <button
+                                onClick={() => setIsLikersOpen(true)}
+                                className="hover:underline"
+                            >
+                                {likeCount}
+                            </button>
+                        )}
+                    </div>
                     <button
                         className="flex items-center gap-1 hover:text-foreground transition-colors"
                         onClick={() => setIsReplying(!isReplying)}
@@ -166,6 +177,11 @@ export const CommentItem = ({
                     </div>
                 )}
             </div>
+            <LikersDialog
+                isOpen={isLikersOpen}
+                onClose={() => setIsLikersOpen(false)}
+                apiUrl={`/api/comments/${comment.id}/like`}
+            />
         </div>
     );
 }

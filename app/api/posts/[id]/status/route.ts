@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params;
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
@@ -14,7 +15,8 @@ export async function PATCH(
         }
 
         const { status } = await req.json();
-        const postId = params.id;
+
+        const postId = id;
 
         const post = await prisma.post.findUnique({
             where: { id: postId },
@@ -43,15 +45,16 @@ export async function PATCH(
 
 export async function DELETE(
     req: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params;
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const postId = params.id;
+        const postId = id;
 
         const post = await prisma.post.findUnique({
             where: { id: postId },

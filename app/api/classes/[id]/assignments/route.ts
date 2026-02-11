@@ -35,6 +35,19 @@ export async function GET(
       )
     }
 
+    // Reset unread assignments count for this user
+    await dbService.getPrisma().classMember.update({
+      where: {
+        classId_userId: {
+          classId,
+          userId
+        }
+      },
+      data: {
+        lastViewedAssignments: new Date()
+      } as any
+    })
+
     // Get all assignments
     const assignments = await dbService.getPrisma().assignment.findMany({
       where: { classId },

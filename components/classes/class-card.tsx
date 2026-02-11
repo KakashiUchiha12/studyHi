@@ -55,7 +55,12 @@ export function ClassCard({ classData }: ClassCardProps) {
           />
         ) : null}
 
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {classData.unreadAssignmentsCount !== undefined && classData.unreadAssignmentsCount > 0 && (
+            <div className="bg-red-500 text-white text-[10px] font-bold h-5 min-w-[20px] px-1 rounded-full flex items-center justify-center shadow-lg border-2 border-white animate-in zoom-in duration-300">
+              {classData.unreadAssignmentsCount}
+            </div>
+          )}
           <Badge className={`${roleColor} shadow-md`}>
             {classData.role?.toUpperCase() || 'STUDENT'}
           </Badge>

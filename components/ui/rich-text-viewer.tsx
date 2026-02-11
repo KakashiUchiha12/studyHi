@@ -1,13 +1,13 @@
 "use client"
 
 import { useEditor, EditorContent } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Underline from "@tiptap/extension-underline"
-import TextAlign from "@tiptap/extension-text-align"
-import Link from "@tiptap/extension-link"
-import Youtube from "@tiptap/extension-youtube"
+import { StarterKit } from "@tiptap/starter-kit"
+import { Underline } from "@tiptap/extension-underline"
+import { TextAlign } from "@tiptap/extension-text-align"
+import { Link } from "@tiptap/extension-link"
+import { Youtube } from "@tiptap/extension-youtube"
 import { Color } from "@tiptap/extension-color"
-import TextStyle from "@tiptap/extension-text-style"
+import { TextStyle } from "@tiptap/extension-text-style"
 import { cn } from "@/lib/utils"
 import { useEffect } from "react"
 
@@ -17,7 +17,14 @@ interface RichTextViewerProps {
 }
 
 export function RichTextViewer({ content, className }: RichTextViewerProps) {
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
     const editor = useEditor({
+        immediatelyRender: false,
         editable: false,
         extensions: [
             StarterKit,
@@ -56,7 +63,11 @@ export function RichTextViewer({ content, className }: RichTextViewerProps) {
         }
     }, [content, editor])
 
-    if (!editor) return null
+    if (!mounted || !editor) return null
 
-    return <EditorContent editor={editor} />
+    return (
+        <div className={cn("prose prose-sm dark:prose-invert max-w-none", className)}>
+            <EditorContent editor={editor} />
+        </div>
+    )
 }

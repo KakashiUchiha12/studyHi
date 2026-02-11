@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(
     req: Request,
-    { params }: { params: { id: string; eventId: string } }
-) { // Schema defines eventId, but folder structure matches
+    { params }: { params: Promise<{ id: string; eventId: string }> }
+) {
+    const { eventId } = await params;
     try {
         const session = await getServerSession(authOptions);
         const userId = (session?.user as any)?.id;
@@ -24,7 +25,7 @@ export async function POST(
         const rsvp = await (prisma as any).eventAttendee.upsert({
             where: {
                 eventId_userId: {
-                    eventId: params.eventId,
+                    eventId: eventId,
                     userId: userId
                 }
             },
@@ -32,7 +33,7 @@ export async function POST(
                 status
             },
             create: {
-                eventId: params.eventId,
+                eventId: eventId,
                 userId: userId,
                 status
             }

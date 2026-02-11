@@ -1,4 +1,6 @@
 import type React from "react"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 import type { Metadata } from "next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -26,11 +28,13 @@ export const viewport = {
   userScalable: false,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -38,7 +42,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ErrorBoundary>
-          <AuthSessionProvider>
+          <AuthSessionProvider session={session}>
             <ReactQueryProvider>
               <SocketProvider>
                 <ThemeProvider defaultTheme="light">

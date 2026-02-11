@@ -11,6 +11,7 @@ import { CreateEventDialog } from "@/components/community/create-event-dialog";
 import { Loader2 } from "lucide-react";
 
 import { MembersList } from "@/components/community/members-list";
+import { HelpTooltip } from "@/components/classes/help-tooltip";
 
 export default function CommunityHome() {
     const params = useParams();
@@ -39,8 +40,9 @@ export default function CommunityHome() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-bold">Community Hub</h2>
+                <HelpTooltip content="📢 Announcements: Official updates from Admins/Moderators. 💬 Posts: General discussions open to all members." />
             </div>
 
             <Tabs defaultValue="posts">
@@ -68,7 +70,10 @@ export default function CommunityHome() {
 
                 <TabsContent value="events" className="mt-6 space-y-4">
                     <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-semibold">Upcoming Events</h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold">Upcoming Events</h3>
+                            <HelpTooltip content="📅 Events: Scheduled activities for the community. You can see details like time and location, and RSVP to let others know if you're attending." />
+                        </div>
                         <CreateEventDialog
                             communityId={communityId}
                             onEventCreated={fetchEvents}
