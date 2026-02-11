@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { materialService } from '@/lib/database'
+import { materialService, chapterService } from '@/lib/database'
 import { CreateMaterialData } from '@/lib/database'
+import { syncSubjectFilesToDrive } from '@/lib/drive/subject-sync'
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,6 +55,26 @@ export async function POST(request: NextRequest) {
     }
 
     const material = await materialService.createMaterial(data)
+
+    // Sync to Drive (Fire and forget-ish, but await to ensure execution in serverless)
+    try {
+      let subjectId = data.subjectId
+      if (!subjectId && data.chapterId) {
+        const chapter = await chapterService.getChapterById(data.chapterId)
+        if (chapter) subjectId = chapter.subjectId
+      }
+
+      if (subjectId) {
+        await syncSubjectFilesToDrive({
+          userId: (session.user as any).id,
+          subjectId
+        })
+      }
+    } catch (syncError) {
+      console.error('Failed to sync material files to Drive:', syncError)
+      // Don't fail the request, just log
+    }
+
     return NextResponse.json(material, { status: 201 })
   } catch (error) {
     console.error('Failed to create material:', error)
