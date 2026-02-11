@@ -108,7 +108,9 @@ export default function ProjectsPage({ searchParams }: ProjectsPageProps) {
             </div>
 
             <div className="mb-8">
-                <ProjectsFilters />
+                <Suspense fallback={<div className="h-24" />}>
+                    <ProjectsFilters />
+                </Suspense>
             </div>
 
             <Suspense
