@@ -1,4 +1,7 @@
 import { Suspense } from "react"
+
+export const dynamic = 'force-dynamic'
+
 import { getProjects } from "@/lib/projects/projectService"
 import { ProjectCard } from "@/components/projects/project-card"
 import { ProjectsFilters } from "@/components/projects/projects-filters"
