@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "build": "next build",
+        "build": "next build --webpack",
         "dev": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" server.ts",
         "start": "next start",
         "build:server": "tsc --project tsconfig.server.json || echo 'Server build emitted with warnings'",
