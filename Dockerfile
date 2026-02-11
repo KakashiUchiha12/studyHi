@@ -100,4 +100,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "dist/server.js"]
+# Run migrations and start the server
+CMD ["sh", "-c", "npx prisma db push && node dist/server.js"]
