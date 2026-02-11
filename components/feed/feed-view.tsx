@@ -5,7 +5,7 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { PostCard } from "./post-card";
 import { CreatePost } from "./create-post";
 import { Loader2 } from "lucide-react";
-import { pusherClient } from "@/lib/pusher";
+import { pusherClient } from "@/lib/pusher-client";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface FeedViewProps {

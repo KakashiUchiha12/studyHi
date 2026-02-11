@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { pusherServer } from "@/lib/pusher";
+import { pusherServer } from "@/lib/pusher-server";
 
 const POSTS_BATCH = 20;
 
