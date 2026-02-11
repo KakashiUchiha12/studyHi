@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
+import { updateDriveFolderForSubject, deleteDriveFolderForSubject } from '@/lib/drive/subject-sync'
 
 export async function PUT(
   req: Request,
@@ -51,6 +52,19 @@ export async function PUT(
       order: updatedSubject.order ? updatedSubject.order.toString() : '0'
     }
 
+    // AUTO-SYNC: Rename Drive folder if subject name changed
+    if (body.name && body.name !== existingSubject.name) {
+      try {
+        await updateDriveFolderForSubject({
+          subjectId: subjectId,
+          newName: body.name
+        });
+        console.log(`Renamed Drive folder for subject: ${existingSubject.name} -> ${body.name}`);
+      } catch (syncError) {
+        console.error('Failed to rename Drive folder for subject:', syncError);
+      }
+    }
+
     return NextResponse.json(serializedSubject)
   } catch (error) {
     console.error('Failed to update subject:', error)
@@ -92,6 +106,14 @@ export async function DELETE(
     await dbService.getPrisma().subject.delete({
       where: { id: subjectId }
     })
+
+    // AUTO-SYNC: Delete Drive folder
+    try {
+      await deleteDriveFolderForSubject(subjectId);
+      console.log(`Deleted Drive folder for subject ID: ${subjectId}`);
+    } catch (syncError) {
+      console.error('Failed to delete Drive folder for subject:', syncError);
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

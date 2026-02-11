@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
+import { createDriveFolderForSubject } from '@/lib/drive/subject-sync'
 
 export async function GET(request: NextRequest) {
   try {
     // Get session using NextAuth's standard method
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       console.log('GET /api/subjects - No authenticated user found')
       return NextResponse.json(
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get session using NextAuth's standard method
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       console.log('POST /api/subjects - No authenticated user found')
       return NextResponse.json(
@@ -57,13 +58,13 @@ export async function POST(request: NextRequest) {
     console.log('POST /api/subjects - User ID:', userId)
 
     const body = await request.json()
-    
+
     // Get the current highest order value for this user
     const maxOrder = await dbService.getPrisma().subject.aggregate({
       where: { userId: userId },
       _max: { order: true }
     })
-    
+
     const nextOrder = (maxOrder._max.order ? Number(maxOrder._max.order) : 0) + 1
 
     const subject = await dbService.getPrisma().subject.create({
@@ -89,6 +90,19 @@ export async function POST(request: NextRequest) {
     const serializedSubject = {
       ...subject,
       order: subject.order ? subject.order.toString() : '0'
+    }
+
+    // AUTO-SYNC: Create a Drive folder for this subject
+    try {
+      await createDriveFolderForSubject({
+        userId,
+        subjectId: subject.id,
+        subjectName: subject.name
+      });
+      console.log(`Created Drive folder for subject: ${subject.name}`);
+    } catch (syncError) {
+      console.error('Failed to create Drive folder for subject:', syncError);
+      // We don't fail the request, just log the error
     }
 
     return NextResponse.json(serializedSubject)

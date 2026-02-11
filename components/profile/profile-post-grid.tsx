@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, MessageSquare, Heart, FileText } from "lucide-react";
+import { Loader2, MessageSquare, Heart, FileText, Video } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { PostCard } from "@/components/feed/post-card";
 import { cn } from "@/lib/utils";
@@ -76,6 +76,13 @@ export function ProfilePostGrid({ userId, currentUserId, status = "published" }:
                                             <div className="absolute top-2 left-2 pointer-events-none">
                                                 <div className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase">
                                                     PDF
+                                                </div>
+                                            </div>
+                                        )}
+                                        {firstMedia.type === 'video' && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+                                                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/40 shadow-sm">
+                                                    <Video className="w-5 h-5 text-white fill-current" />
                                                 </div>
                                             </div>
                                         )}

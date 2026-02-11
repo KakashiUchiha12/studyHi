@@ -23,6 +23,7 @@ import {
   Video,
   Loader2
 } from "lucide-react"
+import { VideoPlayer } from "@/components/ui/video-player"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,9 +174,17 @@ export function PostCard({
     return url.match(/\.(jpeg|jpg|gif|png|webp)/i) || att.type === 'image'
   }).map((att: any) => typeof att === 'string' ? { url: att, type: 'image' } : att)
 
+  const videoAttachments = attachments.filter((att: any) => {
+    const url = typeof att === 'string' ? att : att.url
+    return url.match(/\.(mp4|webm|ogg|mov)/i) || att.type === 'video'
+  }).map((att: any) => typeof att === 'string' ? { url: att, type: 'video' } : att)
+
   const fileAttachments = attachments.filter((att: any) => {
     const url = typeof att === 'string' ? att : att.url
-    return !url.match(/\.(jpeg|jpg|gif|png|webp)/i) && att.type !== 'image'
+    return !url.match(/\.(jpeg|jpg|gif|png|webp)/i) &&
+      !url.match(/\.(mp4|webm|ogg|mov)/i) &&
+      att.type !== 'image' &&
+      att.type !== 'video'
   }).map((att: any) => typeof att === 'string' ? { url: att, type: 'file', name: att.split('/').pop() } : att)
 
   return (
@@ -301,6 +310,19 @@ export function PostCard({
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Video Playback */}
+        {videoAttachments.length > 0 && (
+          <div className="space-y-3 mt-3">
+            {videoAttachments.map((att: any, index: number) => (
+              <VideoPlayer
+                key={index}
+                src={att.url}
+                className="w-full border shadow-sm aspect-video max-h-[400px]"
+              />
+            ))}
           </div>
         )}
 

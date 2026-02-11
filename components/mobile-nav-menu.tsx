@@ -11,7 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, Globe, Users, MessageSquare, User, LayoutDashboard } from "lucide-react";
+import { Menu, Globe, Users, MessageSquare, User, LayoutDashboard, Layout, HardDrive } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -45,10 +45,20 @@ export function MobileNavMenu() {
             icon: Users,
         },
         {
+            title: "Projects",
+            href: "/projects",
+            icon: Layout,
+        },
+        {
             title: "Messages",
             href: "/messages",
             icon: MessageSquare,
             count: unread.messages,
+        },
+        {
+            title: "Study Drive",
+            href: "/drive",
+            icon: HardDrive,
         },
         {
             title: "My Profile",

@@ -14,6 +14,7 @@ import { ImageViewer } from "@/components/ui/image-viewer";
 import { useToast } from "@/hooks/use-toast";
 import { FilePreview } from "@/components/file-preview";
 import { Loader2, LayoutDashboard } from "lucide-react";
+import { VideoPlayer } from "@/components/ui/video-player";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -188,7 +189,8 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
     };
 
     const mediaAttachments = post.attachments?.filter((att: any) => att.type === "image") || [];
-    const fileAttachments = post.attachments?.filter((att: any) => att.type !== "image") || [];
+    const videoAttachments = post.attachments?.filter((att: any) => att.type === "video") || [];
+    const fileAttachments = post.attachments?.filter((att: any) => att.type !== "image" && att.type !== "video") || [];
 
     return (
         <Card className="mb-2 sm:mb-4 rounded-none sm:rounded-xl border-x-0 sm:border-x">
@@ -300,6 +302,19 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                                 </div>
                             </>
                         )}
+                    </div>
+                )}
+
+                {/* Video Playback */}
+                {videoAttachments.length > 0 && (
+                    <div className="space-y-3 mb-3">
+                        {videoAttachments.map((att: any) => (
+                            <VideoPlayer
+                                key={att.id}
+                                src={att.url}
+                                className="w-full border shadow-sm aspect-video max-h-[400px]"
+                            />
+                        ))}
                     </div>
                 )}
 

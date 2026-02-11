@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { format } from "date-fns";
 import { Download, X, Maximize2, FileText, File } from "lucide-react";
+import Link from "next/link";
+import { VideoPlayer } from "@/components/ui/video-player";
 
 interface ChatMessagesProps {
     name: string;
@@ -155,16 +157,18 @@ export const ChatMessages = ({
                             const isMe = member?.id === msg.senderId;
                             return (
                                 <div key={msg.id || i} className={`flex gap-2 sm:gap-3 items-start group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isMe ? "flex-row-reverse" : ""}`}>
-                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 border-2 border-background shadow-sm">
+                                    <Link href={`/profile/${msg.sender?.id || msg.senderId}`} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex-shrink-0 border-2 border-background shadow-sm hover:opacity-80 transition">
                                         <img
                                             src={msg.sender?.image || "/placeholder-user.jpg"}
                                             alt={msg.sender?.name || "User"}
                                             className="w-full h-full object-cover"
                                         />
-                                    </div>
+                                    </Link>
                                     <div className={`flex flex-col max-w-[75%] sm:max-w-[65%] ${isMe ? "items-end" : "items-start"}`}>
                                         <div className={`flex items-center gap-2 mb-1 ${isMe ? "flex-row-reverse" : ""}`}>
-                                            <span className="font-medium text-xs sm:text-sm">{msg.sender?.name || "User"}</span>
+                                            <Link href={`/profile/${msg.sender?.id || msg.senderId}`} className="font-medium text-xs sm:text-sm hover:underline hover:text-primary transition">
+                                                {msg.sender?.name || "User"}
+                                            </Link>
                                             <span className="text-xs text-muted-foreground">{format(new Date(msg.createdAt || Date.now()), "HH:mm")}</span>
                                         </div>
                                         <div className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl break-words shadow-sm ${isMe
@@ -195,20 +199,15 @@ export const ChatMessages = ({
                                                             </button>
                                                         </div>
                                                     ) : msg.fileType?.startsWith('video/') ? (
-                                                        <div
-                                                            className="rounded-lg overflow-hidden border border-border/20 my-1 relative group/media cursor-pointer hover:opacity-95 transition"
-                                                            onClick={() => setViewerMedia({ url: msg.fileUrl!, type: msg.fileType!, name: msg.fileName || 'video.mp4' })}
-                                                        >
-                                                            <div className="absolute inset-0 bg-black/0 group-hover/media:bg-black/20 transition flex items-center justify-center opacity-0 group-hover/media:opacity-100 pointer-events-none">
-                                                                <Maximize2 className="text-white w-8 h-8 drop-shadow-lg" />
-                                                            </div>
-                                                            <video
+                                                        <div className="relative group/media my-1 max-w-[300px]">
+                                                            <VideoPlayer
                                                                 src={msg.fileUrl}
-                                                                className="max-w-full max-h-[300px]"
+                                                                className="w-full h-auto rounded-lg shadow-sm bg-black/10 aspect-video"
                                                             />
                                                             <button
                                                                 onClick={(e) => handleDownload(e, msg.fileUrl!, msg.fileName || 'video.mp4')}
                                                                 className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover/media:opacity-100 transition shadow-sm z-10"
+                                                                title="Download"
                                                             >
                                                                 <Download className="w-4 h-4" />
                                                             </button>
