@@ -31,7 +31,7 @@ const nextConfig = {
 
   // Performance optimizations
   experimental: {
-    optimizeCss: true,
+    optimizeCss: false, // Disabled for build stability on 2GB RAM
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
 
