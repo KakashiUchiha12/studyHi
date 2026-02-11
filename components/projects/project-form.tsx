@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, X, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { ProjectCSVImporter } from "./project-csv-importer"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
 const CATEGORIES = [
     "Web Development",
@@ -331,11 +332,11 @@ export function ProjectForm({ initialData, mode = "create" }: ProjectFormProps) 
 
                             <div className="space-y-2">
                                 <Label>Content</Label>
-                                <Textarea
-                                    value={section.content}
-                                    onChange={(e) => updateSection(index, "content", e.target.value)}
+                                <RichTextEditor
+                                    content={section.content}
+                                    onChange={(content) => updateSection(index, "content", content)}
                                     placeholder="Write your content here..."
-                                    rows={6}
+                                    className="min-h-[300px]"
                                 />
                             </div>
 

@@ -1,3 +1,5 @@
+import { RichTextViewer } from "@/components/ui/rich-text-viewer"
+
 interface ProjectSection {
     id: string
     order: number
@@ -34,7 +36,7 @@ export function ProjectSections({ sections }: ProjectSectionsProps) {
                         <h2 className="text-2xl font-bold">{section.title}</h2>
 
                         <div className="prose prose-slate dark:prose-invert max-w-none">
-                            <p className="whitespace-pre-wrap">{section.content}</p>
+                            <RichTextViewer content={section.content} />
                         </div>
 
                         {section.videoUrl && (

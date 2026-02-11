@@ -1,43 +1,85 @@
 "use client"
 
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { Bold, Italic, List, ListOrdered, Heading1, Heading2, Quote } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-
-export function cn(...inputs: (string | undefined | null | false)[]) {
-    return twMerge(clsx(inputs));
-}
+import { useEditor, EditorContent, BubbleMenu } from "@tiptap/react"
+import StarterKit from "@tiptap/starter-kit"
+import Underline from "@tiptap/extension-underline"
+import TextAlign from "@tiptap/extension-text-align"
+import Link from "@tiptap/extension-link"
+import Youtube from "@tiptap/extension-youtube"
+import { Color } from "@tiptap/extension-color"
+import TextStyle from "@tiptap/extension-text-style"
+import {
+    Bold,
+    Italic,
+    Underline as UnderlineIcon,
+    Strikethrough,
+    Code,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    AlignJustify,
+    List,
+    ListOrdered,
+    Quote,
+    Heading1,
+    Heading2,
+    Heading3,
+    Link as LinkIcon,
+    Youtube as YoutubeIcon,
+    Smile,
+    Redo,
+    Undo,
+} from "lucide-react"
+import { Toggle } from "@/components/ui/toggle"
+import { Button } from "@/components/ui/button"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react"
+import { useState } from "react"
+import { cn } from "@/lib/utils"
 
 interface RichTextEditorProps {
-    value: string
-    onChange: (html: string) => void
+    content: string
+    onChange: (content: string) => void
     placeholder?: string
     className?: string
 }
 
 export function RichTextEditor({
-    value,
+    content,
     onChange,
-    placeholder = "Write something...",
-    className
+    placeholder,
+    className,
 }: RichTextEditorProps) {
     const editor = useEditor({
         extensions: [
             StarterKit,
-            Placeholder.configure({
-                placeholder,
-                emptyEditorClass: 'is-editor-empty before:content-[attr(data-placeholder)] before:text-slate-400 before:float-left before:pointer-events-none before:h-0',
+            Underline,
+            TextStyle,
+            Color,
+            TextAlign.configure({
+                types: ["heading", "paragraph"],
+            }),
+            Link.configure({
+                openOnClick: false,
+                HTMLAttributes: {
+                    class: "text-primary underline cursor-pointer",
+                },
+            }),
+            Youtube.configure({
+                controls: false,
+                nocookie: true,
             }),
         ],
-        content: value,
+        content,
         editorProps: {
             attributes: {
                 class: cn(
-                    "min-h-[150px] max-h-[400px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto prose prose-sm dark:prose-invert max-w-none",
+                    "prose prose-sm sm:prose-base dark:prose-invert max-w-none focus:outline-none min-h-[150px] px-3 py-2",
                     className
                 ),
             },
@@ -45,81 +87,230 @@ export function RichTextEditor({
         onUpdate: ({ editor }) => {
             onChange(editor.getHTML())
         },
-        immediatelyRender: false // Fixes SSR hydration mismatch
     })
+
+    const [linkUrl, setLinkUrl] = useState("")
 
     if (!editor) {
         return null
     }
 
+    const setLink = () => {
+        if (linkUrl) {
+            editor.chain().focus().extendMarkRange("link").setLink({ href: linkUrl }).run()
+            setLinkUrl("")
+        }
+    }
+
+    const addYoutubeVideo = () => {
+        const url = prompt("Enter YouTube URL")
+        if (url) {
+            editor.commands.setYoutubeVideo({
+                src: url,
+            })
+        }
+    }
+
+    const onEmojiClick = (emojiData: EmojiClickData) => {
+        editor.chain().focus().insertContent(emojiData.emoji).run()
+    }
+
     return (
-        <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-1 border rounded-md p-1 bg-muted/50">
-                <Button
-                    type="button"
-                    variant="ghost"
+        <div className="border rounded-md bg-background flex flex-col overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+            {/* Toolbar */}
+            <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/40 items-center">
+                <Toggle
                     size="sm"
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                    className={cn(editor.isActive('bold') && "bg-muted")}
+                    pressed={editor.isActive("bold")}
+                    onPressedChange={() => editor.chain().focus().toggleBold().run()}
+                    aria-label="Toggle bold"
                 >
                     <Bold className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
+                </Toggle>
+                <Toggle
                     size="sm"
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                    className={cn(editor.isActive('italic') && "bg-muted")}
+                    pressed={editor.isActive("italic")}
+                    onPressedChange={() => editor.chain().focus().toggleItalic().run()}
+                    aria-label="Toggle italic"
                 >
                     <Italic className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
+                </Toggle>
+                <Toggle
                     size="sm"
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                    className={cn(editor.isActive('heading', { level: 1 }) && "bg-muted")}
+                    pressed={editor.isActive("underline")}
+                    onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
+                    aria-label="Toggle underline"
+                >
+                    <UnderlineIcon className="h-4 w-4" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive("strike")}
+                    onPressedChange={() => editor.chain().focus().toggleStrike().run()}
+                    aria-label="Toggle strikethrough"
+                >
+                    <Strikethrough className="h-4 w-4" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive("code")}
+                    onPressedChange={() => editor.chain().focus().toggleCode().run()}
+                    aria-label="Toggle code"
+                >
+                    <Code className="h-4 w-4" />
+                </Toggle>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive("heading", { level: 1 })}
+                    onPressedChange={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    aria-label="Heading 1"
                 >
                     <Heading1 className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
+                </Toggle>
+                <Toggle
                     size="sm"
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                    className={cn(editor.isActive('heading', { level: 2 }) && "bg-muted")}
+                    pressed={editor.isActive("heading", { level: 2 })}
+                    onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    aria-label="Heading 2"
                 >
                     <Heading2 className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
+                </Toggle>
+                <Toggle
                     size="sm"
-                    onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    className={cn(editor.isActive('bulletList') && "bg-muted")}
+                    pressed={editor.isActive("heading", { level: 3 })}
+                    onPressedChange={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                    aria-label="Heading 3"
+                >
+                    <Heading3 className="h-4 w-4" />
+                </Toggle>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive({ textAlign: "left" })}
+                    onPressedChange={() => editor.chain().focus().setTextAlign("left").run()}
+                    aria-label="Align left"
+                >
+                    <AlignLeft className="h-4 w-4" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive({ textAlign: "center" })}
+                    onPressedChange={() => editor.chain().focus().setTextAlign("center").run()}
+                    aria-label="Align center"
+                >
+                    <AlignCenter className="h-4 w-4" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive({ textAlign: "right" })}
+                    onPressedChange={() => editor.chain().focus().setTextAlign("right").run()}
+                    aria-label="Align right"
+                >
+                    <AlignRight className="h-4 w-4" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive({ textAlign: "justify" })}
+                    onPressedChange={() => editor.chain().focus().setTextAlign("justify").run()}
+                    aria-label="Justify"
+                >
+                    <AlignJustify className="h-4 w-4" />
+                </Toggle>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive("bulletList")}
+                    onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+                    aria-label="Bullet list"
                 >
                     <List className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
+                </Toggle>
+                <Toggle
                     size="sm"
-                    onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                    className={cn(editor.isActive('orderedList') && "bg-muted")}
+                    pressed={editor.isActive("orderedList")}
+                    onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+                    aria-label="Ordered list"
                 >
                     <ListOrdered className="h-4 w-4" />
-                </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
+                </Toggle>
+                <Toggle
                     size="sm"
-                    onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                    className={cn(editor.isActive('blockquote') && "bg-muted")}
+                    pressed={editor.isActive("blockquote")}
+                    onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
+                    aria-label="Blockquote"
                 >
                     <Quote className="h-4 w-4" />
+                </Toggle>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Toggle size="sm" pressed={editor.isActive("link")} aria-label="Insert Link">
+                            <LinkIcon className="h-4 w-4" />
+                        </Toggle>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2">
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="https://example.com"
+                                value={linkUrl}
+                                onChange={(e) => setLinkUrl(e.target.value)}
+                            />
+                            <Button size="sm" onClick={setLink}>Add</Button>
+                        </div>
+                    </PopoverContent>
+                </Popover>
+
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={addYoutubeVideo}
+                    className={cn(editor.isActive("youtube") && "bg-accent")}
+                    title="Insert YouTube Video"
+                >
+                    <YoutubeIcon className="h-4 w-4" />
+                </Button>
+
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button size="sm" variant="ghost" title="Insert Emoji">
+                            <Smile className="h-4 w-4" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0 border-none">
+                        <EmojiPicker onEmojiClick={onEmojiClick} />
+                    </PopoverContent>
+                </Popover>
+
+                <div className="flex-1" />
+
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => editor.chain().focus().undo().run()}
+                    disabled={!editor.can().undo()}
+                >
+                    <Undo className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => editor.chain().focus().redo().run()}
+                    disabled={!editor.can().redo()}
+                >
+                    <Redo className="h-4 w-4" />
                 </Button>
             </div>
-            <EditorContent editor={editor} />
+
+            <EditorContent editor={editor} className="min-h-[150px] p-0" />
         </div>
     )
 }
