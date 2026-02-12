@@ -14,33 +14,14 @@ echo "------------------------------------------------"
 echo "📥 Pulling latest changes from main..."
 git pull origin main
 
-# 2. Install Dependencies
-echo "📦 Installing/Updating dependencies..."
-npm install
-
-# 3. Prisma Synchronization
-echo "🗄️  Synchronizing Database Schema..."
-# This ensures viewCount fields are added to the production DB
-npx prisma db push --accept-data-loss
-npx prisma generate
-
-# 4. Build Application
-echo "🏗️  Building application..."
-npm run build
-
-# 5. Restart Application
-echo "♻️  Restarting production services..."
-if command -v pm2 &> /dev/null
-then
-    pm2 restart all || pm2 start npm --name "studyhi" -- start
-else
-    # Fallback to docker compose if present
-    if [ -f "docker-compose.yml" ]; then
-        sudo docker compose up -d --build
-    else
-        echo "⚠️  No process manager (PM2/Docker) found. Please restart manually."
-    fi
-fi
+# 2. Rebuild and Restart Containers
+echo "🐳 Rebuilding and restarting Docker containers..."
+# This will:
+# - Reinstall dependencies inside the container
+# - Regenerate Prisma Client
+# - Build the Next.js app
+# - Run 'prisma db push' on startup
+sudo docker compose up -d --build
 
 echo "------------------------------------------------"
 echo "🎉 DEPLOYMENT COMPLETE!"
