@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { documentService } from '@/lib/database'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
@@ -7,8 +8,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const document = await documentService.getDocumentById(id)
-    
+    const document = await prisma.document.update({
+      where: { id },
+      data: {
+        viewCount: { increment: 1 }
+      }
+    })
+
     if (!document) {
       return NextResponse.json(
         { error: 'Document not found' },
@@ -33,7 +39,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    
+
     const document = await documentService.updateDocument(id, body)
     return NextResponse.json(document)
   } catch (error) {

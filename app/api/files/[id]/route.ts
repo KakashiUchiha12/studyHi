@@ -101,6 +101,10 @@ export async function GET(
     // Get file info from database
     const file = await fileService.getFileById(id, userId)
 
+    if (file) {
+      fileService.incrementViewCount(id).catch(err => console.error("File view increment failed:", err))
+    }
+
     if (!file) {
       return NextResponse.json(
         { error: 'File not found' },

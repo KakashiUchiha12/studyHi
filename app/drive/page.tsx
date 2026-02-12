@@ -30,6 +30,7 @@ import {
   Home,
   LayoutDashboard,
   BookOpen,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,6 +74,7 @@ interface DriveFile {
   fileType: string;
   isPublic: boolean;
   downloadCount: number;
+  viewCount: number;
   createdAt: string;
   folder?: {
     id: string;
@@ -695,8 +697,12 @@ function DrivePageContent() {
                         <p className="font-medium truncate text-sm" title={file.originalName}>
                           {file.originalName}
                         </p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">
-                          {file.fileType} • {formatBytes(Number(file.fileSize))}
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight flex items-center gap-2">
+                          <span>{file.fileType} • {formatBytes(Number(file.fileSize))}</span>
+                          <span className="flex items-center gap-1 border-l pl-2">
+                            <Eye className="h-3 w-3" />
+                            {file.viewCount || 0}
+                          </span>
                         </p>
                       </div>
                     </div>

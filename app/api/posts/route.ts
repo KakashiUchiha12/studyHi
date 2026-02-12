@@ -29,14 +29,6 @@ export async function GET(req: Request) {
             whereClause.communityId = communityId;
         } else if (userId) {
             whereClause.userId = userId;
-        } else if (session) {
-            // Global Feed: Posts from communities user follows OR people user follows?
-            // Simple v1: All posts from joined communities + global public posts?
-            // Or specific "My Feed" logic.
-            // Let's implement: All posts sorted by newest for now, or if scoped, scoped.
-            // If no params, global feed (all public posts).
-            // To strictly "Followed Feed", we'd need more complex query.
-            // Let's stick to Global view or Community view for simplicity first.
         }
 
         if (isAnnouncement) {
@@ -45,78 +37,52 @@ export async function GET(req: Request) {
 
         let posts;
 
+        const selectionBlock = {
+            id: true,
+            content: true,
+            isAnnouncement: true,
+            status: true,
+            viewCount: true,
+            createdAt: true,
+            updatedAt: true,
+            user: {
+                select: { name: true, image: true, id: true }
+            },
+            community: {
+                select: { name: true, id: true }
+            },
+            _count: {
+                select: { comments: true, likes: true }
+            },
+            likes: session ? {
+                where: { userId: (session.user as any).id },
+                select: { userId: true }
+            } : false,
+            attachments: {
+                select: {
+                    id: true,
+                    url: true,
+                    name: true,
+                    type: true,
+                    size: true
+                }
+            }
+        };
+
         if (cursor) {
             posts = await prisma.post.findMany({
                 take: POSTS_BATCH,
                 skip: 1,
                 cursor: { id: cursor },
                 where: whereClause,
-                select: {
-                    id: true,
-                    content: true,
-                    isAnnouncement: true,
-                    status: true,
-                    createdAt: true,
-                    updatedAt: true,
-                    user: {
-                        select: { name: true, image: true, id: true }
-                    },
-                    community: {
-                        select: { name: true, id: true }
-                    },
-                    _count: {
-                        select: { comments: true, likes: true }
-                    },
-                    likes: session ? {
-                        where: { userId: (session.user as any).id },
-                        select: { userId: true }
-                    } : false,
-                    attachments: {
-                        select: {
-                            id: true,
-                            url: true,
-                            name: true,
-                            type: true,
-                            size: true
-                        }
-                    }
-                },
+                select: selectionBlock,
                 orderBy: { createdAt: "desc" }
             });
         } else {
             posts = await prisma.post.findMany({
                 take: POSTS_BATCH,
                 where: whereClause,
-                select: {
-                    id: true,
-                    content: true,
-                    isAnnouncement: true,
-                    status: true,
-                    createdAt: true,
-                    updatedAt: true,
-                    user: {
-                        select: { name: true, image: true, id: true }
-                    },
-                    community: {
-                        select: { name: true, id: true }
-                    },
-                    _count: {
-                        select: { comments: true, likes: true }
-                    },
-                    likes: session ? {
-                        where: { userId: (session.user as any).id },
-                        select: { userId: true }
-                    } : false,
-                    attachments: {
-                        select: {
-                            id: true,
-                            url: true,
-                            name: true,
-                            type: true,
-                            size: true
-                        }
-                    }
-                },
+                select: selectionBlock,
                 orderBy: { createdAt: "desc" }
             });
         }
@@ -170,6 +136,7 @@ export async function POST(req: Request) {
                 content: true,
                 isAnnouncement: true,
                 status: true,
+                viewCount: true,
                 createdAt: true,
                 updatedAt: true,
                 user: {

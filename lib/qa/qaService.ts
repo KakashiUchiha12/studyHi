@@ -73,6 +73,12 @@ export async function getProjectQuestions(
 }
 
 export async function getQuestionById(questionId: string, userId?: string) {
+  // Increment view count (async)
+  prisma.question.update({
+    where: { id: questionId },
+    data: { viewCount: { increment: 1 } }
+  }).catch(() => { });
+
   return await prisma.question.findUnique({
     where: { id: questionId },
     include: {

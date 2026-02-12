@@ -54,6 +54,7 @@ interface UploadedFile {
   type: string
   url: string
   note?: string
+  viewCount?: number
   uploadedAt: string
 }
 
@@ -1335,7 +1336,13 @@ export function SubjectDetailDialog({
                                       </div>
                                       <div>
                                         <p className="text-sm font-medium">{file.name}</p>
-                                        <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                          <div className="flex items-center gap-1 text-xs text-muted-foreground border-l pl-2">
+                                            <Eye className="h-3 w-3" />
+                                            {file.viewCount || 0}
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                     <div className="flex items-center space-x-1">
@@ -1403,7 +1410,14 @@ export function SubjectDetailDialog({
                                           <Button variant="ghost" size="sm" className="h-4 w-4 p-0" onClick={() => { setEditingFileName({ materialId: material.id, fileId: file.id }); setEditingFileNameText(file.name); }}><Edit2 className="h-3 w-3" /></Button>
                                         </div>
                                       )}
-                                      <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground border-l pl-2">
+                                          <Eye className="h-3 w-3" />
+                                          {file.viewCount || 0}
+                                        </div>
+                                      </div>
+
                                     </div>
                                   </div>
                                   <div className="flex items-center space-x-1">

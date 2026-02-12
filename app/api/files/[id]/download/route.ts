@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -34,16 +34,17 @@ export async function GET(
     // Check if file exists on disk
     try {
       const fileBuffer = await readFile(file.filePath)
-      
-      // Increment download count
+
+      // Increment download and view count
       await fileService.incrementDownloadCount(fileId)
+      await fileService.incrementViewCount(fileId)
 
       // Return file with appropriate headers
       const response = new NextResponse(fileBuffer as any)
       response.headers.set('Content-Type', file.mimeType)
       response.headers.set('Content-Disposition', `attachment; filename="${file.originalName}"`)
       response.headers.set('Content-Length', file.fileSize.toString())
-      
+
       return response
 
     } catch (fileError) {

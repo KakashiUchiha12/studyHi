@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { dbService } from '@/lib/database'
+import { prisma } from '@/lib/prisma'
 import { isClassMember } from '@/lib/classes/permissions'
 
 /**
@@ -24,6 +25,7 @@ export async function GET(
 
     const userId = (session.user as any).id
     const { id: classId, postId } = await params
+
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)

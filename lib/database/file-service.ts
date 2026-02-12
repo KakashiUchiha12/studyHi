@@ -175,6 +175,21 @@ export class FileService {
     }
   }
 
+  async incrementViewCount(fileId: string): Promise<void> {
+    try {
+      await this.prisma.subjectFile.update({
+        where: { id: fileId },
+        data: {
+          viewCount: {
+            increment: 1
+          }
+        }
+      })
+    } catch (error) {
+      console.error('Error incrementing view count:', error)
+    }
+  }
+
   async getFileStats(userId: string): Promise<{
     totalFiles: number
     totalSize: number

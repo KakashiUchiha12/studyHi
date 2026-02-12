@@ -16,7 +16,7 @@ interface ProjectCardProps {
         coverImage?: string | null
         category?: string | null
         tags?: any
-        views: number
+        viewCount: number
         createdAt: Date | string
         author: {
             id: string
@@ -105,7 +105,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
                             <Eye className="h-3 w-3" />
-                            <span>{project.views}</span>
+                            <span>{project.viewCount}</span>
                         </div>
                         <div className="flex items-center gap-1">
                             <Heart className="h-3 w-3" />

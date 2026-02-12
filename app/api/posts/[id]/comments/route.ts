@@ -13,6 +13,7 @@ export async function GET(
         const session = await getServerSession(authOptions);
         const currentUserId = (session?.user as any)?.id;
 
+
         // Get cursor from query params
         const { searchParams } = new URL(req.url);
         const cursor = searchParams.get("cursor");

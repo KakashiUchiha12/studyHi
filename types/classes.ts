@@ -57,6 +57,7 @@ export interface ClassPost {
   content: string
   attachments: string[]
   pinned: boolean
+  viewCount: number
   createdAt: Date | string
   updatedAt: Date | string
   author?: User

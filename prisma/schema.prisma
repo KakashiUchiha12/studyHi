@@ -52,6 +52,7 @@ model SubjectFile {
   description   String?
   isPublic      Boolean  @default(false) @map("is_public")
   downloadCount Int      @default(0) @map("download_count")
+  viewCount     Int      @default(0) @map("view_count")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -241,6 +242,7 @@ model Document {
   thumbnailPath String?  @map("thumbnail_path")
   tags          String   @default("[]")
   isPinned      Boolean  @default(false) @map("is_pinned")
+  viewCount     Int      @default(0) @map("view_count")
   order         Int      @default(0)
   uploadedAt    DateTime @default(now()) @map("uploaded_at")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -584,6 +586,7 @@ model Post {
   image          String?
   isAnnouncement Boolean  @default(false) @map("is_announcement")
   status         String   @default("published") // published, archived, draft
+  viewCount      Int      @default(0) @map("view_count")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -732,6 +735,7 @@ model DriveFile {
   thumbnailPath String?   @map("thumbnail_path")
   isPublic      Boolean   @default(false) @map("is_public")
   downloadCount Int       @default(0) @map("download_count")
+  viewCount     Int       @default(0) @map("view_count")
   description   String?
   tags          String    @default("[]") // JSON array
   createdAt     DateTime  @default(now()) @map("created_at")
@@ -814,6 +818,7 @@ model Course {
   isDraft Boolean @default(true) @map("is_draft")
 
   enrollmentCount Int   @default(0) @map("enrollment_count")
+  viewCount       Int   @default(0) @map("view_count")
   averageRating   Float @default(0) @map("average_rating")
   ratingCount     Int   @default(0) @map("rating_count")
 
@@ -1158,6 +1163,7 @@ model ClassPost {
   content     String        @db.Text
   attachments String        @db.Text // JSON array of file URLs
   pinned      Boolean       @default(false)
+  viewCount   Int           @default(0) @map("view_count")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
   
@@ -1309,7 +1315,7 @@ model Project {
   category String?
   tags     Json?
 
-  views       Int     @default(0)
+  viewCount   Int     @default(0) @map("view_count")
   isFeatured  Boolean @default(false) @map("is_featured")
   isPublished Boolean @default(false) @map("is_published")
 
@@ -1414,6 +1420,7 @@ model Question {
 
   title   String
   content String @db.Text
+  viewCount Int @default(0) @map("view_count")
 
   isSolved   Boolean   @default(false) @map("is_solved")
   solvedAt   DateTime? @map("solved_at")

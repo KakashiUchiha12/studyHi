@@ -36,8 +36,8 @@ export const ChatMessages = ({
 
     // Auto-scroll to bottom function
     const scrollToBottom = () => {
-        if (bottomRef.current) {
-            bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
         }
     };
 

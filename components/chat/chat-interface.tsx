@@ -248,7 +248,7 @@ export function ChatInterface({ channelId, channelName }: ChatInterfaceProps) {
     }
 
     return (
-        <div className="flex flex-col h-[600px] bg-white rounded-lg border shadow-sm">
+        <div className="flex flex-col h-full min-h-[400px] max-h-[calc(100vh-10rem)] bg-white rounded-lg border shadow-sm overflow-hidden">
             <div className="p-4 border-b bg-gray-50/40 font-semibold flex items-center gap-2">
                 <span className="text-muted-foreground">#</span> {channelName}
             </div>

@@ -66,11 +66,12 @@ export async function GET(
     const filePath = path.isAbsolute(file.filePath) ? file.filePath : path.join(process.cwd(), file.filePath);
     const fileBuffer = await readFile(filePath);
 
-    // Update download count
+    // Update counts
     await prisma.driveFile.update({
       where: { id: fileId },
       data: {
         downloadCount: file.downloadCount + 1,
+        viewCount: { increment: 1 }
       },
     });
 

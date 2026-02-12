@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { dbService } from '@/lib/database'
 import { isClassMember, isTeacherOrAdmin } from '@/lib/classes/permissions'
 
@@ -14,7 +15,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -27,7 +28,7 @@ export async function GET(
 
     // Check if user is a member
     const isMember = await isClassMember(classId, userId)
-    
+
     if (!isMember) {
       return NextResponse.json(
         { error: 'Access denied' },
@@ -35,9 +36,10 @@ export async function GET(
       )
     }
 
-    // Get post
-    const post = await dbService.getPrisma().classPost.findUnique({
+    // Get post and increment view count
+    const post = await prisma.classPost.update({
       where: { id: postId },
+      data: { viewCount: { increment: 1 } },
       include: {
         author: {
           select: {
@@ -83,7 +85,7 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -159,7 +161,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json(
         { error: 'Authentication required' },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -21,7 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Video,
-  Loader2
+  Loader2,
+  Eye
 } from "lucide-react"
 import { VideoPlayer } from "@/components/ui/video-player"
 import {
@@ -99,6 +100,16 @@ export function PostCard({
     setLiked((post as any).isLiked || false)
     setLikeCount(post._count?.likes || 0)
   }, [post])
+
+  // Track view automatically on mount
+  const viewCounted = useRef(false);
+  useEffect(() => {
+    if (!viewCounted.current && post.id && classId) {
+      fetch(`/api/classes/${classId}/posts/${post.id}/view`, { method: "PATCH" })
+        .catch(() => { });
+      viewCounted.current = true;
+    }
+  }, [post.id, classId]);
 
   const handleToggleLike = async () => {
     // Optimistic update
@@ -422,6 +433,11 @@ export function PostCard({
             <Share2 className="w-4 h-4" />
             <span className="hidden sm:inline text-xs">Share</span>
           </Button>
+
+          <div className="flex items-center gap-1.5 px-3 text-muted-foreground border-l ml-1">
+            <Eye className="w-4 h-4" />
+            <span className="text-xs font-semibold">{post.viewCount || 0}</span>
+          </div>
         </div>
 
         {showComments && (

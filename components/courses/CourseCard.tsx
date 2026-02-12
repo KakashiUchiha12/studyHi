@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, Users, BookOpen, Clock } from "lucide-react";
+import { Star, Users, BookOpen, Clock, Eye } from "lucide-react";
 
 interface LearningCardProps {
   courseData: {
@@ -26,6 +26,7 @@ interface LearningCardProps {
       name: string;
       image?: string;
     };
+    viewCount?: number;
     modules?: Array<{ chapters: Array<any> }>;
   };
 }
@@ -146,6 +147,10 @@ const CourseCard = memo(({ courseData }: LearningCardProps) => {
             <span className="flex items-center space-x-1">
               <Users className="w-3 h-3" />
               <span>{courseData.enrollmentCount}</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <Eye className="w-3 h-3" />
+              <span>{courseData.viewCount || 0}</span>
             </span>
             {contentMetrics.lessonTotal > 0 && (
               <span className="flex items-center space-x-1">

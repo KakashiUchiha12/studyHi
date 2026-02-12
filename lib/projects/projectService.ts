@@ -44,13 +44,13 @@ export async function getProjects(
   let orderBy: Prisma.ProjectOrderByWithRelationInput = {};
   switch (sortBy) {
     case "popular":
-      orderBy = { views: "desc" };
+      orderBy = { viewCount: "desc" };
       break;
     case "mostLiked":
       orderBy = { likes: { _count: "desc" } };
       break;
     case "mostViewed":
-      orderBy = { views: "desc" };
+      orderBy = { viewCount: "desc" };
       break;
     default:
       orderBy = { createdAt: "desc" };
@@ -130,7 +130,7 @@ export async function getProjectById(projectId: string, userId?: string) {
     prisma.project
       .update({
         where: { id: projectId },
-        data: { views: { increment: 1 } },
+        data: { viewCount: { increment: 1 } },
       })
       .catch(() => { }); // Ignore errors in view tracking
   }

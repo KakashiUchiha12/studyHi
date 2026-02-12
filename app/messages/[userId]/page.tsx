@@ -24,8 +24,8 @@ export default function DirectMessagePage() {
     }, [socket, session]);
 
     return (
-        <div className="h-screen md:h-[calc(100vh-4rem)] w-full md:container md:max-w-4xl md:py-6">
-            <div className="h-full w-full md:rounded-lg md:border md:shadow-lg bg-background flex flex-col">
+        <div className="h-dvh md:h-[calc(100vh-4rem)] w-full md:container md:max-w-4xl md:py-6 overflow-hidden">
+            <div className="h-full w-full md:rounded-lg md:border md:shadow-lg bg-background flex flex-col overflow-hidden">
                 <div className="border-b py-3 px-4 bg-card sticky top-0 z-10">
                     <div className="flex items-center gap-3">
                         <Link href="/messages" className="p-2 hover:bg-muted rounded-lg transition">

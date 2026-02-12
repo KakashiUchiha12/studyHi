@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Download, Copy, Loader2 } from 'lucide-react';
+import { BookOpen, Download, Copy, Loader2, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 interface Subject {
@@ -34,10 +35,19 @@ interface ProfileSubjectsProps {
     isOwnProfile: boolean;
 }
 
+interface ImportReport {
+    importedCount: number;
+    duplicatesCount: number;
+    skippedCount: number;
+    skippedDetails: Array<{ name: string; reason: string }>;
+}
+
 export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [importDialogOpen, setImportDialogOpen] = useState(false);
+    const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
+    const [importReport, setImportReport] = useState<ImportReport | null>(null);
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
     const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
 
@@ -82,18 +92,22 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
             return res.json();
         },
         onSuccess: (data) => {
-            toast({
-                title: 'Success',
-                description: `Imported ${data.imported} file(s). ${data.duplicates || 0} duplicate(s) skipped.`,
+            setImportReport({
+                importedCount: data.importedCount,
+                duplicatesCount: data.duplicatesCount,
+                skippedCount: data.skippedCount,
+                skippedDetails: data.skippedDetails || [],
             });
             setImportDialogOpen(false);
+            setSummaryDialogOpen(true);
             setSelectedSubject(null);
             setSelectedFiles([]);
             queryClient.invalidateQueries({ queryKey: ['drive-files'] });
+            queryClient.invalidateQueries({ queryKey: ['subjects'] });
         },
         onError: (error: Error) => {
             toast({
-                title: 'Error',
+                title: 'Import Failed',
                 description: error.message,
                 variant: 'destructive',
             });
@@ -102,6 +116,7 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
 
     const handleImportClick = (subject: Subject) => {
         setSelectedSubject(subject);
+        setSelectedFiles([]);
         setImportDialogOpen(true);
     };
 
@@ -138,7 +153,7 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-muted-foreground text-center py-8">
-                        {isOwnProfile ? 'You haven\'t added any subjects yet' : 'No subjects to display'}
+                        {isOwnProfile ? "You haven't added any subjects yet" : 'No subjects to display'}
                     </p>
                 </CardContent>
             </Card>
@@ -147,6 +162,19 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
 
     return (
         <>
+            {/* Loading Overlay */}
+            {importMutation.isPending && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+                    <div className="bg-card p-8 rounded-xl shadow-2xl border flex flex-col items-center max-w-sm w-full mx-4">
+                        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                        <h2 className="text-xl font-bold mb-2">Importing Subject...</h2>
+                        <p className="text-sm text-muted-foreground text-center">
+                            We are copying the chapters, materials, and files from <strong>{selectedSubject?.name}</strong> to your drive. This may take a moment.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <Card className="rounded-none sm:rounded-xl border-x-0 sm:border-x">
                 <CardHeader className="px-4 sm:px-6">
                     <CardTitle className="flex items-center gap-2">
@@ -211,35 +239,76 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
                     <DialogHeader>
                         <DialogTitle>Import from {selectedSubject?.name}</DialogTitle>
                         <DialogDescription>
-                            Select files to import to your drive. Duplicate files will be automatically
-                            detected and skipped.
+                            Select specific files to import, or click "Import All" below. Duplicate files will be automatically
+                            detected and skipped during the process.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="max-h-96 overflow-y-auto space-y-2">
-                        {filesData?.files.map((file) => (
-                            <div
-                                key={file.id}
-                                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent"
-                            >
-                                <Checkbox
-                                    checked={selectedFiles.includes(file.id)}
-                                    onCheckedChange={(checked) => {
-                                        if (checked) {
-                                            setSelectedFiles([...selectedFiles, file.id]);
-                                        } else {
-                                            setSelectedFiles(selectedFiles.filter((id) => id !== file.id));
-                                        }
-                                    }}
-                                />
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium">{file.originalName}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {file.fileType} • {file.fileSize}
-                                    </p>
-                                </div>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-muted/50 p-3 rounded-lg">
+                            <span className="text-sm font-medium">
+                                {selectedFiles.length} item(s) selected
+                            </span>
+                            <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setSelectedFiles(filesData?.files.map(f => f.id) || [])}
+                                >
+                                    Select All
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setSelectedFiles([])}
+                                >
+                                    Clear
+                                </Button>
                             </div>
-                        ))}
+                        </div>
+
+                        <ScrollArea className="h-64 rounded-md border p-4">
+                            {filesData?.files && filesData.files.length > 0 ? (
+                                <div className="space-y-2">
+                                    {filesData.files.map((file) => (
+                                        <div
+                                            key={file.id}
+                                            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer"
+                                            onClick={() => {
+                                                if (selectedFiles.includes(file.id)) {
+                                                    setSelectedFiles(selectedFiles.filter((id) => id !== file.id));
+                                                } else {
+                                                    setSelectedFiles([...selectedFiles, file.id]);
+                                                }
+                                            }}
+                                        >
+                                            <Checkbox
+                                                checked={selectedFiles.includes(file.id)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setSelectedFiles([...selectedFiles, file.id]);
+                                                    } else {
+                                                        setSelectedFiles(selectedFiles.filter((id) => id !== file.id));
+                                                    }
+                                                }}
+                                            />
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium">{file.originalName}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {file.fileType} • {(file.fileSize / 1024 / 1024).toFixed(2)} MB
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                                    <BookOpen className="h-8 w-8 text-muted-foreground mb-2" />
+                                    <p className="text-sm text-muted-foreground">No standalone files found in this subject.</p>
+                                    <p className="text-xs text-muted-foreground">Chapters and materials will still be imported.</p>
+                                </div>
+                            )}
+                        </ScrollArea>
                     </div>
 
                     <DialogFooter>
@@ -254,19 +323,68 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
                         </Button>
                         <Button
                             onClick={handleImport}
-                            disabled={selectedFiles.length === 0 || importMutation.isPending}
+                            disabled={importMutation.isPending}
                         >
-                            {importMutation.isPending ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Importing...
-                                </>
-                            ) : (
-                                <>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Import {selectedFiles.length} file(s)
-                                </>
-                            )}
+                            <Download className="h-4 w-4 mr-2" />
+                            {selectedFiles.length > 0
+                                ? `Import ${selectedFiles.length} file(s) & content`
+                                : "Import Subject Content"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Success Summary Dialog */}
+            <Dialog open={summaryDialogOpen} onOpenChange={setSummaryDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <div className="flex justify-center mb-4">
+                            <CheckCircle2 className="h-16 w-16 text-green-500" />
+                        </div>
+                        <DialogTitle className="text-center text-xl">Import Successful!</DialogTitle>
+                        <DialogDescription className="text-center">
+                            The subject content has been successfully copied to your drive.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="bg-muted/50 p-4 rounded-xl space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-center">
+                            <div className="bg-background p-3 rounded-lg border">
+                                <p className="text-2xl font-bold text-green-600">{importReport?.importedCount}</p>
+                                <p className="text-[10px] uppercase font-semibold text-muted-foreground">Imported</p>
+                            </div>
+                            <div className="bg-background p-3 rounded-lg border">
+                                <p className="text-2xl font-bold text-amber-600">{importReport?.duplicatesCount}</p>
+                                <p className="text-[10px] uppercase font-semibold text-muted-foreground">Skipped</p>
+                            </div>
+                        </div>
+
+                        {importReport?.skippedCount !== undefined && importReport.skippedCount > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3 text-amber-500" />
+                                    Skipped Items Reason:
+                                </p>
+                                <ScrollArea className="max-h-32 rounded-md">
+                                    <div className="space-y-1 pr-4">
+                                        {importReport.skippedDetails.map((detail, idx) => (
+                                            <div key={idx} className="text-[11px] flex justify-between gap-2 p-1 border-b last:border-0">
+                                                <span className="font-medium truncate max-w-[150px]">{detail.name}</span>
+                                                <span className="text-muted-foreground">{detail.reason}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            className="w-full"
+                            onClick={() => setSummaryDialogOpen(false)}
+                        >
+                            Awesome!
                         </Button>
                     </DialogFooter>
                 </DialogContent>

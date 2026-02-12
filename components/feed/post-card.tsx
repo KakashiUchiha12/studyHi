@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Heart, MessageSquare, Share2, MoreHorizontal, FileText, Download, X, ChevronLeft, ChevronRight, Video } from "lucide-react";
+import { Heart, MessageSquare, Share2, MoreHorizontal, FileText, Download, X, ChevronLeft, ChevronRight, Video, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -91,6 +91,16 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
         setLikeCount(post._count.likes);
         setCommentCount(post._count.comments);
     }, [post.likes, post._count.likes, post._count.comments]);
+
+    // Track view automatically on mount
+    const viewCounted = useRef(false);
+    useEffect(() => {
+        if (!viewCounted.current && post.id) {
+            fetch(`/api/posts/${post.id}/view`, { method: "PATCH" })
+                .catch(() => { });
+            viewCounted.current = true;
+        }
+    }, [post.id]);
 
     const toggleLike = async () => {
         // Optimistic update
@@ -416,6 +426,10 @@ export function PostCard({ post, currentUserId }: PostCardProps) {
                     <Button variant="ghost" size="sm" className="flex-1 gap-2">
                         <Share2 className="w-4 h-4" />
                     </Button>
+                    <div className="flex items-center gap-1.5 px-3 text-muted-foreground">
+                        <Eye className="w-4 h-4" />
+                        <span className="text-xs font-medium">{post.viewCount || 0}</span>
+                    </div>
                 </div>
 
                 {commentsOpen && (
