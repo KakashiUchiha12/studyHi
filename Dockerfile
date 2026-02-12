@@ -45,9 +45,10 @@ ENV NEXTAUTH_SECRET="dummy_secret_for_build_must_be_32_chars_long"
 ENV NEXTAUTH_URL="http://localhost:3000"
 
 # Optimization: Limit memory usage and disable source maps
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 ENV NEXT_DISABLE_SOURCEMAPS=1
 ENV GENERATE_SOURCEMAP=false
+ENV NEXT_PRIVATE_LOCAL_WEBPACK_WORKERS=1
 
 # Build strictly without swc patching errors
 RUN npm run build
