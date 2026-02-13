@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Download, Copy, Loader2, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, Download, Copy, Loader2, CheckCircle2, AlertCircle, XCircle, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ interface Subject {
 interface ProfileSubjectsProps {
     userId: string;
     isOwnProfile: boolean;
+    limit?: number;
 }
 
 interface ImportReport {
@@ -42,7 +44,7 @@ interface ImportReport {
     skippedDetails: Array<{ name: string; reason: string }>;
 }
 
-export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) {
+export function ProfileSubjects({ userId, isOwnProfile, limit }: ProfileSubjectsProps) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -184,7 +186,7 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {subjects.map((subject) => (
+                        {(limit ? subjects.slice(0, limit) : subjects).map((subject) => (
                             <Card key={subject.id} className="hover:shadow-md transition-shadow">
                                 <CardContent className="p-4">
                                     <div className="flex items-start justify-between">
@@ -231,6 +233,16 @@ export function ProfileSubjects({ userId, isOwnProfile }: ProfileSubjectsProps) 
                         ))}
                     </div>
                 </CardContent>
+                {limit && subjects.length > limit && (
+                    <div className="px-6 pb-6 pt-0 flex justify-center">
+                        <Button variant="ghost" size="sm" asChild className="text-sm">
+                            <Link href={`/profile/${userId}/subjects`}>
+                                See All Subjects
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
+                    </div>
+                )}
             </Card>
 
             {/* Import Dialog */}

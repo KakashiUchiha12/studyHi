@@ -1,7 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { FileText, Download, Loader2, Eye } from 'lucide-react';
+import Link from 'next/link';
+import { FileText, Download, Loader2, Eye, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,9 +25,10 @@ interface PublicDocument {
 interface ProfileDocumentsProps {
     userId: string;
     isOwnProfile: boolean;
+    limit?: number;
 }
 
-export function ProfileDocuments({ userId, isOwnProfile }: ProfileDocumentsProps) {
+export function ProfileDocuments({ userId, isOwnProfile, limit }: ProfileDocumentsProps) {
     // Fetch public documents
     const { data: documentsData, isLoading } = useQuery<{
         documents: PublicDocument[];
@@ -83,7 +85,7 @@ export function ProfileDocuments({ userId, isOwnProfile }: ProfileDocumentsProps
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {documents.map((doc) => (
+                    {(limit ? documents.slice(0, limit) : documents).map((doc) => (
                         <Card key={doc.id} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                                 {/* Thumbnail or icon */}
@@ -181,6 +183,16 @@ export function ProfileDocuments({ userId, isOwnProfile }: ProfileDocumentsProps
                     ))}
                 </div>
             </CardContent>
+            {limit && documents.length > limit && (
+                <div className="px-6 pb-6 pt-0 flex justify-center">
+                    <Button variant="ghost" size="sm" asChild className="text-sm">
+                        <Link href={`/profile/${userId}/documents`}>
+                            See All Documents
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
+                </div>
+            )}
         </Card>
     );
 }

@@ -17,6 +17,9 @@ import { GoalsTab } from "@/components/profile/goals-tab"
 import { EditProfileModal } from "@/components/profile/edit-profile-modal"
 import { GoalModal } from "@/components/profile/goal-modal"
 import { GoalTaskModal } from "@/components/profile/goal-task-modal"
+import { ProfileSubjects } from "@/components/profile/profile-subjects"
+import { ProfileDocuments } from "@/components/profile/profile-documents"
+import { ProfileProjects } from "@/components/profile/profile-projects"
 
 interface GoalTask {
   id: string
@@ -410,6 +413,13 @@ export default function ProfilePage() {
               goals={goals as any}
               onViewAllActivity={handleViewAllActivity}
             />
+            {session?.user && (
+              <div className="mt-6 space-y-6">
+                <ProfileSubjects userId={(session.user as any).id} isOwnProfile={true} limit={3} />
+                <ProfileDocuments userId={(session.user as any).id} isOwnProfile={true} limit={3} />
+                <ProfileProjects userId={(session.user as any).id} limit={3} />
+              </div>
+            )}
           </TabsContent>
 
           {/* Goals Tab */}
@@ -436,13 +446,10 @@ export default function ProfilePage() {
             </div>
           </TabsContent>
 
-          {/* Documents Tab */}
           <TabsContent value="documents">
-            <div className="text-center py-8">
-              <FolderOpen className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-600 mb-2">Documents Tab</h3>
-              <p className="text-slate-500">Documents functionality coming soon...</p>
-            </div>
+            {session?.user && (
+              <ProfileDocuments userId={(session.user as any).id} isOwnProfile={true} />
+            )}
           </TabsContent>
         </Tabs>
 

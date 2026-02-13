@@ -147,17 +147,17 @@ export default function UserProfilePage() {
                 {/* Content Side */}
                 <div className="w-full md:w-2/3 space-y-6">
                     {/* Subjects Section */}
-                    <ProfileSubjects userId={profile.id} isOwnProfile={!!isMe} />
+                    <ProfileSubjects userId={profile.id} isOwnProfile={!!isMe} limit={3} />
 
                     {/* Public Documents Section */}
-                    <ProfileDocuments userId={profile.id} isOwnProfile={!!isMe} />
+                    <ProfileDocuments userId={profile.id} isOwnProfile={!!isMe} limit={3} />
 
                     {/* Projects Section */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-semibold">Projects</h2>
                         </div>
-                        <ProfileProjects userId={profile.id} />
+                        <ProfileProjects userId={profile.id} limit={3} />
                     </div>
 
                     {/* Posts Grid */}

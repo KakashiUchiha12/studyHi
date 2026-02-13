@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, FolderGit2 } from "lucide-react";
+import Link from "next/link";
+import { Loader2, FolderGit2, ArrowRight } from "lucide-react";
 import { ProjectCard } from "@/components/projects/project-card";
+import { Button } from "@/components/ui/button";
 
 interface ProfileProjectsProps {
     userId: string;
+    limit?: number;
 }
 
-export function ProfileProjects({ userId }: ProfileProjectsProps) {
+export function ProfileProjects({ userId, limit }: ProfileProjectsProps) {
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -45,10 +48,22 @@ export function ProfileProjects({ userId }: ProfileProjectsProps) {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-            ))}
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {(limit ? projects.slice(0, limit) : projects).map((project) => (
+                    <ProjectCard key={project.id} project={project} />
+                ))}
+            </div>
+            {limit && projects.length > limit && (
+                <div className="flex justify-center mt-2">
+                    <Button variant="ghost" size="sm" asChild className="text-sm">
+                        <Link href={`/profile/${userId}/projects`}>
+                            See All Projects
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
