@@ -245,6 +245,30 @@ class NotificationManager {
     }
   }
 
+  async markRelatedAsRead(urlPart: string) {
+    if (!urlPart) return;
+
+    // Find all unread notifications that contain the urlPart in their actionUrl
+    const relatedNotifications = this.notifications.filter(n =>
+      !n.read && n.actionUrl && n.actionUrl.includes(urlPart)
+    );
+
+    if (relatedNotifications.length === 0) return;
+
+    // Optimistic update
+    relatedNotifications.forEach(n => n.read = true);
+    this.notifySubscribers();
+
+    // Persist changes
+    try {
+      await Promise.all(relatedNotifications.map(n =>
+        this.updateNotification(n.id, { read: true })
+      ));
+    } catch (error) {
+      console.error('Failed to mark related notifications as read:', error);
+    }
+  }
+
   async removeNotification(id: string) {
     await this.deleteNotification(id)
   }

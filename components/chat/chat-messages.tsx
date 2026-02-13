@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Download, X, Maximize2, FileText, File } from "lucide-react";
 import Link from "next/link";
 import { VideoPlayer } from "@/components/ui/video-player";
+import { notificationManager } from "@/lib/notifications";
 
 interface ChatMessagesProps {
     name: string;
@@ -31,15 +32,31 @@ export const ChatMessages = ({
 }: ChatMessagesProps) => {
     const [messages, setMessages] = useState<any[]>([]);
     const [viewerMedia, setViewerMedia] = useState<{ url: string, type: string, name: string } | null>(null);
+    const [isAtBottom, setIsAtBottom] = useState(true);
     const bottomRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+    // Check if user is at bottom
+    const handleScroll = () => {
+        if (!scrollContainerRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        const isBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 50;
+        setIsAtBottom(isBottom);
+    };
+
     // Auto-scroll to bottom function
-    const scrollToBottom = () => {
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    const scrollToBottom = (behavior: "auto" | "smooth" = "auto") => {
+        if (bottomRef.current) {
+            bottomRef.current.scrollIntoView({ behavior });
         }
     };
+
+    // Mark notifications as read when entering chat
+    useEffect(() => {
+        if (paramValue) {
+            notificationManager.markRelatedAsRead(paramValue);
+        }
+    }, [paramValue]);
 
     // Initial Fetch & Polling
     useEffect(() => {
@@ -62,10 +79,17 @@ export const ChatMessages = ({
         return () => clearInterval(intervalId);
     }, [apiUrl, paramKey, paramValue]);
 
-    // Auto-scroll when messages change
+    // Auto-scroll when messages change ONLY if already at bottom or just loaded
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        if (isAtBottom) {
+            scrollToBottom("smooth");
+        }
+
+        // Also mark as read when new messages come in if we are looking at them
+        if (isAtBottom && paramValue) {
+            notificationManager.markRelatedAsRead(paramValue);
+        }
+    }, [messages, isAtBottom, paramValue]); // Added isAtBottom and paramValue dependencies
 
     // Real-time listener
     useEffect(() => {
@@ -141,6 +165,7 @@ export const ChatMessages = ({
 
             <div
                 ref={scrollContainerRef}
+                onScroll={handleScroll}
                 className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 flex flex-col scroll-smooth"
             >
                 <div className="flex-1" /> {/* Spacer to push messages down */}

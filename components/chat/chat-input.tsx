@@ -4,7 +4,7 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Send, X, Image as ImageIcon, FileText, Video } from "lucide-react";
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 
 import {
@@ -130,6 +130,7 @@ export const ChatInput = ({
                 socket.emit("send-message", payload);
                 form.reset();
                 clearFile();
+                setTimeout(() => form.setFocus("content"), 100);
             } else {
                 await fetch("/api/messages", {
                     method: "POST",
