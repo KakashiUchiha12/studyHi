@@ -87,10 +87,10 @@ export function parseCourseCSV(csvText: string): CourseParseResult {
         // Sanitize Video URL (fix double ? issue from AI)
         const cleanVideoUrl = (url: string) => {
             if (!url) return undefined;
-            // If URL has multiple ?, replace all after the first one with &
+            // Handle multiple ? symbols by converting subsequent ones to &
             const parts = url.split('?');
             if (parts.length > 2) {
-                return parts[0] + '?' + parts[1] + '&' + parts.slice(2).join('&');
+                return parts[0] + '?' + parts.slice(1).join('&');
             }
             return url;
         };

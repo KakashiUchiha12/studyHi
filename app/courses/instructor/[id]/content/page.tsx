@@ -113,10 +113,28 @@ interface Module {
 
 // YouTube URL parser
 function getYouTubeEmbedUrl(url: string): string {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-  const match = url.match(regExp)
-  const videoId = match && match[2].length === 11 ? match[2] : null
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : url
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  const videoId = match && match[2].length === 11 ? match[2] : null;
+
+  if (!videoId) return url;
+
+  // Extract existing query parameters to preserve them (start, end, etc.)
+  try {
+    const urlObj = new URL(url.replace(/&amp;/g, '&')); // Basic normalization
+    const params = new URLSearchParams(urlObj.search);
+
+    // Convert 't' to 'start' if present and start isn't
+    if (params.has('t') && !params.has('start')) {
+      params.set('start', params.get('t')!.replace('s', ''));
+      params.delete('t');
+    }
+
+    const queryString = params.toString();
+    return `https://www.youtube.com/embed/${videoId}${queryString ? `?${queryString}` : ''}`;
+  } catch (e) {
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
 }
 
 // Sortable Item Component

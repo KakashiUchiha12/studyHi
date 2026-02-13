@@ -24,13 +24,17 @@ const AI_PROMPT = `Act as an expert course curriculum designer. I have a SINGLE 
 Analyze the video content/chapters and generate a CSV where **each lesson plays a specific segment** of this video.
 
 **CRITICAL INSTRUCTION - VIDEO URLS:**
-You **MUST** calculate the start time in **seconds** for each chapter and append it to the URL.
-- If the URL contains \`?\`, append \`&t=SECONDS\`.
-- If the URL does NOT contain \`?\`, append \`?t=SECONDS\`.
+You **MUST** calculate both the **start** and **end** times in **seconds** for each chapter.
+- Use the standard query format: \`start=SECONDS&end=SECONDS\`
+- If the URL contains \`?\`, append \`&start=...&end=...\`.
+- If the URL does NOT contain \`?\`, append \`?start=...&end=...\`.
+
+**REDUNANCY PREVENTION:**
+- **Leave the 'Image URL' column EMPTY** for individual lessons/chapters. The video player already provides a thumbnail, so adding another one is redundant.
 
 **Examples:**
-- Timestamp **02:30** (150 seconds) -> \`https://www.youtube.com/watch?v=xyz&t=150\`
-- Timestamp **10:00** (600 seconds) -> \`https://youtu.be/xyz?t=600\`
+- Segment **02:30 to 05:00** (150s to 300s) -> \`https://www.youtube.com/watch?v=xyz&start=150&end=300\`
+- Segment **10:00 to 12:45** (600s to 765s) -> \`https://youtu.be/xyz?start=600&end=765\`
 
 **Structure & Format:**
 1. **Modules**: Use the main topic.
@@ -43,8 +47,8 @@ You **MUST** calculate the start time in **seconds** for each chapter and append
 
 **Example Output:**
 \`\`\`csv
-"Full Course","Introduction","Welcome","Video","https://youtube.com/watch?v=123&t=0","https://img...","Intro"
-"Full Course","Part 1","Setup","Video","https://youtube.com/watch?v=123&t=300","https://img...","Environment setup"
+"Full Course","Introduction","Welcome","Video","https://youtube.com/watch?v=123&start=0&end=300","","Intro"
+"Full Course","Part 1","Setup","Video","https://youtube.com/watch?v=123&start=300&end=900","","Environment setup"
 \`\`\``;
 
 interface CourseCSVImportDialogProps {

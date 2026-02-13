@@ -94,7 +94,16 @@ const CoursePlayer = memo(({ chapterInfo, courseId, enrollmentId, onComplete, on
     }
   }, [enrollmentId, chapterInfo.id, onComplete, toast]);
 
-  const VideoPlayer = ({ url }: { url: string }) => {
+  const handleVideoEnd = useCallback(() => {
+    if (activeSection < chapterInfo.sections.length - 1) {
+      moveToSection(activeSection + 1);
+      toast({ title: "Lesson Complete", description: "Moving to next section..." });
+    } else {
+      toast({ title: "Video Finished", description: "You've reached the end of this chapter's videos!" });
+    }
+  }, [activeSection, chapterInfo.sections.length, moveToSection, toast]);
+
+  const VideoPlayer = ({ url, onVideoEnd }: { url: string, onVideoEnd?: () => void }) => {
     const extractVideoId = (rawUrl: string) => {
       if (rawUrl.includes('youtube.com') || rawUrl.includes('youtu.be')) {
         const match = rawUrl.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^&?\s]+)/);
@@ -107,32 +116,40 @@ const CoursePlayer = memo(({ chapterInfo, courseId, enrollmentId, onComplete, on
       return null;
     };
 
-    const extractStartTime = (rawUrl: string) => {
-      // 1. Try standard URL parsing to get 't' or 'start'
+    const extractTimeParam = (rawUrl: string, paramNames: string[]) => {
       try {
         const urlObj = new URL(rawUrl);
-        const timeParams = ['t', 'start'];
-        for (const param of timeParams) {
+        for (const param of paramNames) {
           const val = urlObj.searchParams.get(param);
-          if (val) return val.replace('s', ''); // Handle "120s" -> "120"
+          if (val) return val.replace('s', '');
         }
-      } catch (e) {
-        // Ignore parsing errors, proceed to fallback
-      }
+      } catch (e) { }
 
-      // 2. Fallback regex for malformed URLs (e.g. ?v=id?t=123) or just lazy matching
-      const match = rawUrl.match(/[?&](t|start)=(\d+)/);
-      if (match) return match[2];
-
-      return null;
+      const pattern = new RegExp(`[?&](${paramNames.join('|')})=(\\d+)`);
+      const match = rawUrl.match(pattern);
+      return match ? match[2] : null;
     };
 
     const videoId = extractVideoId(url);
-    const startTime = extractStartTime(url);
+    const startTime = extractTimeParam(url, ['t', 'start']);
+    const endTime = extractTimeParam(url, ['end']);
     const isYT = url.includes('youtube') || url.includes('youtu.be');
 
+    if (isYT && videoId) {
+      return (
+        <div className="aspect-video w-full bg-black rounded-lg overflow-hidden">
+          <YouTubePlayer
+            videoId={videoId}
+            start={startTime ? parseInt(startTime) : undefined}
+            end={endTime ? parseInt(endTime) : undefined}
+            onEnd={onVideoEnd}
+          />
+        </div>
+      );
+    }
+
     const embedUrl = isYT
-      ? `https://www.youtube.com/embed/${videoId}?rel=0${startTime ? `&start=${startTime}` : ''}`
+      ? `https://www.youtube.com/embed/${videoId}?rel=0${startTime ? `&start=${startTime}` : ''}${endTime ? `&end=${endTime}` : ''}`
       : `https://player.vimeo.com/video/${videoId}`;
 
     return (
@@ -151,6 +168,55 @@ const CoursePlayer = memo(({ chapterInfo, courseId, enrollmentId, onComplete, on
         )}
       </div>
     );
+  };
+
+  // Helper component for YouTube API
+  const YouTubePlayer = ({ videoId, start, end, onEnd }: { videoId: string, start?: number, end?: number, onEnd?: () => void }) => {
+    useEffect(() => {
+      // Load YouTube API if not already loaded
+      if (!(window as any).YT) {
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      }
+
+      let player: any;
+      const initPlayer = () => {
+        player = new (window as any).YT.Player(`yt-player-${videoId}`, {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: {
+            start: start,
+            end: end,
+            rel: 0,
+            modestbranding: 1,
+          },
+          events: {
+            onStateChange: (event: any) => {
+              if (event.data === (window as any).YT.PlayerState.ENDED) {
+                onEnd?.();
+              }
+            }
+          }
+        });
+      };
+
+      if ((window as any).YT && (window as any).YT.Player) {
+        initPlayer();
+      } else {
+        (window as any).onYouTubeIframeAPIReady = initPlayer;
+      }
+
+      return () => {
+        if (player && player.destroy) {
+          player.destroy();
+        }
+      };
+    }, [videoId, start, end, onEnd]);
+
+    return <div id={`yt-player-${videoId}`} className="w-full h-full" />;
   };
 
   const TextContent = ({ text }: { text: string }) => (
@@ -186,7 +252,7 @@ const CoursePlayer = memo(({ chapterInfo, courseId, enrollmentId, onComplete, on
     let content;
     switch (currentLesson.contentType) {
       case 'video':
-        content = currentLesson.videoUrl && <VideoPlayer url={currentLesson.videoUrl} />;
+        content = currentLesson.videoUrl && <VideoPlayer url={currentLesson.videoUrl} onVideoEnd={handleVideoEnd} />;
         break;
       case 'text':
         content = currentLesson.content && <TextContent text={currentLesson.content} />;
