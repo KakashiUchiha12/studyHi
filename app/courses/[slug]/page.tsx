@@ -191,6 +191,7 @@ export default function CourseDetailsView() {
                       fill
                       className="object-cover"
                       priority
+                      unoptimized
                     />
                   </div>
                 ) : (
@@ -298,6 +299,7 @@ export default function CourseDetailsView() {
                       alt={teacherData.name}
                       fill
                       className="object-cover"
+                      unoptimized
                     />
                   </div>
                 ) : (
