@@ -22,6 +22,23 @@ import { notifyDataUpdate } from "@/lib/data-sync"
 import { getColorHex } from "@/lib/utils/colors"
 import { FileUploadSimple } from '@/components/subjects/file-upload-simple'
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable"
+import { SortableSubjectCard } from "@/components/subjects/sortable-subject-card"
+
 export default function SubjectsPage() {
   const { data: session, status } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
@@ -37,8 +54,6 @@ export default function SubjectsPage() {
     delete: false,
     detail: false,
   })
-  const [draggedSubject, setDraggedSubject] = useState<string | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const router = useRouter()
 
   // Use database hooks
@@ -51,6 +66,10 @@ export default function SubjectsPage() {
     deleteSubject,
     refreshSubjects
   } = useSubjects()
+
+  // Local state for optimistic updates
+  const [localSubjects, setLocalSubjects] = useState<Subject[]>([])
+  const [isReordering, setIsReordering] = useState(false)
 
   const { autoMigrateIfNeeded } = useMigration()
 
@@ -69,6 +88,15 @@ export default function SubjectsPage() {
     }
   }, [router, status, autoMigrateIfNeeded])
 
+  // Sync local subjects with fetched subjects
+  useEffect(() => {
+    if (subjects.length > 0 && !isReordering) {
+      // Sort by order before setting local state
+      const sortedSubjects = [...subjects].sort((a, b) => (a.order || 0) - (b.order || 0))
+      setLocalSubjects(sortedSubjects)
+    }
+  }, [subjects, isReordering])
+
   // Listen for subject updates from other components
   useEffect(() => {
     const handleSubjectUpdate = () => {
@@ -81,6 +109,45 @@ export default function SubjectsPage() {
       window.removeEventListener('subject-updated', handleSubjectUpdate)
     }
   }, [refreshSubjects])
+
+  // Dnd Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      setIsReordering(true)
+
+      setLocalSubjects((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over?.id)
+
+        const newItems = arrayMove(items, oldIndex, newIndex)
+
+        // Update the backend
+        const updatePromises = newItems.map((subject, index) => {
+          return updateSubject(subject.id, { order: index })
+        })
+
+        Promise.all(updatePromises).finally(() => {
+          setIsReordering(false)
+          refreshSubjects()
+        })
+
+        return newItems
+      })
+    }
+  }
 
   // Show loading state while checking authentication
   if (status === "loading") {
@@ -95,7 +162,7 @@ export default function SubjectsPage() {
   }
 
   // Show loading state while loading subjects (only after authentication is confirmed)
-  if (status === "authenticated" && subjectsLoading) {
+  if (status === "authenticated" && subjectsLoading && localSubjects.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -120,12 +187,10 @@ export default function SubjectsPage() {
     )
   }
 
-  const filteredSubjects = subjects.filter((subject) =>
+  const filteredSubjects = localSubjects.filter((subject) =>
     subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (subject.description && subject.description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
-
-
 
   const handleAddSubject = async (newSubject: Omit<Subject, "id">) => {
     try {
@@ -195,73 +260,6 @@ export default function SubjectsPage() {
     }
   }
 
-  const handleDragStart = (e: React.DragEvent, subjectId: string) => {
-    console.log('Drag started for subject:', subjectId)
-    setDraggedSubject(subjectId)
-    e.dataTransfer.effectAllowed = "move"
-  }
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = "move"
-    setDragOverIndex(index)
-  }
-
-  const handleDragLeave = () => {
-    setDragOverIndex(null)
-  }
-
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault()
-    console.log('Drop event triggered at index:', dropIndex)
-    console.log('Dragged subject:', draggedSubject)
-
-    if (!draggedSubject) return
-
-    const draggedIndex = filteredSubjects.findIndex((subject) => subject.id === draggedSubject)
-    console.log('Dragged index:', draggedIndex, 'Drop index:', dropIndex)
-
-    if (draggedIndex === -1 || draggedIndex === dropIndex) {
-      console.log('Invalid drop - same position or subject not found')
-      setDraggedSubject(null)
-      setDragOverIndex(null)
-      return
-    }
-
-    try {
-      console.log('Starting reorder process...')
-      // Create a new array with the reordered subjects
-      const reorderedSubjects = [...filteredSubjects]
-      const [draggedSubjectData] = reorderedSubjects.splice(draggedIndex, 1)
-      reorderedSubjects.splice(dropIndex, 0, draggedSubjectData)
-
-      console.log('Reordered subjects:', reorderedSubjects.map(s => ({ name: s.name, order: s.order })))
-
-      // Update the order field for all subjects
-      const updatePromises = reorderedSubjects.map((subject, index) => {
-        console.log(`Updating ${subject.name} to order ${index}`)
-        return updateSubject(subject.id, { order: index })
-      })
-
-      console.log('Waiting for all updates to complete...')
-      await Promise.all(updatePromises)
-      console.log('All updates completed successfully')
-
-      // Refresh subjects to show the new order
-      refreshSubjects()
-    } catch (error) {
-      console.error('Failed to reorder subjects:', error)
-    }
-
-    setDraggedSubject(null)
-    setDragOverIndex(null)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedSubject(null)
-    setDragOverIndex(null)
-  }
-
   return (
     <div className="min-h-screen bg-background">
       {/* Error Display */}
@@ -274,52 +272,52 @@ export default function SubjectsPage() {
       )}
 
       {/* Header */}
-      <header className="border-b border-border bg-card">
+      <header className="border-b border-border bg-card sticky top-0 z-10 transition-all">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Dashboard
+          <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
+              <Link href="/dashboard" className="flex-shrink-0">
+                <Button variant="ghost" size="sm" className="px-2 sm:px-4">
+                  <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Dashboard</span>
                 </Button>
               </Link>
-              <div className="flex items-center space-x-2">
-                <BookOpen className="h-6 w-6 text-primary" />
-                <span className="text-xl font-bold text-foreground">Subjects</span>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+                <span className="text-lg sm:text-xl font-bold text-foreground truncate">Subjects</span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-
-              <Button onClick={() => setDialogState({ ...dialogState, add: true })}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Subject
+            <div className="flex items-center flex-shrink-0">
+              <Button onClick={() => setDialogState({ ...dialogState, add: true })} size="sm" className="h-9 px-3 sm:px-4">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Subject</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:py-8 sm:px-6 lg:px-8">
         {/* Search and Stats */}
-        <div className="mb-8 flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">My Subjects</h1>
-            <p className="mt-2 text-muted-foreground">Manage your subjects and track your academic progress</p>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-center sm:text-left">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">My Subjects</h1>
+            <p className="mt-1 text-sm sm:text-base text-muted-foreground">Manage your subjects and track your academic progress</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="relative">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-initial">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search subjects..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 pl-10"
+                className="w-full sm:w-64 pl-10"
               />
             </div>
-            <Badge variant="secondary" className="text-sm">
-              {subjects.length} subjects
+            <Badge variant="secondary" className="text-sm whitespace-nowrap">
+              {subjects.length} <span className="hidden sm:inline ml-1">subjects</span>
             </Badge>
           </div>
         </div>
@@ -344,124 +342,37 @@ export default function SubjectsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredSubjects.map((subject, index) => (
-              <Card
-                key={subject.id}
-                className={`hover:shadow-md transition-all ${draggedSubject === subject.id ? "opacity-50 scale-95" : ""
-                  } ${dragOverIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, subject.id)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, index)}
-                onDragEnd={handleDragEnd}
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
-                        <GripVertical className="h-4 w-4 text-muted-foreground transition-opacity" />
-                      </div>
-                      <div
-                        className="h-3 w-3 rounded-full border border-border"
-                        style={{ backgroundColor: getColorHex(subject.color) }}
-                        title={subject.color}
-                      />
-                      <CardTitle className="text-lg">{subject.name}</CardTitle>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedSubject(subject)
-                          setDialogState({ ...dialogState, detail: true })
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedSubject(subject)
-                          setDialogState({ ...dialogState, edit: true })
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedSubject(subject)
-                          setDialogState({ ...dialogState, delete: true })
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                  <CardDescription className="line-clamp-2">
-                    {subject.code || "No code provided"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Description */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Description</span>
-                      <span className="font-medium">
-                        {subject.description || 'No description'}
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div>
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{Math.round(subject.progress || 0)}%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${subject.progress || 0}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                        <span>{subject.completedChapters || 0} of {subject.totalChapters || 0} chapters</span>
-                      </div>
-                    </div>
-
-                    {/* Subject Details */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Credits:</span>
-                        <span className="ml-2 font-medium">{subject.credits || 3}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Instructor:</span>
-                        <span className="ml-2 font-medium">{subject.instructor || 'Not assigned'}</span>
-                      </div>
-                      {subject.nextExam && (
-                        <div className="col-span-2">
-                          <span className="text-muted-foreground">Next Exam:</span>
-                          <span className="ml-2 font-medium">
-                            {new Date(subject.nextExam).toLocaleDateString()}
-                          </span>
-                        </div>
-                      )}
-                      <div className="col-span-2">
-                        <span className="text-muted-foreground">Assignments Due:</span>
-                        <span className="ml-2 font-medium">{subject.assignmentsDue || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={filteredSubjects.map((s) => s.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {filteredSubjects.map((subject) => (
+                  <SortableSubjectCard
+                    key={subject.id}
+                    subject={subject}
+                    onView={(s) => {
+                      setSelectedSubject(s)
+                      setDialogState({ ...dialogState, detail: true })
+                    }}
+                    onEdit={(s) => {
+                      setSelectedSubject(s)
+                      setDialogState({ ...dialogState, edit: true })
+                    }}
+                    onDelete={(s) => {
+                      setSelectedSubject(s)
+                      setDialogState({ ...dialogState, delete: true })
+                    }}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
       </main>
 

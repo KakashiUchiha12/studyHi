@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { X, Plus } from "lucide-react"
+import { X, Plus, Loader2 } from "lucide-react"
 
 interface Subject {
   id: string
@@ -65,6 +65,14 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
   })
   const [materials, setMaterials] = useState<string[]>([])
   const [newMaterial, setNewMaterial] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const LIMITS = {
+    name: 50,
+    description: 500,
+    code: 20,
+    instructor: 100,
+  }
 
   useEffect(() => {
     if (subject) {
@@ -82,29 +90,39 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
     }
   }, [subject])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.name.trim()) return
+    if (formData.name.length > LIMITS.name) return
+    if (formData.description.length > LIMITS.description) return
+    if (formData.code.length > LIMITS.code) return
+    if (formData.instructor.length > LIMITS.instructor) return
 
-    const updatedSubject: Subject = {
-      ...subject,
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      materials,
-      color: formData.color,
-      code: formData.code.trim(),
-      credits: Number.parseInt(formData.credits) || 3,
-      instructor: formData.instructor.trim(),
-      nextExam: formData.nextExam || '',
-      assignmentsDue: Number.parseInt(formData.assignmentsDue) || 0,
-      // Keep existing chapter data - chapters are managed separately
-      totalChapters: subject.totalChapters || 0,
-      completedChapters: subject.completedChapters || 0,
-      progress: subject.progress || 0,
+    setIsSubmitting(true)
+
+    try {
+      const updatedSubject: Subject = {
+        ...subject,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        materials,
+        color: formData.color,
+        code: formData.code.trim(),
+        credits: Number.parseInt(formData.credits) || 3,
+        instructor: formData.instructor.trim(),
+        nextExam: formData.nextExam || '',
+        assignmentsDue: Number.parseInt(formData.assignmentsDue) || 0,
+        // Keep existing chapter data - chapters are managed separately
+        totalChapters: subject.totalChapters || 0,
+        completedChapters: subject.completedChapters || 0,
+        progress: subject.progress || 0,
+      }
+
+      await (onEditSubject as any)(updatedSubject)
+    } finally {
+      setIsSubmitting(false)
     }
-
-    onEditSubject(updatedSubject)
   }
 
   const addMaterial = () => {
@@ -128,35 +146,59 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Subject Name</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="name">Subject Name</Label>
+              <span className={`text-[10px] ${formData.name.length > LIMITS.name ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                {formData.name.length}/{LIMITS.name}
+              </span>
+            </div>
             <Input
               id="name"
               placeholder="e.g., Mathematics, Physics, Chemistry"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value.slice(0, LIMITS.name + 10) })}
+              className={formData.name.length > LIMITS.name ? 'border-destructive ring-destructive/20' : ''}
               required
             />
+            {formData.name.length > LIMITS.name && (
+              <p className="text-[10px] text-destructive font-medium italic">Name is too long (max {LIMITS.name})</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <span className={`text-[10px] ${formData.description.length > LIMITS.description ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                {formData.description.length}/{LIMITS.description}
+              </span>
+            </div>
             <Textarea
               id="description"
               placeholder="Brief description of the subject content"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value.slice(0, LIMITS.description + 50) })}
+              className={formData.description.length > LIMITS.description ? 'border-destructive ring-destructive/20' : ''}
               rows={3}
             />
+            {formData.description.length > LIMITS.description && (
+              <p className="text-[10px] text-destructive font-medium italic">Description is too long (max {LIMITS.description})</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="code">Subject Code</Label>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="code">Subject Code</Label>
+                <span className={`text-[10px] ${formData.code.length > LIMITS.code ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                  {formData.code.length}/{LIMITS.code}
+                </span>
+              </div>
               <Input
                 id="code"
                 placeholder="e.g., CS101, MATH201"
                 value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value.slice(0, LIMITS.code + 5) })}
+                className={formData.code.length > LIMITS.code ? 'border-destructive ring-destructive/20' : ''}
               />
             </div>
 
@@ -175,12 +217,18 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="instructor">Instructor</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="instructor">Instructor</Label>
+              <span className={`text-[10px] ${formData.instructor.length > LIMITS.instructor ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                {formData.instructor.length}/{LIMITS.instructor}
+              </span>
+            </div>
             <Input
               id="instructor"
               placeholder="e.g., Dr. Smith, Prof. Johnson"
               value={formData.instructor}
-              onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, instructor: e.target.value.slice(0, LIMITS.instructor + 10) })}
+              className={formData.instructor.length > LIMITS.instructor ? 'border-destructive ring-destructive/20' : ''}
             />
           </div>
 
@@ -222,11 +270,10 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
                 <button
                   key={color.value}
                   type="button"
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${
-                    formData.color === color.value
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${formData.color === color.value
                       ? 'border-primary ring-2 ring-primary/20'
                       : 'border-border hover:border-primary/50'
-                  }`}
+                    }`}
                   style={{ backgroundColor: color.hex }}
                   onClick={() => setFormData({ ...formData, color: color.value })}
                   title={color.name}
@@ -267,11 +314,36 @@ export function EditSubjectDialog({ open, onOpenChange, subject, onEditSubject }
             )}
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="pt-4 border-t gap-2 flex-col sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit">Save Changes</Button>
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting ||
+                !formData.name.trim() ||
+                formData.name.length > LIMITS.name ||
+                formData.description.length > LIMITS.description ||
+                formData.code.length > LIMITS.code ||
+                formData.instructor.length > LIMITS.instructor
+              }
+              className="relative"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

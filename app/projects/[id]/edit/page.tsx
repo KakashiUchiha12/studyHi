@@ -5,13 +5,13 @@ import { getProjectById } from "@/lib/projects/projectService"
 import { ProjectForm } from "@/components/projects/project-form"
 
 interface EditProjectPageProps {
-    params: {
+    params: Promise<{
         id: string
-    }
+    }>
 }
 
 export default async function EditProjectPage({ params }: EditProjectPageProps) {
-    const { id } = params
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {

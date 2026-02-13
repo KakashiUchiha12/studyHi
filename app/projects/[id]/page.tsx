@@ -16,13 +16,13 @@ import Image from "next/image"
 import Link from "next/link"
 
 interface ProjectPageProps {
-    params: {
+    params: Promise<{
         id: string
-    }
+    }>
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
-    const { id } = params
+    const { id } = await params
     const session = await getServerSession(authOptions)
     const userId = (session?.user as any)?.id
 
@@ -94,7 +94,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
                     <div className="flex items-center gap-1">
                         <Eye className="h-4 w-4" />
-                        <span>{project.views} views</span>
+                        <span>{project.viewCount} views</span>
                     </div>
 
                     <div className="flex items-center gap-1">

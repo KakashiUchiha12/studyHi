@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,6 +19,7 @@ interface Comment {
         id: string
         name: string | null
         image: string | null
+        username: string | null
     }
 }
 
@@ -115,22 +117,27 @@ export function ProjectComments({
 
                             return (
                                 <div key={comment.id} className="flex gap-4">
-                                    <Avatar className="h-10 w-10">
-                                        <AvatarImage
-                                            src={comment.user.image || undefined}
-                                            alt={comment.user.name || "User"}
-                                        />
-                                        <AvatarFallback>
-                                            {comment.user.name?.charAt(0).toUpperCase() || "U"}
-                                        </AvatarFallback>
-                                    </Avatar>
+                                    <Link href={`/profile/${comment.user.username || comment.user.id}`}>
+                                        <Avatar className="h-10 w-10 hover:opacity-80 transition-opacity">
+                                            <AvatarImage
+                                                src={comment.user.image || undefined}
+                                                alt={comment.user.name || "User"}
+                                            />
+                                            <AvatarFallback>
+                                                {comment.user.name?.charAt(0).toUpperCase() || "U"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    </Link>
 
                                     <div className="flex-1 space-y-1">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-sm">
+                                                <Link
+                                                    href={`/profile/${comment.user.username || comment.user.id}`}
+                                                    className="font-semibold text-sm hover:underline"
+                                                >
                                                     {comment.user.name || "Anonymous"}
-                                                </span>
+                                                </Link>
                                                 <span className="text-xs text-muted-foreground">
                                                     {formatDistanceToNow(createdAt, { addSuffix: true })}
                                                 </span>

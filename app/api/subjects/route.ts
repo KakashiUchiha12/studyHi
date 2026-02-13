@@ -59,6 +59,34 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
 
+    // Server-side validation
+    const LIMITS = {
+      name: 50,
+      description: 500,
+      code: 20,
+      instructor: 100
+    }
+
+    if (!body.name || body.name.trim().length === 0) {
+      return NextResponse.json({ error: 'Subject name is required' }, { status: 400 })
+    }
+
+    if (body.name.length > LIMITS.name) {
+      return NextResponse.json({ error: `Subject name must be less than ${LIMITS.name} characters` }, { status: 400 })
+    }
+
+    if (body.description && body.description.length > LIMITS.description) {
+      return NextResponse.json({ error: `Description must be less than ${LIMITS.description} characters` }, { status: 400 })
+    }
+
+    if (body.code && body.code.length > LIMITS.code) {
+      return NextResponse.json({ error: `Subject code must be less than ${LIMITS.code} characters` }, { status: 400 })
+    }
+
+    if (body.instructor && body.instructor.length > LIMITS.instructor) {
+      return NextResponse.json({ error: `Instructor name must be less than ${LIMITS.instructor} characters` }, { status: 400 })
+    }
+
     // Get the current highest order value for this user
     const maxOrder = await dbService.getPrisma().subject.aggregate({
       where: { userId: userId },

@@ -9,7 +9,7 @@ import { Youtube } from "@tiptap/extension-youtube"
 import { Color } from "@tiptap/extension-color"
 import { TextStyle } from "@tiptap/extension-text-style"
 import { cn } from "@/lib/utils"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 interface RichTextViewerProps {
     content: string

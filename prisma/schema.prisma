@@ -1345,6 +1345,7 @@ model ProjectSection {
   images    Json?
   videoUrl  String? @map("video_url")
   videoType String? @map("video_type")
+  websiteUrl String? @map("website_url")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

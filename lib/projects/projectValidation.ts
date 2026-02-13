@@ -31,6 +31,7 @@ export const createProjectSchema = yup.object({
       images: yup.array().of(yup.string().url()).max(3, "Max 3 images per section"),
       videoUrl: yup.string().url("Must be a valid URL").nullable(),
       videoType: yup.string().oneOf(["youtube", "vimeo", "other"]).nullable(),
+      websiteUrl: yup.string().url("Must be a valid URL").nullable(),
     })
   ),
 });
@@ -53,6 +54,7 @@ export const updateProjectSchema = yup.object({
       images: yup.array().of(yup.string().url()).max(3, "Max 3 images per section"),
       videoUrl: yup.string().url("Must be a valid URL").nullable(),
       videoType: yup.string().oneOf(["youtube", "vimeo", "other"]).nullable(),
+      websiteUrl: yup.string().url("Must be a valid URL").nullable(),
     })
   ),
 });
@@ -64,6 +66,7 @@ export const projectSectionSchema = yup.object({
   images: yup.array().of(yup.string().url()).max(3).nullable(),
   videoUrl: yup.string().url().nullable(),
   videoType: yup.string().oneOf(["youtube", "vimeo", "other"]).nullable(),
+  websiteUrl: yup.string().url().nullable(),
 });
 
 export const projectCommentSchema = yup.object({

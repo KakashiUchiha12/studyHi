@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import { ProfilePostGrid } from "@/components/profile/profile-post-grid";
 import { ProfileSubjects } from "@/components/profile/profile-subjects";
 import { ProfileDocuments } from "@/components/profile/profile-documents";
+import { ProfileProjects } from "@/components/profile/profile-projects";
 import { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { cn } from "@/lib/utils";
 
@@ -150,6 +151,14 @@ export default function UserProfilePage() {
 
                     {/* Public Documents Section */}
                     <ProfileDocuments userId={profile.id} isOwnProfile={!!isMe} />
+
+                    {/* Projects Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold">Projects</h2>
+                        </div>
+                        <ProfileProjects userId={profile.id} />
+                    </div>
 
                     {/* Posts Grid */}
                     <div className="px-4 sm:px-0 space-y-4">

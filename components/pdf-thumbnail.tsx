@@ -34,7 +34,7 @@ export function PDFThumbnail({ documentId, fileUrl, className = "", onThumbnailG
       const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
       // Set worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/4.1.392/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`;
 
       console.log(`[PDF] Loading PDF document...`);
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

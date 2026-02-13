@@ -1028,20 +1028,20 @@ export function SubjectDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-4 sm:p-6 text-foreground">
         <DialogHeader>
           <div className="flex items-center space-x-2">
             <div className={`h-4 w-4 rounded-full ${subject.color}`} />
-            <DialogTitle className="text-xl">{subject.name}</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl truncate pr-8">{subject.name}</DialogTitle>
           </div>
-          <DialogDescription>{subject.description}</DialogDescription>
+          <DialogDescription className="text-sm line-clamp-2">{subject.description}</DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="chapters">Chapters</TabsTrigger>
-            <TabsTrigger value="materials">Materials & Files</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="chapters" className="text-xs sm:text-sm">Chapters</TabsTrigger>
+            <TabsTrigger value="materials" className="text-xs sm:text-sm">Materials</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -1058,7 +1058,7 @@ export function SubjectDetailDialog({
                 </div>
                 <Progress value={progressPercentage} className="h-3" />
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Completed:</span>
                     <span className="font-medium">{completedChaptersCount} chapters</span>
@@ -1077,12 +1077,12 @@ export function SubjectDetailDialog({
                 <span>Subject Information</span>
               </h3>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="flex justify-between sm:block">
                   <span className="text-muted-foreground">Created:</span>
                   <p className="font-medium">{createdDate}</p>
                 </div>
-                <div>
+                <div className="flex justify-between sm:block">
                   <span className="text-muted-foreground">Total Chapters:</span>
                   <p className="font-medium">{chapters.length}</p>
                 </div>
@@ -1091,21 +1091,21 @@ export function SubjectDetailDialog({
 
             <div className="rounded-lg bg-muted/50 p-4">
               <h4 className="font-medium mb-3">Quick Stats</h4>
-              <div className="grid grid-cols-4 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-primary">{progressPercentage}%</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                <div className="p-2 sm:p-0">
+                  <div className="text-xl sm:text-2xl font-bold text-primary">{progressPercentage}%</div>
                   <div className="text-xs text-muted-foreground">Complete</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-accent">{materials.length}</div>
+                <div className="p-2 sm:p-0">
+                  <div className="text-xl sm:text-2xl font-bold text-accent">{materials.length}</div>
                   <div className="text-xs text-muted-foreground">Materials</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-chart-2">{chapters.length}</div>
+                <div className="p-2 sm:p-0">
+                  <div className="text-xl sm:text-2xl font-bold text-chart-2">{chapters.length}</div>
                   <div className="text-xs text-muted-foreground">Chapters</div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-chart-3">
+                <div className="p-2 sm:p-0">
+                  <div className="text-xl sm:text-2xl font-bold text-chart-3">
                     {materials.filter(m => m.fileUrl).length}
                   </div>
                   <div className="text-xs text-muted-foreground">Files</div>
@@ -1121,26 +1121,27 @@ export function SubjectDetailDialog({
                   <BookMarked className="h-5 w-5 text-primary" />
                   <span>Chapters</span>
                 </h3>
-                <div className="text-sm text-muted-foreground">
-                  {completedChaptersCount} of {chapters.length} completed
+                <div className="text-xs sm:text-sm text-muted-foreground">
+                  {completedChaptersCount}/{chapters.length} done
                 </div>
               </div>
 
               <div className="flex space-x-2">
                 <Input
-                  placeholder="Add new chapter (e.g., Introduction, Chapter 1, etc.)"
+                  placeholder="Add new chapter..."
                   value={newChapterName}
                   onChange={(e) => setNewChapterName(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && addChapter()}
+                  className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
                 />
-                <Button onClick={addChapter} size="sm">
-                  <Plus className="h-4 w-4" />
+                <Button onClick={addChapter} size="sm" className="h-8 sm:h-9">
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
               </div>
 
               {chapters.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
                     <span>Progress</span>
                     <span>{progressPercentage}%</span>
                   </div>
@@ -1149,7 +1150,7 @@ export function SubjectDetailDialog({
               )}
 
               {chapters.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1 max-w-[98%] mx-auto">
                   {chapters.map((chapter, index) => (
                     <div
                       key={chapter.id}
@@ -1163,15 +1164,15 @@ export function SubjectDetailDialog({
                       onDrop={(e) => handleChapterDrop(e, index)}
                       onDragEnd={handleChapterDragEnd}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden flex-1 min-w-0">
+                          <div className="p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing flex-shrink-0">
                             <GripVertical className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <Checkbox
                             checked={chapter.isCompleted}
                             onCheckedChange={() => handleToggleChapterCompletion(chapter.id)}
-                            className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white border-2 border-gray-400 dark:border-gray-600 w-5 h-5"
+                            className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 data-[state=checked]:text-white border-2 border-gray-400 dark:border-gray-600 w-5 h-5 flex-shrink-0"
                           />
                           {editingChapter === chapter.id ? (
                             <Input
@@ -1182,21 +1183,22 @@ export function SubjectDetailDialog({
                                 if (e.key === "Escape") setEditingChapter(null)
                               }}
                               onBlur={() => updateChapterName(chapter.id, editingChapterName)}
-                              className="h-6 text-sm"
+                              className="h-8 text-sm w-full"
                               autoFocus
                             />
                           ) : (
                             <span
-                              className={`font-medium ${chapter.isCompleted ? "line-through text-muted-foreground" : ""}`}
+                              className={`font-medium text-xs sm:text-base truncate ${chapter.isCompleted ? "line-through text-muted-foreground" : ""}`}
                             >
                               {chapter.title}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center space-x-1">
+                        <div className="flex items-center space-x-1 flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-8 w-8 p-0"
                             onClick={() => {
                               setEditingChapter(chapter.id)
                               setEditingChapterName(chapter.title)
@@ -1204,7 +1206,7 @@ export function SubjectDetailDialog({
                           >
                             <Edit2 className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteChapter(chapter.id)}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleDeleteChapter(chapter.id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -1216,7 +1218,6 @@ export function SubjectDetailDialog({
                 <div className="text-center py-8 text-muted-foreground">
                   <BookMarked className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No chapters added yet.</p>
-                  <p className="text-sm">Add chapters to track your progress through this subject.</p>
                 </div>
               )}
             </div>
@@ -1227,38 +1228,39 @@ export function SubjectDetailDialog({
               <div className="flex items-center justify-between">
                 <h3 className="flex items-center space-x-2 text-lg font-semibold">
                   <BookOpen className="h-5 w-5 text-primary" />
-                  <span>Study Materials & Files</span>
+                  <span>Materials & Files</span>
                 </h3>
               </div>
 
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search materials and files..."
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-9 sm:pl-10 h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </div>
 
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 w-full">
                 <Input
-                  placeholder="Add new material (e.g., Textbook, Notes, Video)"
+                  placeholder="Add material..."
                   value={newMaterialName}
                   onChange={(e) => setNewMaterialName(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && addMaterial()}
+                  className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
                 />
-                <Button onClick={addMaterial} size="sm">
-                  <Plus className="h-4 w-4" />
+                <Button onClick={addMaterial} size="sm" className="h-8 sm:h-9">
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </Button>
               </div>
 
               {filteredMaterials.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1 max-w-[99%] mx-auto">
                   {filteredMaterials.map((material, index) => (
                     <div
                       key={material.id}
-                      className={`border rounded-lg p-4 space-y-3 transition-all ${draggedMaterial === material.id ? "opacity-50 scale-95" : ""
+                      className={`border rounded-lg p-3 sm:p-4 space-y-3 transition-all ${draggedMaterial === material.id ? "opacity-50 scale-95" : ""
                         } ${dragOverMaterialIndex === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
                       draggable
                       onDragStart={(e) => handleMaterialDragStart(e, material.id)}
@@ -1268,11 +1270,11 @@ export function SubjectDetailDialog({
                       onDragEnd={handleMaterialDragEnd}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
+                        <div className="flex items-center space-x-2 flex-1">
+                          <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing flex-shrink-0">
                             <GripVertical className="h-4 w-4 text-muted-foreground transition-opacity" />
                           </div>
-                          <Folder className="h-4 w-4 text-muted-foreground" />
+                          <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           {editingMaterial === material.id ? (
                             <Input
                               value={editingMaterialName}
@@ -1282,17 +1284,18 @@ export function SubjectDetailDialog({
                                 if (e.key === "Escape") setEditingMaterial(null)
                               }}
                               onBlur={() => updateMaterialName(material.id, editingMaterialName)}
-                              className="h-6 text-sm"
+                              className="h-8 text-sm w-full"
                               autoFocus
                             />
                           ) : (
-                            <span className="font-medium">{material.title}</span>
+                            <span className="font-medium text-xs sm:text-base break-words whitespace-normal">{material.title}</span>
                           )}
                         </div>
-                        <div className="flex items-center space-x-1">
+                        <div className="flex items-center space-x-1 flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-8 w-8 p-0"
                             onClick={() => {
                               setEditingMaterial(material.id)
                               setEditingMaterialName(material.title)
@@ -1300,7 +1303,7 @@ export function SubjectDetailDialog({
                           >
                             <Edit2 className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteMaterial(material.id)}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleDeleteMaterial(material.id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -1322,32 +1325,38 @@ export function SubjectDetailDialog({
                           return (
                             <div className="space-y-2">
                               {convertedFiles.map((file: any) => (
-                                <div key={file.id} className="bg-muted/50 rounded-md p-3">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
+                                <div key={file.id} className="bg-muted/50 rounded-md p-2 sm:p-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center space-x-2 sm:space-x-3 flex-1">
+                                      <div className="w-12 h-12 sm:w-20 sm:h-20 rounded-md sm:rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border flex-shrink-0">
                                         {file.type.startsWith('image/') ? (
                                           <img src={file.url} alt="Thumbnail" className="w-full h-full object-cover" />
                                         ) : file.type === 'application/pdf' ? (
-                                          <FileText className="h-8 w-8 text-red-500" />
+                                          <div className="w-full h-full relative">
+                                            <PDFThumbnail
+                                              documentId={file.id}
+                                              fileUrl={file.url}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          </div>
                                         ) : (
                                           getFileIcon(file.type)
                                         )}
                                       </div>
-                                      <div>
-                                        <p className="text-sm font-medium">{file.name}</p>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium break-words whitespace-normal">{file.name}</p>
                                         <div className="flex items-center gap-2">
-                                          <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                          <div className="flex items-center gap-1 text-xs text-muted-foreground border-l pl-2">
+                                          <p className="text-xs text-muted-foreground whitespace-nowrap">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                          <div className="flex items-center gap-1 text-xs text-muted-foreground border-l pl-2 whitespace-nowrap">
                                             <Eye className="h-3 w-3" />
                                             {file.viewCount || 0}
                                           </div>
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="flex items-center space-x-1">
-                                      <Button variant="ghost" size="sm" onClick={() => { setPreviewFile(file); setIsPreviewOpen(true); }}><Eye className="h-3 w-3" /></Button>
-                                      <Button variant="ghost" size="sm" onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}><Download className="h-3 w-3" /></Button>
+                                    <div className="flex items-center space-x-1 flex-shrink-0">
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setPreviewFile(file); setIsPreviewOpen(true); }}><Eye className="h-3 w-3" /></Button>
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}><Download className="h-3 w-3" /></Button>
                                     </div>
                                   </div>
                                 </div>
@@ -1363,7 +1372,7 @@ export function SubjectDetailDialog({
                             {files.map((file: any, index: number) => (
                               <div
                                 key={file.id}
-                                className={`bg-muted/50 rounded-md p-3 transition-all ${draggedFile?.fileId === file.id ? "opacity-50 scale-95" : ""
+                                className={`bg-muted/50 rounded-md p-2 sm:p-3 transition-all ${draggedFile?.fileId === file.id ? "opacity-50 scale-95" : ""
                                   } ${dragOverFileIndex?.materialId === material.id && dragOverFileIndex?.index === index ? "ring-2 ring-primary ring-offset-2" : ""}`}
                                 draggable
                                 onDragStart={(e) => handleFileDragStart(e, material.id, file.id)}
@@ -1372,12 +1381,12 @@ export function SubjectDetailDialog({
                                 onDrop={(e) => handleFileDrop(e, material.id, index)}
                                 onDragEnd={handleFileDragEnd}
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-start space-x-3 overflow-hidden flex-1 min-w-0">
+                                    <div className="group/drag p-1 -ml-1 rounded hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing flex-shrink-0 mt-1">
                                       <GripVertical className="h-3 w-3 text-muted-foreground transition-opacity" />
                                     </div>
-                                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border">
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center shadow-sm border flex-shrink-0 relative">
                                       {file.thumbnailUrl || (file.type.startsWith('image/') && file.url) ? (
                                         <img
                                           src={file.thumbnailUrl || file.url}
@@ -1386,12 +1395,18 @@ export function SubjectDetailDialog({
                                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                         />
                                       ) : file.type === 'application/pdf' ? (
-                                        <FileText className="h-8 w-8 text-red-500" />
+                                        <div className="w-full h-full relative">
+                                          <PDFThumbnail
+                                            documentId={file.id}
+                                            fileUrl={file.url}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
                                       ) : (
                                         getFileIcon(file.type)
                                       )}
                                     </div>
-                                    <div>
+                                    <div className="flex-1 min-w-0 flex flex-col justify-center min-h-[3rem] sm:min-h-[4rem]">
                                       {editingFileName?.materialId === material.id && editingFileName?.fileId === file.id ? (
                                         <Input
                                           value={editingFileNameText}
@@ -1401,18 +1416,18 @@ export function SubjectDetailDialog({
                                             if (e.key === "Escape") setEditingFileName(null);
                                           }}
                                           onBlur={() => { updateFileName(material.id, file.id, editingFileNameText); setEditingFileName(null); }}
-                                          className="h-6 text-sm"
+                                          className="h-6 text-sm w-full"
                                           autoFocus
                                         />
                                       ) : (
-                                        <div className="flex items-center space-x-2">
-                                          <p className="text-sm font-medium cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded" onClick={() => { setEditingFileName({ materialId: material.id, fileId: file.id }); setEditingFileNameText(file.name); }}>{file.name}</p>
-                                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0" onClick={() => { setEditingFileName({ materialId: material.id, fileId: file.id }); setEditingFileNameText(file.name); }}><Edit2 className="h-3 w-3" /></Button>
+                                        <div className="flex items-center space-x-2 w-full">
+                                          <p className="text-xs sm:text-sm font-medium cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded flex-1 break-words whitespace-normal" onClick={() => { setEditingFileName({ materialId: material.id, fileId: file.id }); setEditingFileNameText(file.name); }}>{file.name}</p>
+                                          <Button variant="ghost" size="sm" className="h-3.5 w-3.5 sm:h-4 sm:w-4 p-0 shrink-0" onClick={() => { setEditingFileName({ materialId: material.id, fileId: file.id }); setEditingFileNameText(file.name); }}><Edit2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" /></Button>
                                         </div>
                                       )}
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground border-l pl-2">
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <p className="text-xs text-muted-foreground whitespace-nowrap">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground border-l pl-2 whitespace-nowrap">
                                           <Eye className="h-3 w-3" />
                                           {file.viewCount || 0}
                                         </div>
@@ -1420,10 +1435,10 @@ export function SubjectDetailDialog({
 
                                     </div>
                                   </div>
-                                  <div className="flex items-center space-x-1">
-                                    <Button variant="ghost" size="sm" onClick={() => { setPreviewFile(file); setIsPreviewOpen(true); }}><Eye className="h-3 w-3" /></Button>
-                                    <Button variant="ghost" size="sm" onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}><Download className="h-3 w-3" /></Button>
-                                    <Button variant="ghost" size="sm" onClick={() => removeFileFromMaterial(material.id, file.id)}><Trash2 className="h-3 w-3" /></Button>
+                                  <div className="flex items-center space-x-1 flex-shrink-0 self-center">
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0" onClick={() => { setPreviewFile(file); setIsPreviewOpen(true); }}><Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3" /></Button>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0" onClick={() => window.open(`/api/files/${file.id}/download`, '_blank')}><Download className="h-2.5 w-2.5 sm:h-3 sm:w-3" /></Button>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0" onClick={() => removeFileFromMaterial(material.id, file.id)}><Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" /></Button>
                                   </div>
                                 </div>
                               </div>
@@ -1441,17 +1456,17 @@ export function SubjectDetailDialog({
                             <p className="text-sm font-medium text-muted-foreground">Links:</p>
                             {links.map((link: any, index: number) => (
                               <div key={index} className="bg-blue-50 dark:bg-blue-950/20 rounded-md p-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                                    <div>
-                                      <p className="text-sm font-medium">{link.description}</p>
-                                      <p className="text-xs text-blue-600 dark:text-blue-400">
-                                        <button onClick={() => openLink(link.url)} className="hover:underline">{link.url}</button>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-start space-x-2 flex-1 min-w-0">
+                                    <div className="h-2 w-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium break-words whitespace-normal">{link.description}</p>
+                                      <p className="text-xs text-blue-600 dark:text-blue-400 break-words whitespace-normal">
+                                        <button onClick={() => openLink(link.url)} className="hover:underline break-words whitespace-normal text-left w-full">{link.url}</button>
                                       </p>
                                     </div>
                                   </div>
-                                  <Button variant="ghost" size="sm" onClick={() => removeLinkFromMaterial(material.id)}><Trash2 className="h-3 w-3" /></Button>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={() => removeLinkFromMaterial(material.id)}><Trash2 className="h-3 w-3" /></Button>
                                 </div>
                               </div>
                             ))}
@@ -1464,11 +1479,11 @@ export function SubjectDetailDialog({
                           <div className="text-center">
                             <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                             <p className="text-sm text-muted-foreground mb-2">Upload files or add content</p>
-                            <div className="flex space-x-2 justify-center">
-                              <Button variant="outline" size="sm" onClick={() => document.getElementById(`file-upload-${material.id}`)?.click()} disabled={uploadingFile === material.id}>
+                            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 justify-center">
+                              <Button variant="outline" size="sm" onClick={() => document.getElementById(`file-upload-${material.id}`)?.click()} disabled={uploadingFile === material.id} className="w-full sm:w-auto">
                                 {uploadingFile === material.id ? 'Uploading...' : 'Choose File'}
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => setAddingLinkToMaterial(material.id)} disabled={uploadingFile === material.id}>
+                              <Button variant="outline" size="sm" onClick={() => setAddingLinkToMaterial(material.id)} disabled={uploadingFile === material.id} className="w-full sm:w-auto">
                                 <Plus className="h-4 w-4 mr-2" /> Add Link
                               </Button>
                             </div>
@@ -1511,23 +1526,23 @@ export function SubjectDetailDialog({
 
         {previewFile && (
           <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>{previewFile.name}</DialogTitle>
+            <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[800px] h-[80vh] sm:h-[90vh] p-0 overflow-hidden flex flex-col">
+              <DialogHeader className="p-4 border-b flex-shrink-0">
+                <DialogTitle className="truncate pr-8">{previewFile.name}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="flex-1 overflow-auto bg-muted/30 p-2 sm:p-4 flex items-center justify-center">
                 {previewFile.type.startsWith("image/") ? (
                   <img
                     src={previewFile.url || "/placeholder.svg"}
                     alt={previewFile.name}
-                    className="w-full rounded-md"
+                    className="max-w-full max-h-full object-contain rounded-md shadow-sm"
                   />
                 ) : previewFile.type.includes("pdf") ? (
-                  <iframe src={previewFile.url} className="w-full h-96 rounded-md" />
+                  <iframe src={previewFile.url} className="w-full h-full rounded-md shadow-sm border" />
                 ) : (
                   <div className="text-center py-8">
-                    <File className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p>Preview not available for this file type.</p>
+                    <File className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                    <p className="mb-4">Preview not available for this file type.</p>
                     <Button onClick={() => downloadFile(previewFile)} className="mt-4">
                       <Download className="h-4 w-4 mr-2" />
                       Download File
@@ -1539,10 +1554,10 @@ export function SubjectDetailDialog({
           </Dialog>
         )}
 
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-2">
           <Button onClick={() => onOpenChange(false)}>Close</Button>
         </div>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }

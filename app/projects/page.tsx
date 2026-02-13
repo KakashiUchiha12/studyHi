@@ -11,12 +11,12 @@ import { Plus } from "lucide-react"
 import Link from "next/link"
 
 interface ProjectsPageProps {
-    searchParams: {
+    searchParams: Promise<{
         page?: string
         category?: string
         search?: string
         sortBy?: string
-    }
+    }>
 }
 
 function ProjectCardSkeleton() {
@@ -30,7 +30,14 @@ function ProjectCardSkeleton() {
     )
 }
 
-async function ProjectsList({ searchParams }: ProjectsPageProps) {
+async function ProjectsList({ searchParams }: {
+    searchParams: {
+        page?: string
+        category?: string
+        search?: string
+        sortBy?: string
+    }
+}) {
     const page = parseInt(searchParams.page || "1")
     const filters = {
         category: searchParams.category,
@@ -92,7 +99,9 @@ async function ProjectsList({ searchParams }: ProjectsPageProps) {
     )
 }
 
-export default function ProjectsPage({ searchParams }: ProjectsPageProps) {
+export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
+    const resolvedSearchParams = await searchParams
+
     return (
         <div className="container mx-auto px-4 py-8 max-w-7xl">
             <div className="flex items-center justify-between mb-8">
@@ -125,7 +134,7 @@ export default function ProjectsPage({ searchParams }: ProjectsPageProps) {
                     </div>
                 }
             >
-                <ProjectsList searchParams={searchParams} />
+                <ProjectsList searchParams={resolvedSearchParams} />
             </Suspense>
         </div>
     )
