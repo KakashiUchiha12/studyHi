@@ -382,6 +382,7 @@ export async function POST(request: NextRequest) {
 
         const chapterFolder = await ensureImportFolderExists(toDrive.id, destFolder.id, sourceChapter.title);
 
+        // Chapter Material Import Loop
         for (const sourceMaterial of sourceChapter.materials) {
           let materialContent: { files: any[], links: any[] } = { files: [], links: [] };
           let hasContent = false;
@@ -398,14 +399,16 @@ export async function POST(request: NextRequest) {
               if (originalLinks.length > 0) hasContent = true;
 
               for (const f of originalFiles) {
+                // Determine if we should import this file
                 if (fileIds.length > 0 && !fileIds.includes(f.id)) continue;
 
-                // Check for duplicate in this material folder
+                // Check for duplicate in this material folder for the destination user
                 const existingFile = await prisma.driveFile.findFirst({
                   where: {
                     driveId: toDrive.id,
                     folderId: materialFolder.id,
-                    originalName: f.name
+                    originalName: f.name,
+                    deletedAt: null
                   }
                 });
 
@@ -413,7 +416,7 @@ export async function POST(request: NextRequest) {
                   materialContent.files.push({
                     id: existingFile.id,
                     name: existingFile.originalName,
-                    url: `/api/drive/files/${existingFile.id}`,
+                    url: `/api/files/${existingFile.id}`,
                     size: Number(existingFile.fileSize),
                     type: existingFile.mimeType,
                     uploadedAt: new Date().toISOString()
@@ -423,16 +426,18 @@ export async function POST(request: NextRequest) {
                   continue;
                 }
 
+                // Find the source file info
                 const srcFile = await prisma.driveFile.findUnique({ where: { id: f.id } })
                   || await prisma.subjectFile.findUnique({ where: { id: f.id } });
 
                 if (srcFile) {
                   try {
-                    const copied = await importFile(srcFile, toDrive.id, materialFolder.id, userId);
+                    // Correctly pass subjectId to importFile for proper path generation
+                    const copied = await importFile(srcFile, toDrive.id, materialFolder.id, userId, destSubject.id);
                     materialContent.files.push({
                       id: copied.id,
                       name: copied.originalName,
-                      url: `/api/drive/files/${copied.id}`,
+                      url: `/api/files/${copied.id}`, // Standardized URL
                       size: Number(copied.fileSize),
                       type: copied.mimeType,
                       uploadedAt: new Date().toISOString()
@@ -465,6 +470,7 @@ export async function POST(request: NextRequest) {
                 title: sourceMaterial.title,
                 type: sourceMaterial.type,
                 content: hasContent ? JSON.stringify(materialContent) : sourceMaterial.content,
+                subjectId: destSubject.id, // Ensure subjectId is linked
               }
             });
           } else {
@@ -513,7 +519,8 @@ export async function POST(request: NextRequest) {
                 where: {
                   driveId: toDrive.id,
                   folderId: materialFolder.id,
-                  originalName: f.name
+                  originalName: f.name,
+                  deletedAt: null
                 }
               });
 
@@ -521,7 +528,7 @@ export async function POST(request: NextRequest) {
                 materialContent.files.push({
                   id: existingFile.id,
                   name: existingFile.originalName,
-                  url: `/api/drive/files/${existingFile.id}`,
+                  url: `/api/files/${existingFile.id}`, // Standardized URL
                   size: Number(existingFile.fileSize),
                   type: existingFile.mimeType,
                   uploadedAt: new Date().toISOString()
@@ -535,11 +542,11 @@ export async function POST(request: NextRequest) {
 
               if (srcFile) {
                 try {
-                  const copied = await importFile(srcFile, toDrive.id, materialFolder.id, userId);
+                  const copied = await importFile(srcFile, toDrive.id, materialFolder.id, userId, destSubject.id);
                   materialContent.files.push({
                     id: copied.id,
                     name: copied.originalName,
-                    url: `/api/drive/files/${copied.id}`,
+                    url: `/api/files/${copied.id}`, // Standardized URL
                     size: Number(copied.fileSize),
                     type: copied.mimeType,
                     uploadedAt: new Date().toISOString()
@@ -573,6 +580,7 @@ export async function POST(request: NextRequest) {
               title: sourceMaterial.title,
               type: sourceMaterial.type,
               content: hasContent ? JSON.stringify(materialContent) : sourceMaterial.content,
+              subjectId: destSubject.id, // Ensure subjectId is linked
             }
           });
         } else {
@@ -587,6 +595,57 @@ export async function POST(request: NextRequest) {
               isCompleted: false
             }
           });
+        }
+      }
+
+      // 5.5 Standalone Subject Files
+      const standaloneFiles = await prisma.subjectFile.findMany({
+        where: { subjectId: sourceSubject.id }
+      });
+
+      for (const srcFile of standaloneFiles) {
+        if (fileIds.length > 0 && !fileIds.includes(srcFile.id)) continue;
+
+        // Check for duplicate in the destination subject's file list
+        const existingFile = await prisma.subjectFile.findFirst({
+          where: {
+            subjectId: destSubject.id,
+            originalName: srcFile.originalName,
+          }
+        });
+
+        if (existingFile) {
+          importResult.duplicates.push({ name: srcFile.originalName, type: 'standalone_file', reason: 'File already exists in subject' });
+          continue;
+        }
+
+        try {
+          // Import to drive first (this handles physical copy and DriveFile record)
+          const copiedDriveFile = await importFile(srcFile, toDrive.id, destFolder.id, userId, destSubject.id);
+
+          // Then create linked SubjectFile record for the destination subject
+          await prisma.subjectFile.create({
+            data: {
+              userId,
+              subjectId: destSubject.id,
+              fileName: copiedDriveFile.storedName,
+              originalName: copiedDriveFile.originalName,
+              fileType: copiedDriveFile.fileType,
+              mimeType: copiedDriveFile.mimeType,
+              fileSize: Number(copiedDriveFile.fileSize),
+              filePath: copiedDriveFile.filePath,
+              thumbnailPath: copiedDriveFile.thumbnailPath,
+              category: srcFile.category,
+              tags: srcFile.tags,
+              description: srcFile.description,
+              isPublic: false
+            }
+          });
+
+          importResult.imported.push(copiedDriveFile);
+          importResult.totalSize += BigInt(srcFile.fileSize);
+        } catch (err) {
+          console.error(`Failed to copy standalone subject file ${srcFile.originalName}:`, err);
         }
       }
 
@@ -648,36 +707,41 @@ async function importFile(
   targetDriveId: string,
   targetFolderId: string | null,
   userId: string,
+  subjectId?: string,
   customName?: string
 ) {
   // For imports, we need to create a NEW file with a NEW storedName
   // because storedName is globally unique and we can't share files across drives
   const originalStoredName = sourceFile.storedName || sourceFile.fileName;
-  const extension = path.extname(originalStoredName);
-  const newStoredName = `${Date.now()}-${Math.random().toString(36).substring(7)}${extension}`;
+  const extension = path.extname(sourceFile.originalName || originalStoredName);
+  const newStoredName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}${extension}`;
 
   // Determine source path
   const sourcePath = path.isAbsolute(sourceFile.filePath)
     ? sourceFile.filePath
     : path.join(process.cwd(), sourceFile.filePath);
 
-  // Determine destination path (same directory structure as source usually, or a dedicated upload dir)
-  // Let's reuse the directory of the source file if possible, or default to public/uploads
-  const uploadDir = path.dirname(sourcePath);
-  const newFilePath = path.join(uploadDir, newStoredName);
+  // Determine destination path - ensuring it's in the destination user's directory
+  const uploadBaseDir = path.join(process.cwd(), 'public', 'uploads', 'files', userId);
+  const uploadDir = subjectId
+    ? path.join(uploadBaseDir, subjectId)
+    : uploadBaseDir;
 
-  // If we can't determine a good path, default to standard upload location
-  // But since we are copying, we can just put it in public/uploads if we want to be safe
-  // actually, let's just use the same folder to keep it simple, assuming it's writable
+  const { mkdir } = await import('fs/promises');
+  await mkdir(uploadDir, { recursive: true });
+
+  const newFilePath = path.join(uploadDir, newStoredName);
 
   try {
     await copyFile(sourcePath, newFilePath, constants.COPYFILE_FICLONE);
   } catch (err) {
-    console.error("Failed to copy file physically:", err);
-    // Fallback: if copy fails (e.g. permissions), we might have to fail the import 
-    // or duplicate the buffer (slower). 
-    // For now, let's throw to avoid creating broken records.
-    throw new Error(`Failed to copy physical file: ${sourceFile.originalName}`);
+    console.warn('FICLONE failed, falling back to standard copy:', err);
+    try {
+      await copyFile(sourcePath, newFilePath);
+    } catch (fallbackError) {
+      console.error('File copy failed:', fallbackError);
+      throw new Error(`Failed to copy physical file: ${sourceFile.originalName || originalStoredName}`);
+    }
   }
 
   const copiedFile = await prisma.driveFile.create({
@@ -691,8 +755,7 @@ async function importFile(
       fileType: sourceFile.fileType,
       fileHash: sourceFile.fileHash || '',
       filePath: newFilePath, // NEW independent path
-      thumbnailPath: sourceFile.thumbnailPath, // Thumbnails can potentially be shared or copied too. 
-      // Attempting to copy thumbnail would be good but optional.
+      thumbnailPath: sourceFile.thumbnailPath,
       isPublic: false,
       description: sourceFile.description,
       tags: sourceFile.tags,
