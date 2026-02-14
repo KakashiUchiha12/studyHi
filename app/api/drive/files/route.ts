@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     const fileName = `${fileId}${extension}`;
     const date = new Date();
     const relativeDir = path.join('uploads', 'drives', user.id, date.getFullYear().toString(), (date.getMonth() + 1).toString());
-    const uploadDir = path.join(process.cwd(), relativeDir);
+    const uploadDir = path.join(process.cwd(), 'public', relativeDir);
 
     console.log(`[UPLOAD] Preparing to write file to: ${uploadDir}`);
 
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
     await mkdir(uploadDir, { recursive: true });
 
     const filePath = path.join(relativeDir, fileName);
-    const fullPath = path.join(process.cwd(), filePath);
+    const fullPath = path.join(process.cwd(), 'public', filePath);
 
     // Save file to disk
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
         const thumbName = `${fileId}_thumb.webp`;
         thumbnailPath = path.join(thumbRelDir, thumbName).replace(/\\/g, '/');
 
-        const fullThumbPath = path.join(process.cwd(), thumbnailPath);
+        const fullThumbPath = path.join(process.cwd(), 'public', thumbnailPath);
         await writeFile(fullThumbPath, thumbBuffer);
         console.log('[UPLOAD] Thumbnail generated and saved');
       } else {

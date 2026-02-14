@@ -114,7 +114,7 @@ export class ThumbnailService {
             date.getFullYear().toString(),
             (date.getMonth() + 1).toString()
         );
-        const fullDir = path.join(process.cwd(), relativeDir);
+        const fullDir = path.join(process.cwd(), 'public', relativeDir);
         await fs.mkdir(fullDir, { recursive: true });
         return relativeDir;
     }
