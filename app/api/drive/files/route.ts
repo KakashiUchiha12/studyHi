@@ -11,7 +11,7 @@ import {
   validateFileSize,
   isStorageLimitExceeded,
 } from '@/lib/drive/storage';
-import { validateSession } from '@/lib/drive/auth-validator';
+import { validateSession, AuthError } from '@/lib/drive/auth-validator';
 import { sanitizeTags, sanitizeName } from '@/lib/drive/sanitizer';
 import { DriveErrors } from '@/lib/drive/errors';
 import { checkRateLimit } from '@/lib/drive/rate-limiter';
@@ -121,17 +121,24 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log('[UPLOAD] Starting file upload process...');
+
     // Validate session
     const session = await getServerSession(authOptions);
+    console.log('[UPLOAD] Session retrieved:', session?.user?.email);
+
     const user = validateSession(session);
+    console.log('[UPLOAD] User validated:', user.id);
 
     // Rate limit check
     const rateLimit = checkRateLimit(user.id, 'fileUpload');
     if (!rateLimit.allowed) {
+      console.log('[UPLOAD] Rate limit exceeded for user:', user.id);
       const error = DriveErrors.rateLimitExceeded('file upload', rateLimit.resetTime!);
       return NextResponse.json(error.toJSON(), { status: error.status });
     }
 
+    console.log('[UPLOAD] Parsing form data...');
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const folderId = formData.get('folderId') as string | null;
@@ -139,13 +146,17 @@ export async function POST(request: NextRequest) {
     const description = formData.get('description') as string | null;
 
     if (!file) {
+      console.log('[UPLOAD] No file provided in request');
       const error = DriveErrors.invalidInput('file', 'No file provided');
       return NextResponse.json(error.toJSON(), { status: error.status });
     }
 
+    console.log(`[UPLOAD] File received: ${file.name}, Size: ${file.size}, Type: ${file.type}`);
+
     // Validate file size
     const sizeValidation = validateFileSize(file.size);
     if (!sizeValidation.valid) {
+      console.log(`[UPLOAD] File too large: ${file.size}`);
       const error = DriveErrors.fileTooLarge(file.size, STORAGE_LIMITS.FILE_SIZE_LIMIT);
       return NextResponse.json(error.toJSON(), { status: error.status });
     }
@@ -153,6 +164,7 @@ export async function POST(request: NextRequest) {
     // Sanitize inputs
     const sanitizedTags = sanitizeTags(tagsString || '[]');
     const sanitizedName = sanitizeName(file.name);
+    console.log(`[UPLOAD] Sanitized name: ${sanitizedName}`);
 
     // Get user's drive
     const drive = await prisma.drive.findUnique({
@@ -160,12 +172,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!drive) {
+      console.log('[UPLOAD] Drive not found for user:', user.id);
       const error = DriveErrors.driveNotFound();
       return NextResponse.json(error.toJSON(), { status: error.status });
     }
 
     // Check storage limits
     if (isStorageLimitExceeded(drive.storageUsed, drive.storageLimit, file.size)) {
+      console.log('[UPLOAD] Storage limit exceeded');
       const error = DriveErrors.storageExceeded(
         `${Number(drive.storageUsed) / 1024 / 1024}MB`,
         `${Number(drive.storageLimit) / 1024 / 1024}MB`
@@ -181,6 +195,8 @@ export async function POST(request: NextRequest) {
     const relativeDir = path.join('uploads', 'drives', user.id, date.getFullYear().toString(), (date.getMonth() + 1).toString());
     const uploadDir = path.join(process.cwd(), relativeDir);
 
+    console.log(`[UPLOAD] Preparing to write file to: ${uploadDir}`);
+
     // Create directory if it doesn't exist
     await mkdir(uploadDir, { recursive: true });
 
@@ -189,7 +205,9 @@ export async function POST(request: NextRequest) {
 
     // Save file to disk
     const buffer = Buffer.from(await file.arrayBuffer());
+    console.log(`[UPLOAD] Writing file to disk: ${fullPath}`);
     await writeFile(fullPath, buffer);
+    console.log('[UPLOAD] File written successfully');
 
     // Calculate hash
     const hash = calculateBufferHash(buffer);
@@ -197,6 +215,7 @@ export async function POST(request: NextRequest) {
     // Generate thumbnail
     let thumbnailPath = null;
     try {
+      console.log('[UPLOAD] Generating thumbnail...');
       const { ThumbnailService } = await import('@/lib/drive/thumbnail-service');
       const thumbBuffer = await ThumbnailService.generateThumbnail(buffer, file.type || 'application/octet-stream');
 
@@ -207,11 +226,15 @@ export async function POST(request: NextRequest) {
 
         const fullThumbPath = path.join(process.cwd(), thumbnailPath);
         await writeFile(fullThumbPath, thumbBuffer);
+        console.log('[UPLOAD] Thumbnail generated and saved');
+      } else {
+        console.log('[UPLOAD] No thumbnail generated (not supported or failed)');
       }
     } catch (error) {
-      console.error('Failed to generate thumbnail during upload:', error);
+      console.error('[UPLOAD] Failed to generate thumbnail during upload:', error);
     }
 
+    console.log('[UPLOAD] Starting database transaction...');
     // Create database record and update storage in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create file record
@@ -268,17 +291,43 @@ export async function POST(request: NextRequest) {
       return newFile;
     });
 
+    console.log('[UPLOAD] Database transaction completed successfully');
+
     return NextResponse.json({
       file: {
-        ...result,
+        id: result.id,
+        driveId: result.driveId,
+        folderId: result.folderId,
+        originalName: result.originalName,
+        storedName: result.storedName,
         fileSize: result.fileSize.toString(),
+        mimeType: result.mimeType,
+        fileType: result.fileType,
+        filePath: result.filePath,
+        thumbnailPath: result.thumbnailPath,
+        isPublic: result.isPublic,
+        downloadCount: result.downloadCount,
+        viewCount: result.viewCount,
         tags: sanitizedTags,
-      },
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
+      }
     }, { status: 201 });
   } catch (error) {
-    console.error('Error uploading file:', error);
+    if (error instanceof AuthError) {
+      console.error('[UPLOAD] Auth Error:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    console.error('[UPLOAD] Context:', error);
+    console.error('[UPLOAD] Error uploading file:', error);
+    // @ts-ignore
+    if (error.stack) {
+      // @ts-ignore
+      console.error('[UPLOAD] Stack trace:', error.stack);
+    }
+
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: error instanceof Error ? error.message : 'Failed to upload file' },
       { status: 500 }
     );
   }
