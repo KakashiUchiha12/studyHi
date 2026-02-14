@@ -36,6 +36,7 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
     const httpServer = createServer((req, res) => {
         const parsedUrl = parse(req.url!, true);
+        console.log(`[SERVER] Request: ${req.method} ${req.url}`);
         handle(req, res, parsedUrl);
     });
 
