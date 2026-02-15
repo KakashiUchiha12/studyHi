@@ -63,7 +63,7 @@ export async function GET(
     }
 
     // Read file from disk
-    const filePath = path.isAbsolute(file.filePath) ? file.filePath : path.join(process.cwd(), file.filePath);
+    const filePath = path.isAbsolute(file.filePath) ? file.filePath : path.join(process.cwd(), 'public', file.filePath);
     const fileBuffer = await readFile(filePath);
 
     // Update counts
@@ -102,7 +102,7 @@ export async function GET(
       // Only use existing thumbnail if it's the high-quality version (hq)
       if (file.thumbnailPath && file.thumbnailPath.includes('_hq.webp')) {
         try {
-          const thumbPath = path.isAbsolute(file.thumbnailPath) ? file.thumbnailPath : path.join(process.cwd(), file.thumbnailPath);
+          const thumbPath = path.isAbsolute(file.thumbnailPath) ? file.thumbnailPath : path.join(process.cwd(), 'public', file.thumbnailPath);
           thumbBuffer = await readFile(thumbPath);
         } catch (error) {
           console.error('Failed to read existing thumbnail:', error);
@@ -112,7 +112,7 @@ export async function GET(
       // Generate if not found or if it was the old low-quality version
       if (!thumbBuffer) {
         const { ThumbnailService } = await import('@/lib/drive/thumbnail-service');
-        const originalFilePath = path.isAbsolute(file.filePath) ? file.filePath : path.join(process.cwd(), file.filePath);
+        const originalFilePath = path.isAbsolute(file.filePath) ? file.filePath : path.join(process.cwd(), 'public', file.filePath);
         const originalBuffer = await readFile(originalFilePath);
 
         // Use high-quality defaults (1200px wide, high density for PDF)
@@ -124,7 +124,7 @@ export async function GET(
             const thumbName = `${file.id}_hq.webp`; // New suffix to distinguish from old low-quality version
             const thumbPath = path.join(thumbRelDir, thumbName).replace(/\\/g, '/');
 
-            await writeFile(path.join(process.cwd(), thumbPath), thumbBuffer);
+            await writeFile(path.join(process.cwd(), 'public', thumbPath), thumbBuffer);
 
             // Save new path to DB
             await prisma.driveFile.update({
@@ -325,7 +325,7 @@ export async function DELETE(
 
     if (permanent) {
       // Permanently delete file
-      const filePath = path.isAbsolute(file.filePath) ? file.filePath : path.join(process.cwd(), file.filePath);
+      const filePath = path.isAbsolute(file.filePath) ? file.filePath : path.join(process.cwd(), 'public', file.filePath);
 
       try {
         await unlink(filePath);

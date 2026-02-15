@@ -30,7 +30,8 @@ import {
   Home,
   LayoutDashboard,
   BookOpen,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { formatBytes } from '@/lib/drive/storage';
 import { FolderCreateDialog } from '@/components/drive/folder-create-dialog';
+import { FilePreview } from '@/components/file-preview';
 
 interface DriveInfo {
   id: string;
@@ -207,6 +209,9 @@ function DrivePageContent() {
   const [renamingFolder, setRenamingFolder] = useState<{ id: string; name: string } | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
+
   const folderId = searchParams.get('folderId');
 
   // Redirect if not authenticated
@@ -274,6 +279,10 @@ function DrivePageContent() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Reset input value
+    e.target.value = '';
+
+    setIsUploading(true);
     const formData = new FormData();
     formData.append('file', file);
     if (folderId) formData.append('folderId', folderId);
@@ -290,18 +299,20 @@ function DrivePageContent() {
       }
 
       toast({
-        title: 'Success',
-        description: 'File uploaded successfully',
+        title: 'Upload Successful',
+        description: `"${file.name}" has been uploaded.`,
       });
 
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       queryClient.invalidateQueries({ queryKey: ['drive'] });
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: 'Upload Failed',
         description: error.message,
         variant: 'destructive',
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -549,14 +560,19 @@ function DrivePageContent() {
             <FolderPlus className="h-4 w-4 mr-2" />
             New Folder
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <label className="cursor-pointer">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
+          <Button variant="outline" size="sm" asChild disabled={isUploading}>
+            <label className={`cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              {isUploading ? 'Uploading...' : 'Upload'}
               <input
                 type="file"
                 className="hidden"
                 onChange={handleFileUpload}
+                disabled={isUploading}
               />
             </label>
           </Button>
@@ -665,6 +681,8 @@ function DrivePageContent() {
               onClick={(e) => {
                 if (e.ctrlKey || e.metaKey) {
                   toggleItemSelection(file.id);
+                } else {
+                  setPreviewFile(file);
                 }
               }}
             >
@@ -756,14 +774,19 @@ function DrivePageContent() {
                   Upload files or create folders to get started
                 </p>
               </div>
-              <Button asChild>
-                <label>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload File
+              <Button asChild disabled={isUploading}>
+                <label className={`cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  {isUploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  {isUploading ? 'Uploading...' : 'Upload File'}
                   <input
                     type="file"
                     className="hidden"
                     onChange={handleFileUpload}
+                    disabled={isUploading}
                   />
                 </label>
               </Button>
@@ -810,6 +833,31 @@ function DrivePageContent() {
           </Dialog>
         )
       }
+      {/* File Preview Dialog */}
+      {previewFile && (
+        <FilePreview
+          file={{
+            id: previewFile.id,
+            name: previewFile.originalName,
+            type: previewFile.mimeType,
+            size: parseInt(previewFile.fileSize),
+            url: `/api/drive/files/${previewFile.id}`,
+            thumbnail: `/api/drive/files/${previewFile.id}?thumbnail=true`,
+            uploadedAt: new Date(previewFile.createdAt),
+            isPublic: previewFile.isPublic
+          }}
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          showDownload={true}
+          showDelete={true}
+          onDelete={(id) => {
+            // Handle delete from preview if needed, or close
+            // ensure we refresh the list
+            setPreviewFile(null);
+            queryClient.invalidateQueries({ queryKey: ['drive-files'] });
+          }}
+        />
+      )}
     </div >
   );
 }

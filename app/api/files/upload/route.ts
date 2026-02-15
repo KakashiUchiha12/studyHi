@@ -77,18 +77,33 @@ export async function POST(request: NextRequest) {
     const fileExtension = path.extname(file.name)
     const fileName = `${timestamp}-${randomString}${fileExtension}`
 
-    // Save file to disk - updated to use persistent public/uploads path
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'files', userId, subjectId)
+    // Save file to disk
+    const date = new Date()
+    const relativeDir = path.join(
+      'uploads',
+      'files',
+      userId,
+      subjectId,
+      date.getFullYear().toString(),
+      (date.getMonth() + 1).toString()
+    ).replace(/\\/g, '/')
+
+    const uploadDir = path.join(process.cwd(), 'public', relativeDir)
     await mkdir(uploadDir, { recursive: true })
 
-    const filePath = path.join(uploadDir, fileName)
+    const fullPath = path.join(uploadDir, fileName)
     const fileBuffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(filePath, fileBuffer)
+    await writeFile(fullPath, fileBuffer)
+
+    const relativeFilePath = `${relativeDir}/${fileName}`
 
     // Create thumbnail if it's an image or PDF
     let thumbnailPath: string | null = null
     if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-      thumbnailPath = await fileService.createThumbnail(filePath, fileName, subjectId, userId, file.type)
+      thumbnailPath = await fileService.createThumbnail(fullPath, fileName, subjectId, userId, file.type)
+      if (thumbnailPath) {
+        thumbnailPath = thumbnailPath.replace(/\\/g, '/')
+      }
     }
 
     // Parse tags
@@ -103,8 +118,8 @@ export async function POST(request: NextRequest) {
       fileType: path.extname(file.name).substring(1).toUpperCase(),
       mimeType: file.type,
       fileSize: file.size,
-      filePath,
-      thumbnailPath,
+      filePath: relativeFilePath,
+      thumbnailPath: thumbnailPath || undefined,
       category: category as any || fileService.getFileCategoryFromMimeType(file.type),
       tags: parsedTags,
       description: description || undefined,

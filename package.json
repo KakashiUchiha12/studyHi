@@ -131,6 +131,7 @@
         "react-hook-form": "^7.62.0",
         "react-hot-toast": "^2.4.1",
         "react-markdown": "^10.1.0",
+        "react-pdf": "^10.3.0",
         "react-resizable-panels": "^2.1.7",
         "recharts": "latest",
         "socket.io": "^4.8.1",

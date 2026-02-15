@@ -1,0 +1,25 @@
+implement an enahcned multi-cklient chat applaictioan usuing socket programmign and threading in python, The server suppoerts multiple clients with usernames,time stamps, a user list command, nicknames
+chnages and simple private messaging.
+Server requiremnts server.py
+
+bind to host 127.0.0.1 abd personailized pport: port = 5000 + your_student_ID% 10000 example studentID 123456 -> port 50456
+using threading: one thread per client for handlign communication.
+using shared data structures e..g dictionary to map client connections -> usernames.protect shared access if necessary(hint: thread locking.)
+connection flow
+1. accept connection 
+2. receive initial username form client
+3. store username and broadcast: HHMMSS <username> has joined the chat.
+Normal messages:
+1. prefixes with server-generated tiemstamp and username.
+2. broadcast to all other clinets : HHMMSS<username><message>
+
+supported commands (case sensitive and exact match)
+
+1. /list -> send private response only to the sender.
+2. /name newname -> change sender's username.
+ validate: newname not empty and not already taken case sensitive.
+ if vlaid: update username, broadcast HHMMSS <oldname> is known as <newname>
+ if invalid: send private error message to sender (e,g Error: Username laready taken or invalid.) 
+
+3. /pm username message -> private message
+

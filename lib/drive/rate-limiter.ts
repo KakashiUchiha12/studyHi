@@ -18,7 +18,7 @@ const rateLimitStore = new Map<string, RateLimitEntry>()
 
 // Rate limit configurations
 export const RateLimits = {
-    fileUpload: { max: 10, windowMs: 60 * 1000 }, // 10 uploads per minute
+    fileUpload: { max: 50, windowMs: 60 * 1000 }, // 50 uploads per minute
     folderCreate: { max: 20, windowMs: 60 * 1000 }, // 20 folders per minute
     fileDelete: { max: 50, windowMs: 60 * 1000 }, // 50 deletes per minute
     apiCall: { max: 100, windowMs: 60 * 1000 }, // 100 API calls per minute

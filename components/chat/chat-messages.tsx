@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { format } from "date-fns";
-import { Download, X, Maximize2, FileText, File } from "lucide-react";
+import { Download, X, Maximize2, FileText, File, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { notificationManager } from "@/lib/notifications";
@@ -33,15 +33,27 @@ export const ChatMessages = ({
     const [messages, setMessages] = useState<any[]>([]);
     const [viewerMedia, setViewerMedia] = useState<{ url: string, type: string, name: string } | null>(null);
     const [isAtBottom, setIsAtBottom] = useState(true);
+    const [isFetching, setIsFetching] = useState(false);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+
     const bottomRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const previousScrollHeightRef = useRef<number>(0);
+    const isLoadingMoreRef = useRef<boolean>(false);
 
-    // Check if user is at bottom
+    // Check scroll position
     const handleScroll = () => {
         if (!scrollContainerRef.current) return;
         const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+
+        // At bottom check
         const isBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 50;
         setIsAtBottom(isBottom);
+
+        // At top check - load more
+        if (scrollTop === 0 && nextCursor && !isFetching) {
+            fetchNextPage();
+        }
     };
 
     // Auto-scroll to bottom function
@@ -58,38 +70,103 @@ export const ChatMessages = ({
         }
     }, [paramValue]);
 
-    // Initial Fetch & Polling
-    useEffect(() => {
-        const fetchMessages = async () => {
-            const res = await fetch(`${apiUrl}?${paramKey}=${paramValue}`);
+    // Fetch next page (older messages)
+    const fetchNextPage = async () => {
+        if (!nextCursor || isFetching) return;
+
+        // Capture specific scroll info before fetch starts isn't useful for layout adjustment,
+        // we need it right before state update or use what we have.
+        // But we DO need to know we are loading more.
+        isLoadingMoreRef.current = true;
+        setIsFetching(true);
+
+        // Capture current scroll height to calculate diff later
+        if (scrollContainerRef.current) {
+            previousScrollHeightRef.current = scrollContainerRef.current.scrollHeight;
+        }
+
+        try {
+            const res = await fetch(`${apiUrl}?${paramKey}=${paramValue}&cursor=${nextCursor}`);
             if (res.ok) {
                 const data = await res.json();
-                if (data.items) {
-                    setMessages(data.items.reverse());
-                } else if (Array.isArray(data)) {
+
+                if (data.items) { // Handle paginated response
+                    setMessages(prev => [...data.items.reverse(), ...prev]);
+                    setNextCursor(data.nextCursor);
+                } else if (Array.isArray(data)) { // Fallback for legacy array response (shouldn't happen with new API)
+                    // If existing backend doesn't support cursor, we can't paginate well.
+                    // Assuming new API structure.
                     setMessages(data.reverse());
+                    setNextCursor(null);
                 }
+            }
+        } catch (error) {
+            console.error("Failed to fetch messages:", error);
+            isLoadingMoreRef.current = false; // Reset on error
+        } finally {
+            setIsFetching(false);
+        }
+    };
+
+    // Initial Fetch
+    useEffect(() => {
+        const fetchMessages = async () => {
+            setIsFetching(true);
+            try {
+                const res = await fetch(`${apiUrl}?${paramKey}=${paramValue}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.items) {
+                        setMessages(data.items.reverse());
+                        setNextCursor(data.nextCursor);
+                    } else if (Array.isArray(data)) {
+                        setMessages(data.reverse());
+                        setNextCursor(null);
+                    }
+                }
+            } finally {
+                setIsFetching(false);
             }
         };
         fetchMessages();
 
-        // Poll every 2 seconds
-        const intervalId = setInterval(fetchMessages, 2000);
+        // Poll every 2 seconds for NEW messages (optional, socket puts them in too)
+        // Note: Polling might be redundant if sockets work well, but good fallback.
+        // Ideally polling should only fetch *new* messages after the last one we have.
+        // For simplicity, we'll rely on sockets for updates and only poll if we implement "since" logic.
+        // Current implementation re-fetches everything which breaks pagination.
+        // REMOVING polling to fix pagination stability and rely on Sockets.
 
-        return () => clearInterval(intervalId);
+        // const intervalId = setInterval(fetchMessages, 2000);
+        // return () => clearInterval(intervalId);
     }, [apiUrl, paramKey, paramValue]);
 
-    // Auto-scroll when messages change ONLY if already at bottom or just loaded
-    useEffect(() => {
-        if (isAtBottom) {
-            scrollToBottom("smooth");
-        }
+    // Handle Scroll Position Maintenance after loading more
+    useLayoutEffect(() => {
+        if (isLoadingMoreRef.current && scrollContainerRef.current) {
+            const newScrollHeight = scrollContainerRef.current.scrollHeight;
+            const diff = newScrollHeight - previousScrollHeightRef.current;
 
-        // Also mark as read when new messages come in if we are looking at them
-        if (isAtBottom && paramValue) {
-            notificationManager.markRelatedAsRead(paramValue);
+            // Restore scroll position
+            scrollContainerRef.current.scrollTop = diff;
+            isLoadingMoreRef.current = false;
         }
-    }, [messages, isAtBottom, paramValue]); // Added isAtBottom and paramValue dependencies
+    }, [messages]);
+
+    // Auto-scroll logic for NEW messages
+    useEffect(() => {
+        // If we are not loading more history, and (at bottom or first load)
+        if (!isLoadingMoreRef.current) {
+            if (isAtBottom) {
+                scrollToBottom("smooth");
+            }
+
+            // Also mark as read when new messages come in if we are looking at them
+            if (isAtBottom && paramValue) {
+                notificationManager.markRelatedAsRead(paramValue);
+            }
+        }
+    }, [messages, isAtBottom, paramValue]);
 
     // Real-time listener
     useEffect(() => {
@@ -97,13 +174,18 @@ export const ChatMessages = ({
 
         const channelKey = paramKey === "channelId" ? "new-message" : "new-dm";
 
-        socket.on(channelKey, (message: any) => {
-            // Append message
-            setMessages((current) => [...current, message]);
-        });
+        const handleNewMessage = (message: any) => {
+            setMessages((current) => {
+                // Prevent duplicates
+                if (current.some(m => m.id === message.id)) return current;
+                return [...current, message];
+            });
+        };
+
+        socket.on(channelKey, handleNewMessage);
 
         return () => {
-            socket.off(channelKey);
+            socket.off(channelKey, handleNewMessage);
         }
     }, [socket, paramKey]);
 
@@ -119,7 +201,7 @@ export const ChatMessages = ({
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden relative">
-            {/* Media Viewer Overlay */}
+            {/* Media Viewer Overlay ... (No changes) */}
             {viewerMedia && (
                 <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col animate-in fade-in duration-300">
                     <div className="flex items-center justify-between p-4 text-white">
@@ -168,8 +250,16 @@ export const ChatMessages = ({
                 onScroll={handleScroll}
                 className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 flex flex-col scroll-smooth"
             >
+                {/* Loader for Infinite Scroll */}
+                {isFetching && nextCursor && (
+                    <div className="flex justify-center py-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                )}
+
                 <div className="flex-1" /> {/* Spacer to push messages down */}
-                {messages.length === 0 ? (
+
+                {messages.length === 0 && !isFetching ? (
                     <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
                         <div className="text-center space-y-2">
                             <p className="text-sm">No messages yet</p>
